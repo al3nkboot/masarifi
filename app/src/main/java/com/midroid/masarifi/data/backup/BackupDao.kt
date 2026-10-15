@@ -32,6 +32,10 @@ interface BackupDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertSmsLinks(l: List<SmsLink>)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertDupDismissed(l: List<DupDismissed>)
 
+    @Query("SELECT * FROM card_mappings ORDER BY id") suspend fun cardMappings(): List<com.midroid.masarifi.data.CardMapping>
+    @Query("DELETE FROM card_mappings") suspend fun clearCardMappings()
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertCardMappings(l: List<com.midroid.masarifi.data.CardMapping>)
+    @Query("DELETE FROM repair_batches") suspend fun clearRepairBatches()
     @Query("DELETE FROM transactions") suspend fun clearTransactions()
     @Query("DELETE FROM accounts") suspend fun clearAccounts()
     @Query("DELETE FROM categories") suspend fun clearCategories()

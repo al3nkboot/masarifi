@@ -141,6 +141,9 @@ interface MerchantRuleDao {
     @Upsert
     suspend fun upsert(r: MerchantRule)
 
+    @Query("SELECT * FROM merchant_rules")
+    suspend fun all(): List<MerchantRule>
+
     @Query("DELETE FROM merchant_rules WHERE merchantKey = :key")
     suspend fun delete(key: String)
 }

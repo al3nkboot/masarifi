@@ -207,6 +207,16 @@
     <string name="part_of_repeat">جزء من معاملة متكررة. تغيير التكرار هنا يعدّل القاعدة، واختيار «بدون تكرار» يوقفها.</string>
     <string name="per_day_x">≈ %1$s يومياً لبقية الشهر</string>
     <string name="previous">السابق</string>
+    <string name="relink_apply">إعادة الربط</string>
+    <string name="relink_done">تمت إعادة ربط %1$d معاملة</string>
+    <string name="relink_intro">اختر ملف نسخة احتياطية من الهاتف الذي فئاته صحيحة (الإعدادات › النسخ الاحتياطي › نسخ الآن). تُعدَّل المعاملات التي بدون فئة فقط، ولا تُستبدل اختياراتك.</string>
+    <string name="relink_nothing">لا يمكن استرجاع شيء: فئات هذه المعاملات غير محفوظة على هذا الهاتف. ثبّت 1.7.1 على الهاتف الآخر، وخذ نسخة جديدة منه واخترها هنا (أو استعدها).</string>
+    <string name="relink_pick">اختيار ملف النسخة</string>
+    <string name="relink_preview">بدون فئة: %1$d\nمن النسخة الاحتياطية: %2$d\nمن قواعد التجار: %3$d\nفئات جديدة: %4$d\nستبقى بدون فئة: %5$d</string>
+    <string name="relink_rules_only">بدون ملف (قواعد التجار)</string>
+    <string name="relink_sub">إعادة ربط المعاملات «بدون فئة» من ملف نسخة احتياطية</string>
+    <string name="relink_sub_count">%1$d معاملة بدون فئة — إعادة الربط من نسخة احتياطية</string>
+    <string name="relink_title">إصلاح الفئات المفقودة</string>
     <string name="remaining_x">المتبقي %1$s</string>
     <string name="remove">إزالة</string>
     <string name="repair_applied">تم تطبيق %1$d تغيير</string>

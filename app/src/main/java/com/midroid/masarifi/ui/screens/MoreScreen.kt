@@ -89,6 +89,7 @@ fun MoreScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier, 
         SettingRow(AppIcons.Download, stringResource(R.string.export_csv), stringResource(R.string.export_csv_sub), onClick = { exportLauncher.launch("masarifi-${LocalDate.now()}.csv") })
         SettingRow(AppIcons.Upload, stringResource(R.string.drive_backup), stringResource(R.string.drive_backup_sub), onClick = { navigate(Route.Backup) })
         SettingRow(Icons.Filled.Refresh, stringResource(R.string.device_sync), stringResource(R.string.device_sync_sub), onClick = { navigate(Route.Sync) })
+        RelinkRow(vm)
         SettingRow(AppIcons.Book, stringResource(R.string.mm_import), stringResource(R.string.mm_import_sub), onClick = {
             mmLauncher.launch(
                 arrayOf(
@@ -148,4 +149,39 @@ fun ChoiceDialog(title: String, options: List<Pair<String, String>>, selected: S
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
+}
+
+
+/** «إصلاح الفئات المفقودة»: re-links uncategorized transactions from a backup file of the other phone (1.7.1). */
+@Composable
+private fun RelinkRow(vm: AppViewModel) {
+    val count by vm.uncategorizedCount.collectAsStateWithLifecycle()
+    val plan by vm.relinkUi.collectAsStateWithLifecycle()
+    val error by vm.relinkError.collectAsStateWithLifecycle()
+    var intro by remember { mutableStateOf(false) }
+    val doneFmt = stringResource(R.string.relink_done)
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) { intro = false; vm.relinkPlan(uri) } }
+    SettingRow(AppIcons.Category, stringResource(R.string.relink_title),
+        if (count > 0) stringResource(R.string.relink_sub_count, count) else stringResource(R.string.relink_sub), onClick = { intro = true })
+    if (intro) AlertDialog(
+        onDismissRequest = { intro = false },
+        title = { Text(stringResource(R.string.relink_title)) },
+        text = { Text(stringResource(R.string.relink_intro)) },
+        confirmButton = { TextButton(onClick = { launcher.launch(arrayOf("application/json", "application/octet-stream", "*/*")) }) { Text(stringResource(R.string.relink_pick)) } },
+        dismissButton = { TextButton(onClick = { intro = false; vm.relinkPlan(null) }) { Text(stringResource(R.string.relink_rules_only)) } },
+    )
+    if (error) AlertDialog(onDismissRequest = { vm.relinkDismiss() }, text = { Text(stringResource(R.string.restore_error_invalid)) },
+        confirmButton = { TextButton(onClick = { vm.relinkDismiss() }) { Text(stringResource(R.string.ok)) } })
+    plan?.let { p ->
+        AlertDialog(
+            onDismissRequest = { vm.relinkDismiss() },
+            title = { Text(stringResource(R.string.relink_title)) },
+            text = {
+                Text(stringResource(R.string.relink_preview, p.uncategorized, p.fromBackup.size, p.fromRules.size, p.newCategories.size, p.remaining) +
+                    if (p.total == 0) "\n\n" + stringResource(R.string.relink_nothing) else "")
+            },
+            confirmButton = { if (p.total > 0) TextButton(onClick = { vm.relinkApply { n -> String.format(java.util.Locale.US, doneFmt, n) } }) { Text(stringResource(R.string.relink_apply)) } },
+            dismissButton = { TextButton(onClick = { vm.relinkDismiss() }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
 }

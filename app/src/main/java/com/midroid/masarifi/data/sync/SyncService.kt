@@ -105,6 +105,11 @@ class SyncService(
         val cats = b.categories(); val accs = b.accounts(); val recs = b.recurring(); val txns = b.transactions()
         val links = b.smsLinks(); val budgets = b.budgets(); val rules = b.merchantRules()
         val catU = cats.associate { it.id to it.uuid }
+        val catById = cats.associateBy { it.id }
+        /** Category name/key carried with a reference so the other phone can re-link it (see [CategoryLinks]). */
+        fun catInfo(id: Long?): Array<Pair<String, Any?>> = catById[id]?.let { c ->
+            arrayOf("catKey" to c.key, "catName" to c.nameAr, "catNameEn" to c.nameEn, "catType" to c.type)
+        } ?: emptyArray()
         val accU = accs.associate { it.id to it.uuid }
         val recU = recs.associate { it.id to it.uuid }
         val txnU = txns.associate { it.id to it.uuid }
@@ -123,20 +128,20 @@ class SyncService(
         recs.forEach { r ->
             add(SyncRecord.live(r.uuid, Kind.RECURRING, r.updatedAt, "type" to r.type, "amount" to r.amount, "account" to acc(r.accountId),
                 "toAccount" to acc(r.toAccountId), "category" to r.categoryId?.let { catU[it] }, "note" to r.note, "frequency" to r.frequency,
-                "nextDate" to r.nextDate, "active" to r.active))
+                "nextDate" to r.nextDate, "active" to r.active, *catInfo(r.categoryId)))
         }
         txns.forEach { t ->
             add(SyncRecord.live(t.uuid, Kind.TXN, t.updatedAt, "type" to t.type, "amount" to t.amount, "account" to acc(t.accountId),
                 "toAccount" to acc(t.toAccountId), "category" to t.categoryId?.let { catU[it] }, "note" to t.note, "description" to t.description,
                 "dateTime" to t.dateTime, "isAuto" to t.isAuto, "smsHash" to t.smsHash, "merchant" to t.merchant,
                 "recurring" to t.recurringId?.let { recU[it] }, "createdAt" to t.createdAt, "smsLinked" to t.smsLinked,
-                "possibleDupOf" to t.possibleDupOf?.split(',')?.mapNotNull { it.trim().toLongOrNull()?.let { id -> txnU[id] } }?.joinToString(",")?.ifEmpty { null }))
+                "possibleDupOf" to t.possibleDupOf?.split(',')?.mapNotNull { it.trim().toLongOrNull()?.let { id -> txnU[id] } }?.joinToString(",")?.ifEmpty { null }, *catInfo(t.categoryId)))
         }
         links.forEach { l ->
             add(SyncRecord.live(l.uuid, Kind.SMS_LINK, l.updatedAt, "txn" to (txnU[l.txnId] ?: "missing-txn-${l.txnId}"), "smsHash" to l.smsHash,
                 "sender" to l.sender, "type" to l.type, "amount" to l.amount, "account" to acc(l.accountId), "category" to l.categoryId?.let { catU[it] },
                 "note" to l.note, "description" to l.description, "dateTime" to l.dateTime, "merchant" to l.merchant, "cardLast4" to l.cardLast4,
-                "prevMerchant" to l.prevMerchant, "createdAt" to l.createdAt))
+                "prevMerchant" to l.prevMerchant, "createdAt" to l.createdAt, *catInfo(l.categoryId)))
         }
         budgets.forEach { bu ->
             val cu = if (bu.categoryId == 0L) null else catU[bu.categoryId] ?: return@forEach
@@ -144,7 +149,7 @@ class SyncService(
         }
         rules.forEach { m ->
             val cu = catU[m.categoryId] ?: return@forEach
-            add(SyncRecord.live("m:${m.merchantKey}", Kind.MERCHANT, m.updatedAt, "merchantKey" to m.merchantKey, "category" to cu))
+            add(SyncRecord.live("m:${m.merchantKey}", Kind.MERCHANT, m.updatedAt, "merchantKey" to m.merchantKey, "category" to cu, *catInfo(m.categoryId)))
         }
         val s = settings.current
         add(SyncRecord.live(SETTINGS_UUID, Kind.SETTINGS, settings.syncedUpdatedAt, "currency" to s.currency, "weekStartsSaturday" to s.weekStartsSaturday,
@@ -221,7 +226,17 @@ class SyncService(
     private suspend fun applyLive(r: SyncRecord, pendingDup: MutableList<Pair<Long, String>>): Boolean {
         dao.dropTombstone(r.uuid)
         suspend fun accId(k: String) = r.str(k)?.let { dao.account(it)?.id }
-        suspend fun catId(k: String = "category") = r.str(k)?.let { dao.category(it)?.id }
+        suspend fun catId(k: String = "category"): Long? {
+            val ref = r.str(k) ?: return null
+            dao.category(ref)?.let { return it.id }
+            // unknown id: same category by key / name (an older peer may not have re-linked it)
+            val type = (r.long("catType") ?: r.long("type"))?.toInt()
+            val all = repo.categoryDao.all().filter { type == null || it.type == type }
+            val key = r.str("catKey") ?: ref.takeIf { it.startsWith("cat-") && !it.startsWith("cat-auto-") }?.removePrefix("cat-")
+            key?.let { kk -> all.firstOrNull { it.key == kk } }?.let { return it.id }
+            val n = r.str("catName")?.trim(); val ne = r.str("catNameEn")?.trim()
+            return all.firstOrNull { c -> (n != null && c.nameAr.trim() == n) || (ne != null && c.nameEn.trim().equals(ne, true)) }?.id
+        }
         fun int(k: String) = (r.long(k) ?: 0L).toInt()
         when (r.kind) {
             Kind.CATEGORY -> {

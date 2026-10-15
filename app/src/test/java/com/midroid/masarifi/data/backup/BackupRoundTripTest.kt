@@ -49,7 +49,7 @@ class BackupRoundTripTest {
     )
 
     @Test fun decodesV1BackupFrom110() {
-        val v1 = BackupCodec.encode(sample).replace("\"schemaVersion\":3", "\"schemaVersion\":1")
+        val v1 = BackupCodec.encode(sample).replace("\"schemaVersion\":4", "\"schemaVersion\":1")
         val o = org.json.JSONObject(v1)
         o.remove("smsLinks"); o.remove("dupDismissed")
         val txs = o.getJSONArray("transactions")
@@ -67,11 +67,11 @@ class BackupRoundTripTest {
         val back = BackupCodec.decode(json)
         assertEquals(sample, back)
         assertEquals(json, BackupCodec.encode(back))
-        assertEquals(3, back.schemaVersion)
+        assertEquals(4, back.schemaVersion)
     }
 
     @Test fun rejectsNewerSchemaAndGarbage() {
-        val newer = BackupCodec.encode(sample).replace("\"schemaVersion\":3", "\"schemaVersion\":99")
+        val newer = BackupCodec.encode(sample).replace("\"schemaVersion\":4", "\"schemaVersion\":99")
         assertEquals("newer", assertThrows(BackupFormatException::class.java) { BackupCodec.decode(newer) }.code)
         assertEquals("not_json", assertThrows(BackupFormatException::class.java) { BackupCodec.decode("PK\u0003\u0004") }.code)
         assertEquals("not_backup", assertThrows(BackupFormatException::class.java) { BackupCodec.decode("{\"a\":1}") }.code)

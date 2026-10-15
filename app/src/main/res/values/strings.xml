@@ -207,6 +207,16 @@
     <string name="part_of_repeat">Part of a repeating entry. Changing the repetition here updates the rule; «No repeat» stops it.</string>
     <string name="per_day_x">≈ %1$s per day for the rest of the month</string>
     <string name="previous">Previous</string>
+    <string name="relink_apply">Re-link</string>
+    <string name="relink_done">%1$d transactions re-linked</string>
+    <string name="relink_intro">Choose a backup file made on the phone where the categories are correct (Settings › Backup › Back up now, then share or save it). Only transactions without a category are changed; your own choices are never overwritten.</string>
+    <string name="relink_nothing">Nothing could be recovered. The categories of these transactions are not stored on this phone. Install 1.7.1 on the other phone, make a new backup there and choose it here (or restore it).</string>
+    <string name="relink_pick">Choose backup file</string>
+    <string name="relink_preview">Uncategorized: %1$d\nFrom the backup: %2$d\nFrom your merchant rules: %3$d\nNew categories: %4$d\nStill uncategorized: %5$d</string>
+    <string name="relink_rules_only">Without a file (merchant rules)</string>
+    <string name="relink_sub">Re-link uncategorized transactions from a backup file</string>
+    <string name="relink_sub_count">%1$d uncategorized — re-link from a backup file</string>
+    <string name="relink_title">Repair lost categories</string>
     <string name="remaining_x">Remaining %1$s</string>
     <string name="remove">Remove</string>
     <string name="repair_applied">%1$d changes applied</string>

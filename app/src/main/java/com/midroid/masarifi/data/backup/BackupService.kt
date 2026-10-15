@@ -62,13 +62,17 @@ class BackupService(
             createdAt = now, appVersion = appVersion(), settings = settings.current,
             accounts = dao.accounts(), categories = dao.categories(), transactions = dao.transactions(),
             recurring = dao.recurring(), budgets = dao.budgets(), merchantRules = dao.merchantRules(), smsLog = dao.smsLog(),
-            smsLinks = dao.smsLinks(), dupDismissed = dao.dupDismissed(),
+            smsLinks = dao.smsLinks(), dupDismissed = dao.dupDismissed(), cardMappings = dao.cardMappings(),
         )
     }
 
     /** Replaces ALL data with the backup in a single transaction (rolled back entirely on error). */
     suspend fun restore(d: BackupData) {
         repo.inTransaction {
+            // card mappings of this phone point at its own account ids: keep them (re-pointed by account id / name) when the file has none
+            val oldAccounts = dao.accounts().associateBy { it.id }
+            val oldMaps = dao.cardMappings()
+            dao.clearCardMappings(); dao.clearRepairBatches() // repair undo data refers to the replaced rows
             dao.clearTransactions(); dao.clearRecurring(); dao.clearBudgets(); dao.clearMerchantRules(); dao.clearSmsLog()
             dao.clearSmsLinks(); dao.clearDupDismissed(); repo.database.smsBalanceDao().clear()
             dao.clearAccounts(); dao.clearCategories()
@@ -78,6 +82,13 @@ class BackupService(
             d.smsLog.chunked(500).forEach { dao.insertSmsLog(it) }
             d.smsLinks.chunked(500).forEach { dao.insertSmsLinks(it) }
             dao.insertDupDismissed(d.dupDismissed)
+            val maps = d.cardMappings ?: oldMaps.mapNotNull { m ->
+                val old = m.accountId?.let { oldAccounts[it] } ?: return@mapNotNull m.copy(id = 0)
+                val acc = d.accounts.firstOrNull { it.uuid == old.uuid } ?: d.accounts.firstOrNull { it.name == old.name } ?: return@mapNotNull null
+                m.copy(id = 0, accountId = acc.id)
+            }
+            val valid = d.accounts.map { it.id }.toSet()
+            dao.insertCardMappings(maps.filter { it.accountId == null || it.accountId in valid })
         }
         d.settings?.let { s -> settings.update { s } }
         repo.ensureDefaults()

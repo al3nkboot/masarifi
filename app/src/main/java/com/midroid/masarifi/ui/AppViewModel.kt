@@ -373,6 +373,28 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun restoreDismiss() { restoreUi.value = null }
 
+    // ---- repair lost categories (1.7.1) ----
+    val relinkUi = MutableStateFlow<com.midroid.masarifi.data.catfix.CategoryRelink.Plan?>(null)
+    val relinkError = MutableStateFlow(false)
+    val uncategorizedCount: StateFlow<Int> = combine(txns, categories) { t, c ->
+        val ids = c.map { it.id }.toSet()
+        t.count { it.type != TxnType.TRANSFER && (it.categoryId == null || it.categoryId !in ids) }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    fun relinkPlan(uri: Uri?) = viewModelScope.launch(Dispatchers.IO) {
+        relinkError.value = false
+        try {
+            val backup = uri?.let { BackupCodec.decode(BackupService.readFrom(getApplication<Application>().contentResolver, it)) }
+            relinkUi.value = com.midroid.masarifi.data.catfix.CategoryRelink(repo).plan(backup)
+        } catch (e: Exception) { relinkError.value = true }
+    }
+    fun relinkApply(done: (Int) -> String) {
+        val p = relinkUi.value ?: return
+        relinkUi.value = null
+        viewModelScope.launch { val n = withContext(Dispatchers.IO) { com.midroid.masarifi.data.catfix.CategoryRelink(repo).apply(p) }; message(done(n)) }
+    }
+    fun relinkDismiss() { relinkUi.value = null; relinkError.value = false }
+
     // ---------------- bulk delete with undo ----------------
 
     private val _undoEvents = MutableSharedFlow<UndoEvent>(extraBufferCapacity = 4)

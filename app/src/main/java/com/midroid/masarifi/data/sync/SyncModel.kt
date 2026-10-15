@@ -86,4 +86,6 @@ data class SyncStats(
     val conflicts: Int = 0,
     /** Of [conflicts]: duplicate SMS hashes / import fingerprints dropped. */
     val duplicatesDropped: Int = 0,
+    /** References re-linked to the same category under another id (duplicate categories merged / restored). */
+    val categoriesRelinked: Int = 0,
 )

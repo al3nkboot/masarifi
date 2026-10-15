@@ -3,6 +3,7 @@ package com.midroid.masarifi.data.backup
 import com.midroid.masarifi.data.Account
 import com.midroid.masarifi.data.AppSettings
 import com.midroid.masarifi.data.Budget
+import com.midroid.masarifi.data.CardMapping
 import com.midroid.masarifi.data.Category
 import com.midroid.masarifi.data.MerchantRule
 import com.midroid.masarifi.data.Recurring
@@ -29,6 +30,8 @@ data class BackupData(
     val smsLog: List<SmsLog>,
     val smsLinks: List<SmsLink> = emptyList(),
     val dupDismissed: List<DupDismissed> = emptyList(),
+    /** Card / account digits → account (v4, app 1.7.1); null for older files (the device keeps and re-maps its own). */
+    val cardMappings: List<CardMapping>? = null,
 )
 
 class BackupFormatException(val code: String, msg: String) : Exception(msg)
@@ -41,11 +44,12 @@ class BackupFormatException(val code: String, msg: String) : Exception(msg)
  * v2 (app 1.2.0) adds transactions[].smsLinked / possibleDupOf, "smsLinks" and "dupDismissed", plus settings.dupWindowHours.
  * v3 (app 1.3.0) adds uuid + updatedAt to accounts, categories, transactions, recurring and smsLinks, and budgets[].updatedAt
  * (needed so a restored device keeps the same identities for merge sync). Older files get fresh uuids.
+ * v4 (app 1.7.1) adds "cardMappings" (SMS card/account digits → account); old files get the stable ids a device derives itself.
  * Readers ignore unknown fields; older schema versions are upgraded in [decode] (missing fields get defaults).
  */
 object BackupCodec {
     const val FORMAT = "masarifi-backup"
-    const val SCHEMA_VERSION = 3
+    const val SCHEMA_VERSION = 4
 
     fun encode(d: BackupData): String {
         val o = JSONObject()
@@ -107,12 +111,33 @@ object BackupCodec {
                     .putOpt("prevMerchant", l.prevMerchant).put("createdAt", l.createdAt).sync(l.uuid, l.updatedAt))
             }
         })
+        d.cardMappings?.let { l ->
+            o.put("cardMappings", JSONArray().apply {
+                l.forEach { m -> put(JSONObject().put("id", m.id).putOpt("bankId", m.bankId).put("last4", m.last4).putOpt("accountId", m.accountId)
+                    .put("label", m.label).put("source", m.source).put("createdAt", m.createdAt)) }
+            })
+        }
         o.put("dupDismissed", JSONArray().apply { d.dupDismissed.forEach { put(JSONObject().put("pairKey", it.pairKey).put("createdAt", it.createdAt)) } })
         return o.toString()
     }
 
     private fun JSONObject.sync(uuid: String, updatedAt: Long): JSONObject = put("uuid", uuid).put("updatedAt", updatedAt)
     private fun JSONObject.uuid(): String = optString("uuid").ifEmpty { newUuid() }
+
+    /**
+     * Ids for rows of backups made before 1.3.0 (no uuid): the same stable ids a device derives itself (default
+     * categories "cat-<key>", the cash account, name-based ids for other categories / accounts), so restoring an old
+     * file does not give known categories new identities (which used to orphan category links on synced phones).
+     */
+    private fun JSONObject.catUuid(): String = optString("uuid").ifEmpty {
+        optStringOrNull("key")?.let { com.midroid.masarifi.data.Defaults.categoryUuid(it) }
+            ?: com.midroid.masarifi.data.Defaults.namedUuid("cat-auto-${optInt("type")}-", optString("nameAr").ifBlank { optString("nameEn") })
+    }
+    private fun JSONObject.accUuid(): String = optString("uuid").ifEmpty {
+        val name = optString("name")
+        if (optInt("groupType") == 0 && (name == "نقد" || name == "Cash")) com.midroid.masarifi.data.Defaults.CASH_ACCOUNT_UUID
+        else com.midroid.masarifi.data.Defaults.namedUuid("acc-auto-", name)
+    }
 
     private fun JSONObject.optLongOrNull(k: String): Long? = if (has(k) && !isNull(k)) getLong(k) else null
     private fun JSONObject.optStringOrNull(k: String): String? = if (has(k) && !isNull(k)) getString(k) else null
@@ -145,10 +170,10 @@ object BackupCodec {
             settings = settings,
             accounts = o.list("accounts") { a ->
                 Account(a.getLong("id"), a.getString("name"), a.optInt("groupType"), a.optLong("initialBalance"), a.optStringOrNull("cardLast4"),
-                    a.optBoolean("includeInTotal", true), a.optInt("sortOrder"), a.uuid(), a.optLong("updatedAt"))
+                    a.optBoolean("includeInTotal", true), a.optInt("sortOrder"), a.accUuid(), a.optLong("updatedAt"))
             },
             categories = o.list("categories") { c ->
-                Category(c.getLong("id"), c.getInt("type"), c.optString("nameAr"), c.optString("nameEn"), c.optString("emoji", "📦"), c.optStringOrNull("key"), c.optInt("sortOrder"), c.uuid(), c.optLong("updatedAt"))
+                Category(c.getLong("id"), c.getInt("type"), c.optString("nameAr"), c.optString("nameEn"), c.optString("emoji", "📦"), c.optStringOrNull("key"), c.optInt("sortOrder"), c.catUuid(), c.optLong("updatedAt"))
             },
             transactions = o.list("transactions") { t ->
                 Txn(
@@ -174,6 +199,13 @@ object BackupCodec {
                     l.optStringOrNull("merchant"), l.optStringOrNull("cardLast4"), l.optStringOrNull("prevMerchant"), l.optLong("createdAt"), l.uuid(), l.optLong("updatedAt", l.optLong("createdAt")))
             },
             dupDismissed = o.list("dupDismissed") { DupDismissed(it.getString("pairKey"), it.optLong("createdAt")) },
-        )
+            cardMappings = if (o.has("cardMappings")) o.list("cardMappings") { m ->
+                CardMapping(m.optLong("id"), m.optStringOrNull("bankId"), m.getString("last4"), m.optLongOrNull("accountId"), m.optString("label"), m.optInt("source"), m.optLong("createdAt"))
+            } else null,
+        ).let { d ->
+            // stable ids derived from names can collide (two rows with one name): later rows get a fresh id
+            fun <T> uniq(l: List<T>, u: (T) -> String, set: (T, String) -> T): List<T> { val seen = HashSet<String>(); return l.map { if (seen.add(u(it))) it else set(it, newUuid()) } }
+            d.copy(accounts = uniq(d.accounts, { it.uuid }) { a, n -> a.copy(uuid = n) }, categories = uniq(d.categories, { it.uuid }) { c, n -> c.copy(uuid = n) })
+        }
     }
 }

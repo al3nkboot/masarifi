@@ -57,14 +57,17 @@ object SyncMerge {
             }
         }
 
-        // 5. unique SMS hashes / import fingerprints
+        // 4b. categories: one identity per (type, key / name) across devices; references re-linked (see [CategoryLinks])
+        val catStats = CategoryLinks.apply(out) + CategoryLinks.applyAccounts(out)
+
+        // 5. unique SMS hashes / import fingerprints: keep the best copy (see [dupRank]), the other becomes a tombstone
         var dropped = 0
         for (kind in listOf(Kind.TXN, Kind.SMS_LINK)) {
             out.values.filter { it.kind == kind && !it.deleted && it.str("smsHash") != null }
                 .groupBy { it.str("smsHash")!! }
                 .values.filter { it.size > 1 }
                 .forEach { group ->
-                    val keep = group.minBy { it.uuid }
+                    val keep = group.sortedWith(dupRank(out)).first()
                     group.filter { it !== keep }.forEach { out[it.uuid] = it.tombstone(it.updatedAt); dropped++ }
                 }
         }
@@ -101,12 +104,33 @@ object SyncMerge {
             pushed = out.values.count { changesLive(it, remote.records[it.uuid]) },
             merged = out.values.count { !it.deleted },
             conflicts = conflicts + dropped,
+            categoriesRelinked = catStats,
             duplicatesDropped = dropped,
         )
         return Result(merged, toApply, stats)
     }
 
-    private fun sameContent(a: SyncRecord, b: SyncRecord) = a.deleted == b.deleted && a.fields == b.fields
+    /**
+     * Order for copies of one SMS recorded on two phones (each imported it itself): the copy whose account and
+     * category still exist, then one with a real category (not empty / «أخرى»), then the one recorded first
+     * (the phone that had it originally, with the user's edits), then the uuid. Deterministic on both devices.
+     */
+    fun dupRank(out: Map<String, SyncRecord>): Comparator<SyncRecord> {
+        fun live(ref: String?) = ref != null && out[ref]?.deleted == false
+        fun catOk(r: SyncRecord) = r.str("category").let { it == null || live(it) }
+        fun specific(r: SyncRecord) = r.str("category")?.let { out[it] }?.takeIf { !it.deleted }?.str("key").let { k ->
+            r.str("category") != null && live(r.str("category")) && k != "other" && k != "other_income"
+        }
+        return compareByDescending<SyncRecord> { live(it.str("account") ?: it.str("txn")) && catOk(it) }
+            .thenByDescending { specific(it) }
+            .thenBy { it.long("createdAt") ?: Long.MAX_VALUE }
+            .thenBy { it.uuid }
+    }
+
+    /** Fields derived from other records (category names carried for re-linking); not part of an entity's own content. */
+    val DERIVED = setOf("catKey", "catName", "catNameEn", "catType")
+
+    private fun sameContent(a: SyncRecord, b: SyncRecord) = a.deleted == b.deleted && a.fields - DERIVED == b.fields - DERIVED
 
     /** True when the merged snapshot contains something the remote file does not (so it must be rewritten). */
     fun needsPush(merged: SyncSnapshot, remote: SyncSnapshot): Boolean =
