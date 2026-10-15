@@ -1,0 +1,17 @@
+﻿Date,Account,Category,Subcategory,Note,OMR,Income/Expense,Description,Amount,Currency,Account
+03/31/2024 21:05:10,Cash,Food,,شاورما,1.5,Expense,,1.5,OMR,1.5
+03/30/2024 09:00:00,Bank Muscat,Salary,,راتب مارس,800.0,Income,,800,OMR,800.0
+03/28/2024 00:00:00,Cash,Grecory,,,12.25,Expense,,12.25,OMR,12.25
+03/20/2024 18:30:00,Bank Muscat,Cash,,ATM,50.0,Transfer-Out,,50,OMR,50.0
+03/20/2024 18:30:00,Cash,Bank Muscat,,ATM,50.0,Transfer-In,,50,OMR,50.0
+03/15/2024 13:45:30,Visa Card,Electronics ,Phone,سماعة,25.75,Expense,Online order,25.75,OMR,25.75
+03/10/2024 08:15:00,Visa Card,Trip,,Hotel,38.45,Expense,,100,USD,38.45
+03/05/2024 07:00:00,Savings,Bank Muscat,,,20.0,Transfer-Out,,20,OMR,20.0
+02/29/2024 23:59:59,Cash,fuel ,,Shell,7.2,Expense,,7.2,OMR,7.2
+02/14/2024 12:00:00,Cash,Gift,,ورد,5.0,Expense,,5,OMR,5.0
+02/01/2024 10:00:00,Bank Muscat,Bonus,,,100.0,Income,,100,OMR,100.0
+02/01/2024 10:00:00,Cash,Food,,duplicate-looking,2.0,Expense,,2,OMR,2.0
+02/01/2024 10:00:00,Cash,Food,,duplicate-looking,2.0,Expense,,2,OMR,2.0
+not a date,Cash,Food,,bad date,1.0,Expense,,1,OMR,1.0
+01/05/2024 10:00:00,Cash,Food,,zero,0.0,Expense,,0,OMR,0.0
+01/03/2024 10:00:00,Cash,Other,,weird,3.0,Modified Bal.,,3,OMR,3.0
