@@ -229,3 +229,31 @@ interface SmsBalanceDao {
     @Query("DELETE FROM sms_balances")
     suspend fun clear()
 }
+
+@Dao
+interface CardMappingDao {
+    @Query("SELECT * FROM card_mappings ORDER BY bankId, last4, id")
+    fun observeAll(): Flow<List<CardMapping>>
+
+    @Query("SELECT * FROM card_mappings ORDER BY id")
+    suspend fun all(): List<CardMapping>
+
+    /** Best mapping for [last4]: bank-specific first, then "any bank". */
+    @Query("SELECT * FROM card_mappings WHERE last4 = :last4 AND (bankId IS NULL OR bankId = :bankId) ORDER BY (bankId IS NULL), id LIMIT 1")
+    suspend fun find(last4: String, bankId: String?): CardMapping?
+
+    @Insert
+    suspend fun insert(m: CardMapping): Long
+
+    @Update
+    suspend fun update(m: CardMapping)
+
+    @Query("DELETE FROM card_mappings WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    /** SMS-recorded transactions with their sender (seed source for [Repository.seedCardMappings]). */
+    @Query("SELECT l.sender AS sender, t.accountId AS accountId, t.description AS body FROM transactions t JOIN sms_log l ON l.txnId = t.id WHERE t.isAuto = 1 ORDER BY t.dateTime")
+    suspend fun seedRows(): List<CardSeedRow>
+}
+
+data class CardSeedRow(val sender: String, val accountId: Long, val body: String)

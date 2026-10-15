@@ -451,6 +451,25 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /** Own-wallet top-up rules (empty list is stored as "[]"; [reset] restores the defaults). */
+    // ---- Card / account mappings (SMS last 4 digits → account), stored on the device only ----
+    val cardMappings: StateFlow<List<com.midroid.masarifi.data.CardMapping>> =
+        repo.cardMappingDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    fun saveCardMapping(m: com.midroid.masarifi.data.CardMapping) = viewModelScope.launch(Dispatchers.IO) {
+        if (m.id == 0L) repo.cardMappingDao.insert(m.copy(source = 0)) else repo.cardMappingDao.update(m.copy(source = 0))
+    }
+    fun deleteCardMapping(m: com.midroid.masarifi.data.CardMapping) = viewModelScope.launch(Dispatchers.IO) { repo.cardMappingDao.delete(m.id) }
+
+    private val cardBannerDismissed = MutableStateFlow(settingsStore.flag(CARD_BANNER_FLAG))
+    /** Accounts with SMS transactions but no card digits configured → one-time banner (empty = no banner). */
+    val cardSetupNeeded: StateFlow<List<Account>> = combine(txns, accounts, cardMappings, cardBannerDismissed) { t, a, m, dismissed ->
+        if (dismissed) emptyList() else {
+            val mapped = m.mapNotNull { it.accountId }.toSet()
+            val sms = t.filter { it.isAuto }.map { it.accountId }.toSet()
+            a.filter { it.id in sms && it.id !in mapped && it.cardLast4.isNullOrBlank() }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    fun dismissCardBanner() { settingsStore.setFlag(CARD_BANNER_FLAG); cardBannerDismissed.value = true }
+
     fun setWalletTopups(list: List<com.midroid.masarifi.sms.WalletTopup>?) =
         updateSettings { it.copy(walletTopups = list?.let { l -> com.midroid.masarifi.sms.WalletTopupCodec.encode(l) } ?: "") }
 
@@ -482,4 +501,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
         message(done(n))
     }
+
+    private companion object { const val CARD_BANNER_FLAG = "card_banner_v5_dismissed" }
 }

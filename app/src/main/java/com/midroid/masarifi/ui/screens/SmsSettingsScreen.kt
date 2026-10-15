@@ -134,6 +134,8 @@ fun SmsSettingsScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHo
             ) { Text(stringResource(R.string.rescan_sms)) }
             Text(stringResource(R.string.rescan_sms_sub), fontSize = 12.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
 
+            CardMappingsSection(vm, s.arabic)
+
             WalletTopupsSection(vm, s.arabic, s.walletTopupList)
 
             SectionTitle(stringResource(R.string.sms_senders))
@@ -288,4 +290,76 @@ private fun ParserTester(vm: AppViewModel) {
             }
         }
     }
+}
+
+@Composable
+private fun CardMappingsSection(vm: AppViewModel, arabic: Boolean) {
+    val c = AppTheme.colors
+    val accounts by vm.accounts.collectAsStateWithLifecycle()
+    val maps by vm.cardMappings.collectAsStateWithLifecycle()
+    var editing by remember { mutableStateOf<com.midroid.masarifi.data.CardMapping?>(null) }
+    val anyBank = stringResource(R.string.card_map_any_bank)
+    fun bankName(id: String?) = DefaultSmsConfig.banks.firstOrNull { it.id == id }?.let { if (arabic) it.nameAr else it.nameEn } ?: anyBank
+    SectionTitle(stringResource(R.string.card_maps))
+    Text(stringResource(R.string.card_maps_sub), fontSize = 12.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp))
+    if (maps.isEmpty()) Text(stringResource(R.string.card_maps_empty), fontSize = 12.sp, color = c.muted, modifier = Modifier.padding(16.dp))
+    maps.forEach { m ->
+        val acc = accounts.firstOrNull { it.id == m.accountId }?.name ?: "—"
+        SettingRow(null, bankName(m.bankId) + "  " + ltr("••" + m.last4) + (if (m.label.isNotBlank()) " · " + m.label else ""), "→ $acc", onClick = { editing = m }) {
+            IconButton(onClick = { vm.deleteCardMapping(m) }) { Icon(Icons.Filled.Close, stringResource(R.string.delete), tint = c.muted) }
+        }
+        HorizontalDivider(color = c.divider)
+    }
+    OutlinedButton(onClick = { editing = com.midroid.masarifi.data.CardMapping(last4 = "") }, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Text(stringResource(R.string.card_map_add))
+    }
+    editing?.let { m ->
+        CardMappingDialog(m, accounts, ::bankName, onDismiss = { editing = null }) { vm.saveCardMapping(it); editing = null }
+    }
+}
+
+@Composable
+private fun CardMappingDialog(
+    m: com.midroid.masarifi.data.CardMapping, accounts: List<com.midroid.masarifi.data.Account>, bankName: (String?) -> String,
+    onDismiss: () -> Unit, onSave: (com.midroid.masarifi.data.CardMapping) -> Unit,
+) {
+    var bank by remember { mutableStateOf(m.bankId) }
+    var last4 by remember { mutableStateOf(m.last4) }
+    var label by remember { mutableStateOf(m.label) }
+    var account by remember { mutableStateOf(m.accountId ?: accounts.firstOrNull()?.id) }
+    val valid = last4.length == 4 && last4.all { it in '0'..'9' }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.card_map_edit)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                OutlinedTextField(
+                    last4, { v -> last4 = v.filter { it.isDigit() }.map { ch -> if (ch in '٠'..'٩') '0' + (ch - '٠') else ch }.joinToString("").take(4) },
+                    Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.card_last4)) }, singleLine = true,
+                    isError = last4.isNotEmpty() && !valid,
+                    supportingText = { Text(stringResource(if (last4.isNotEmpty() && !valid) R.string.card_map_last4_error else R.string.card_last4_hint)) },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                )
+                OutlinedTextField(label, { label = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.card_map_label)) }, singleLine = true)
+                Text(stringResource(R.string.card_map_bank), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                (listOf<String?>(null) + DefaultSmsConfig.banks.map { it.id }).forEach { id ->
+                    Row(Modifier.fillMaxWidth().clickable { bank = id }, verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = bank == id, onClick = { bank = id }); Text(bankName(id), fontSize = 14.sp)
+                    }
+                }
+                Text(stringResource(R.string.card_map_account), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                accounts.forEach { a ->
+                    Row(Modifier.fillMaxWidth().clickable { account = a.id }, verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = account == a.id, onClick = { account = a.id }); Text(a.name, fontSize = 14.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = valid && account != null, onClick = { onSave(m.copy(bankId = bank, last4 = last4, label = label.trim(), accountId = account)) }) {
+                Text(stringResource(R.string.save))
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
 }

@@ -183,7 +183,7 @@ class ProviderImportTest {
         val all = listOf(
             Triple(THAWANI, T1, at(15, 9)), Triple(THAWANI, T2, at(15, 10)), Triple(THAWANI, T3, at(15, 10, 30)),
             Triple(BM, BM_TOPUP, at(15, 10, 1)), Triple(BM, BM_OTP, at(15, 12)), Triple(BM, BM_SENT, at(16, 14, 31)),
-            Triple(BD, BD_SUSPENDED, at(9, 9)), Triple(BD, BD_CREDIT_2, at(10, 9)), Triple(BD, BD_CREDIT_200, at(10, 10)),
+            Triple(BD, BD_SUSPENDED, at(16, 9)), Triple(BD, BD_CREDIT_2, at(10, 9)), Triple(BD, BD_CREDIT_200, at(10, 10)),
         )
         val first = all.map { (s, b, t) -> repo.importSms(s, b, t) }
         assertTrue(first[0]!!.linked)                                       // T1 linked to the manual 25.000 entry
@@ -194,5 +194,37 @@ class ProviderImportTest {
         // re-scan: everything is already known
         assertTrue(all.map { (s, b, t) -> repo.importSms(s, b, t) }.all { it == null })
         assertEquals(count, repo.txnDao.all().size)
+    }
+
+    // ---- card mappings configured explicitly (no real digits in code; anonymized fixtures only) ----
+
+    @Test fun configuredMapping_routesSmsToChosenAccount() = runBlocking {
+        val bankId = repo.parser().parse(THAWANI, T1)!!.bankId
+        val mine = repo.accountDao.insert(Account(name = "بطاقتي", groupType = AccountGroup.CARD))
+        repo.cardMappingDao.insert(CardMapping(bankId = bankId, last4 = "5501", accountId = mine))
+        val r = repo.importSms(THAWANI, T1, at(15, 9))!!
+        assertEquals(mine, r.txn.accountId)
+        assertEquals(2, repo.accountDao.all().size) // cash + mine, nothing auto-created
+    }
+
+    @Test fun mappingOfAnotherBank_isIgnored_fallsBackToBankDefault() = runBlocking {
+        val other = repo.accountDao.insert(Account(name = "Other", groupType = AccountGroup.BANK))
+        repo.cardMappingDao.insert(CardMapping(bankId = "some-other-bank", last4 = "5501", accountId = other))
+        val r = repo.importSms(THAWANI, T1, at(15, 9))!!
+        assertEquals(account(thawaniAccount).id, r.txn.accountId)
+    }
+
+    @Test fun anyBankMapping_andLearningNewCards() = runBlocking {
+        val bm = repo.accountDao.insert(Account(name = "Main", groupType = AccountGroup.BANK))
+        repo.cardMappingDao.insert(CardMapping(bankId = null, last4 = "0099", accountId = bm))
+        assertEquals(bm, repo.importSms(BM, BM_SENT, at(16, 20))!!.txn.accountId)
+        // an unknown card is created as before and remembered as a mapping (source 2 = learned)
+        val r = repo.importSms(BD, BD_CREDIT_2, at(10, 9))!!
+        val learned = repo.cardMappingDao.all().single { it.last4 == "7001" }
+        assertEquals(r.txn.accountId, learned.accountId)
+        assertEquals(2, learned.source)
+        // after the user edits the mapping, the next SMS follows it
+        repo.cardMappingDao.update(learned.copy(accountId = bm, source = 0))
+        assertEquals(bm, repo.importSms(BD, BD_CREDIT_200, at(10, 10))!!.txn.accountId)
     }
 }

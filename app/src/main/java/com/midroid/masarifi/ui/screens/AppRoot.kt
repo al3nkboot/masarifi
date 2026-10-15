@@ -2,6 +2,9 @@ package com.midroid.masarifi.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FloatingActionButton
@@ -126,12 +129,30 @@ private fun HomeScaffold(vm: AppViewModel, navigate: (Route) -> Unit, snackbar: 
             }
         },
     ) { padding ->
-        val m = Modifier.padding(padding)
-        when (tab) {
-            0 -> TransScreen(vm, navigate, m)
-            1 -> StatsScreen(vm, navigate, m)
-            2 -> AccountsScreen(vm, navigate, m)
-            else -> MoreScreen(vm, navigate, m, onLanguageChanged)
+        val missing by vm.cardSetupNeeded.collectAsStateWithLifecycle()
+        androidx.compose.foundation.layout.Column(Modifier.padding(padding)) {
+            if (missing.isNotEmpty()) CardSetupBanner(missing.joinToString("، ") { it.name }, onOpen = { navigate(Route.SmsSettings) }, onDismiss = { vm.dismissCardBanner() })
+            val m = Modifier.weight(1f)
+            when (tab) {
+                0 -> TransScreen(vm, navigate, m)
+                1 -> StatsScreen(vm, navigate, m)
+                2 -> AccountsScreen(vm, navigate, m)
+                else -> MoreScreen(vm, navigate, m, onLanguageChanged)
+            }
+        }
+    }
+}
+
+/** One-time banner after the 1.5.0 upgrade when some SMS account has no card digits (dismiss = never shown again). */
+@Composable
+private fun CardSetupBanner(names: String, onOpen: () -> Unit, onDismiss: () -> Unit) {
+    androidx.compose.material3.Surface(color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.fillMaxWidth()) {
+        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text(stringResource(R.string.card_banner_text, names), fontSize = 13.sp)
+            androidx.compose.foundation.layout.Row {
+                androidx.compose.material3.TextButton(onClick = onOpen) { Text(stringResource(R.string.card_banner_open)) }
+                androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(R.string.card_banner_dismiss)) }
+            }
         }
     }
 }

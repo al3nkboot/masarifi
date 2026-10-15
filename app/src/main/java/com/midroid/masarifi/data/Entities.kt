@@ -207,3 +207,19 @@ data class SmsBalance(
     val smsHash: String,
     val createdAt: Long = System.currentTimeMillis(),
 )
+
+/**
+ * Local (per-device, never committed to the repo) mapping: bank SMS card/account last-4 digits → account in the app.
+ * [bankId] null = any bank. Seeded on upgrade from the device's own data (MIGRATION_4_5 + [Repository.seedCardMappings]),
+ * editable in SMS settings. [source]: 0 = user, 1 = seeded on upgrade, 2 = learned automatically from an SMS.
+ */
+@Entity(tableName = "card_mappings", indices = [Index(value = ["last4"])])
+data class CardMapping(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val bankId: String? = null,
+    val last4: String,
+    val accountId: Long? = null,
+    val label: String = "",
+    val source: Int = 0,
+    val createdAt: Long = System.currentTimeMillis(),
+)

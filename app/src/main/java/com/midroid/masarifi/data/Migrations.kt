@@ -61,5 +61,32 @@ object Migrations {
         }
     }
 
-    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+    /**
+     * 1.4.0 (v4) → 1.5.0 (v5): additive, `card_mappings` (SMS card/account last 4 → account), seeded from what the
+     * device already knows: accounts with card digits, then digits recorded on linked SMS. Bank-specific rows and
+     * mappings from older auto transactions are added after open by [Repository.seedCardMappings].
+     */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(CREATE_CARD_MAPPINGS)
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_card_mappings_last4` ON `card_mappings` (`last4`)")
+            val now = System.currentTimeMillis()
+            db.execSQL(
+                "INSERT INTO card_mappings (bankId, last4, accountId, label, source, createdAt) " +
+                    "SELECT NULL, trim(cardLast4), id, name, 1, $now FROM accounts WHERE cardLast4 IS NOT NULL AND trim(cardLast4) <> '' ORDER BY id",
+            )
+            db.execSQL(
+                "INSERT INTO card_mappings (bankId, last4, accountId, label, source, createdAt) " +
+                    "SELECT NULL, trim(l.cardLast4), l.accountId, '', 1, $now FROM sms_links l " +
+                    "WHERE l.cardLast4 IS NOT NULL AND trim(l.cardLast4) <> '' AND l.accountId IN (SELECT id FROM accounts) " +
+                    "AND NOT EXISTS (SELECT 1 FROM card_mappings m WHERE m.last4 = trim(l.cardLast4)) " +
+                    "AND l.id = (SELECT MAX(l2.id) FROM sms_links l2 WHERE trim(l2.cardLast4) = trim(l.cardLast4))",
+            )
+        }
+    }
+
+    const val CREATE_CARD_MAPPINGS = "CREATE TABLE IF NOT EXISTS `card_mappings` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `bankId` TEXT, " +
+        "`last4` TEXT NOT NULL, `accountId` INTEGER, `label` TEXT NOT NULL, `source` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL)"
+
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 }

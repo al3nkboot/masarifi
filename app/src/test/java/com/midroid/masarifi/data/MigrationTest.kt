@@ -97,7 +97,7 @@ class MigrationTest {
             assertTrue(linkId > 0)
             db.dupDao().dismiss(listOf(DupDismissed(DupDismissed.key(1, 3))))
             assertEquals(listOf("1-3"), db.dupDao().dismissed())
-            assertEquals(4, db.openHelper.readableDatabase.version)
+            assertEquals(5, db.openHelper.readableDatabase.version)
         } finally {
             db.close()
         }
@@ -151,7 +151,7 @@ class MigrationTest {
             // new rows get uuids from the entity defaults
             val id = db.txnDao().insert(Txn(type = 1, amount = 1, accountId = 1, dateTime = 1))
             assertTrue(uuidRe.matches(db.txnDao().get(id)!!.uuid))
-            assertEquals(4, sql.version)
+            assertEquals(5, sql.version)
         } finally {
             db.close()
         }
@@ -181,7 +181,7 @@ class MigrationTest {
             db.smsBalanceDao().insert(SmsBalance(accountId = 1, dateTime = 20, balance = 205_000, smsHash = "h2"))
             assertEquals(5_000L, db.smsBalanceDao().latestBefore(1, 15)!!.balance)
             assertEquals(205_000L, db.smsBalanceDao().latest(1)!!.balance)
-            assertEquals(4, db.openHelper.readableDatabase.version)
+            assertEquals(5, db.openHelper.readableDatabase.version)
         } finally {
             db.close()
         }
@@ -192,5 +192,46 @@ class MigrationTest {
         assertEquals(4, v4.getInt("version"))
         assertTrue(v4.toString().contains("sms_balances"))
         assertTrue(v4.toString().contains("sync_tombstones"))
+    }
+
+    /** 1.4.0 → 1.5.0: additive card_mappings table seeded from the device's own data; nothing else changes. */
+    @Test fun migrate4To5SeedsCardMappings() = runBlocking {
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        val name = "migration-test-v4.db"
+        val file = ctx.getDatabasePath(name).apply { parentFile?.mkdirs(); delete() }
+        createFrom(file, 4)
+        SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { d ->
+            d.execSQL("INSERT INTO accounts (id, name, groupType, initialBalance, cardLast4, includeInTotal, sortOrder, uuid, updatedAt) VALUES (2, 'Wallet ••5501', 3, 0, '5501', 1, 1, 'acc-2', 0)")
+            d.execSQL("INSERT INTO accounts (id, name, groupType, initialBalance, cardLast4, includeInTotal, sortOrder, uuid, updatedAt) VALUES (3, 'بنك ظفار', 1, 0, NULL, 1, 2, 'acc-3', 0)")
+            d.execSQL("INSERT INTO sms_balances (accountId, dateTime, balance, smsHash, createdAt) VALUES (2, 1, 48250, 'hb', 1)")
+            // an SMS transaction recorded by 1.4.0 on account 3 whose account has no digits stored
+            d.execSQL("INSERT INTO transactions (id, type, amount, accountId, toAccountId, categoryId, note, description, dateTime, isAuto, smsHash, merchant, recurringId, createdAt, smsLinked, possibleDupOf, uuid, updatedAt) VALUES (4, 0, 2000, 3, NULL, NULL, '', '${com.midroid.masarifi.sms.ProviderSamplesTest.BD_CREDIT_2}', 1790000300000, 1, 'h4', NULL, NULL, 4, 0, NULL, 'tx-4', 0)")
+            d.execSQL("INSERT INTO sms_log (hash, sender, receivedAt, status, txnId) VALUES ('h4', '${com.midroid.masarifi.sms.ProviderSamplesTest.BD}', 1790000300000, 1, 4)")
+        }
+        val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).addMigrations(*Migrations.ALL).allowMainThreadQueries().build()
+        try {
+            assertEquals(5, db.openHelper.readableDatabase.version)
+            // existing data untouched
+            assertEquals(listOf(4300L, 1500L, 7000L, 2000L), db.txnDao().all().sortedBy { it.id }.map { it.amount })
+            assertEquals(48_250L, db.smsBalanceDao().latest(2)!!.balance)
+            assertEquals("5501", db.accountDao().all().first { it.id == 2L }.cardLast4)
+            // SQL seeding: account digits + digits recorded on linked SMS
+            val seeded = db.cardMappingDao().all()
+            assertEquals(listOf("5501" to 2L, "0099" to 1L), seeded.map { it.last4 to it.accountId })
+            assertTrue(seeded.all { it.source == 1 && it.bankId == null })
+            // Kotlin seeding (first launch): re-parses stored SMS bodies → bank-specific mapping for account 3
+            val settings = SettingsStore(ctx, "mig-test-settings").apply { update { AppSettings() } }
+            val repo = Repository(db, settings)
+            assertEquals(listOf("بنك ظفار"), repo.accountsMissingCardMapping().map { it.name })
+            repo.ensureDefaults()
+            val m = db.cardMappingDao().all().single { it.last4 == "7001" }
+            assertEquals(3L, m.accountId)
+            assertEquals(repo.parser().parse(com.midroid.masarifi.sms.ProviderSamplesTest.BD, com.midroid.masarifi.sms.ProviderSamplesTest.BD_CREDIT_2)!!.bankId, m.bankId)
+            assertTrue(repo.accountsMissingCardMapping().isEmpty())
+            repo.ensureDefaults() // idempotent
+            assertEquals(3, db.cardMappingDao().all().size)
+        } finally {
+            db.close()
+        }
     }
 }

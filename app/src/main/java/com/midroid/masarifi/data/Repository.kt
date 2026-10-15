@@ -36,6 +36,7 @@ class Repository(
     val smsLogDao = db.smsLogDao()
     val dupDao = db.dupDao()
     val smsBalanceDao = db.smsBalanceDao()
+    val cardMappingDao = db.cardMappingDao()
 
     private val categorizer = MerchantCategorizer()
     private val smsMutex = Mutex()
@@ -56,6 +57,38 @@ class Repository(
             val ar = settings.current.arabic
             accountDao.insert(Account(name = if (ar) "نقد" else "Cash", groupType = AccountGroup.CASH, uuid = Defaults.CASH_ACCOUNT_UUID, updatedAt = 0))
         }
+        if (!settings.flag(SEEDED_FLAG)) { seedCardMappings(); settings.setFlag(SEEDED_FLAG) }
+    }
+
+    /**
+     * One-time upgrade step (1.4.0 → 1.5.0): re-parses the SMS bodies of transactions recorded automatically (sender from
+     * sms_log) and adds a bank-specific card mapping for every card/account suffix not mapped yet, pointing to the account
+     * the transaction was recorded on. Uses only data already on the device. Idempotent.
+     */
+    suspend fun seedCardMappings(): Int {
+        val p = parser()
+        val accounts = accountDao.all().map { it.id }.toSet()
+        var added = 0
+        for (row in cardMappingDao.seedRows()) {
+            val txn = row
+            if (txn.accountId !in accounts) continue
+            val parsed = runCatching { p.parse(row.sender, row.body) }.getOrNull() ?: continue
+            val last4 = parsed.cardLast4 ?: continue
+            val existing = cardMappingDao.find(last4, parsed.bankId)
+            if (existing != null) {
+                if (existing.bankId == null && existing.source == 1 && existing.accountId == txn.accountId) cardMappingDao.update(existing.copy(bankId = parsed.bankId))
+                continue
+            }
+            cardMappingDao.insert(CardMapping(bankId = parsed.bankId, last4 = last4, accountId = txn.accountId, source = 1)); added++
+        }
+        return added
+    }
+
+    /** Accounts that received SMS transactions but have no card mapping (→ one-time banner asking for the digits). */
+    suspend fun accountsMissingCardMapping(): List<Account> {
+        val mapped = cardMappingDao.all().mapNotNull { it.accountId }.toSet()
+        val smsAccounts = txnDao.all().filter { it.isAuto }.map { it.accountId }.toSet()
+        return accountDao.all().filter { it.id in smsAccounts && it.id !in mapped && it.cardLast4.isNullOrBlank() }
     }
 
     /**
@@ -437,12 +470,27 @@ class Repository(
     private fun profileOf(bankId: String?) = bankId?.let { id -> DefaultSmsConfig.banks.firstOrNull { it.id == id } }
 
     /**
-     * Account for a parsed SMS: an account with the same card/account last 4 digits, else one named after the provider
-     * ("بنك مسقط ••0099", "ثواني – بطاقة موجب ••5501", "بنك ظفار ••7001"), created if missing.
+     * Account for a parsed SMS: the card mapping from settings (bank + last 4 digits), else an account with the same
+     * digits, else one named after the provider ("<bank> ••<last4>"), created if missing.
      * For wallet providers an existing wallet account without digits (e.g. created by a top-up) is adopted.
      */
     private suspend fun resolveAccount(p: ParsedSms, ar: Boolean): Account {
         val accounts = accountDao.all()
+        // 1) user-configurable mapping (bank sender + last 4 → account), stored on the device only
+        p.cardLast4?.let { last4 ->
+            cardMappingDao.find(last4, p.bankId)?.accountId?.let { id -> accounts.firstOrNull { it.id == id }?.let { return it } }
+        }
+        val acc = resolveAccountByDefaults(p, ar, accounts)
+        // learn: remember the suffix → account so later SMS (and the settings screen) use the mapping
+        p.cardLast4?.let { last4 ->
+            if (cardMappingDao.find(last4, p.bankId)?.accountId?.takeIf { id -> accounts.any { it.id == id } || id == acc.id } == null)
+                cardMappingDao.insert(CardMapping(bankId = p.bankId, last4 = last4, accountId = acc.id, source = 2))
+        }
+        return acc
+    }
+
+    /** Fallback (pre-1.5 behaviour): account with the same digits, else the bank's default account (created if missing). */
+    private suspend fun resolveAccountByDefaults(p: ParsedSms, ar: Boolean, accounts: List<Account>): Account {
         p.cardLast4?.let { last4 -> accounts.firstOrNull { it.cardLast4 == last4 }?.let { return it } }
         val profile = profileOf(p.bankId)
         val base = profile?.accountName(ar) ?: (if (ar) "بنك" else "Bank")
@@ -517,6 +565,7 @@ class Repository(
     }
 
     companion object {
+        const val SEEDED_FLAG = "card_mappings_seeded_v5"
         const val P2P_KEY = "p2p"
     }
 
