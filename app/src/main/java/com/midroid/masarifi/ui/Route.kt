@@ -14,4 +14,5 @@ sealed interface Route {
     data object Duplicates : Route
     data object Sync : Route
     data object Repair : Route
+    data object Summary : Route
 }

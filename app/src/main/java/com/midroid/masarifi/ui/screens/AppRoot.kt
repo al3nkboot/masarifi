@@ -84,6 +84,7 @@ private fun RouteContent(
         Route.Recurring -> RecurringScreen(vm, back)
         Route.SmsSettings -> SmsSettingsScreen(vm, back, snackbar, onRepair = { navigate(Route.Repair) })
         Route.Repair -> RepairScreen(vm, back, snackbar)
+        Route.Summary -> com.midroid.masarifi.ui.summary.SummaryScreen(vm, navigate, back, snackbar)
         Route.Backup -> BackupScreen(vm, back, snackbar, onLanguageChanged)
         Route.Sync -> SyncScreen(vm, back, snackbar)
     }

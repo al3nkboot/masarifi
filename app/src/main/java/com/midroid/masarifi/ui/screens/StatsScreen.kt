@@ -75,6 +75,17 @@ fun StatsScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
 
     Column(modifier.fillMaxSize()) {
         Text(stringResource(R.string.tab_stats), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+        // prominent entry point: «الملخص المالي»
+        androidx.compose.material3.Card(
+            onClick = { navigate(Route.Summary) },
+            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        ) {
+            Column(Modifier.padding(14.dp)) {
+                Text("📊 " + stringResource(R.string.sum_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.sum_entry_sub), style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.muted)
+            }
+        }
         MonthSwitcher(
             Fmt.monthTitle(ym, s.arabic), { vm.month.value = ym.minusMonths(1) }, { vm.month.value = ym.plusMonths(1) },
             Modifier.align(Alignment.CenterHorizontally), onLabelClick = { vm.month.value = YearMonth.now() },

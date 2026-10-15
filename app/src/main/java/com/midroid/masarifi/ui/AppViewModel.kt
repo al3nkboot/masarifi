@@ -451,6 +451,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /** Own-wallet top-up rules (empty list is stored as "[]"; [reset] restores the defaults). */
+    /** Period of «الملخص المالي». */
+    val summaryPeriod = MutableStateFlow<com.midroid.masarifi.ui.summary.PeriodChoice>(com.midroid.masarifi.ui.summary.PeriodChoice.ThisMonth)
+
     // ---- SMS repair tool ----
     val repairPlan = MutableStateFlow<List<com.midroid.masarifi.data.repair.RepairItem>?>(null)
     val repairBusy = MutableStateFlow(false)
