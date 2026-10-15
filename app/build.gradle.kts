@@ -1,9 +1,24 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
+
+/**
+ * Release signing: read from a properties file OUTSIDE the repo (never committed). First found wins:
+ *   1. env MASARIFI_SIGNING_PROPERTIES (path)   2. ~/.gradle/masarifi-signing.properties
+ *   3. ../../masarifi-keystore/signing.properties (next to the project folder)
+ * Keys: storeFile, storePassword, keyAlias, keyPassword. Absent → release builds are left unsigned (CI / other machines).
+ */
+val signingProps: Properties? = listOfNotNull(
+    System.getenv("MASARIFI_SIGNING_PROPERTIES")?.let { file(it) },
+    file("${System.getProperty("user.home")}/.gradle/masarifi-signing.properties"),
+    rootProject.file("../masarifi-keystore/signing.properties"),
+).firstOrNull { it.isFile }?.let { f -> Properties().apply { f.inputStream().use { load(it) } } }
+    ?.takeIf { p -> listOf("storeFile", "storePassword", "keyAlias", "keyPassword").all { !p.getProperty(it).isNullOrBlank() } && file(p.getProperty("storeFile")).isFile }
 
 android {
     namespace = "com.midroid.masarifi"
@@ -13,14 +28,26 @@ android {
         applicationId = "com.midroid.masarifi"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "1.7.2"
+        versionCode = 11
+        versionName = "2.0.0"
+    }
+
+    signingConfigs {
+        if (signingProps != null) create("release") {
+            storeFile = file(signingProps.getProperty("storeFile"))
+            storePassword = signingProps.getProperty("storePassword")
+            keyAlias = signingProps.getProperty("keyAlias")
+            keyPassword = signingProps.getProperty("keyPassword")
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
+            if (signingProps == null) logger.warn("Masarifi: no signing.properties found — release APK will be UNSIGNED")
         }
     }
     compileOptions {
