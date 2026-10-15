@@ -68,6 +68,8 @@ sealed interface RestoreUi {
     data object Restoring : RestoreUi
     /** code: newer | invalid | generic */
     data class Error(val code: String) : RestoreUi
+    /** App CSV export picked under «استعادة»: merged into the current data (duplicates skipped). */
+    data class CsvConfirm(val uri: Uri, val rows: Int) : RestoreUi
 }
 
 /** Snackbar with an "undo" action after a bulk delete. */
@@ -373,12 +375,38 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun restoreDismiss() { restoreUi.value = null }
 
+    /** Single «استعادة» picker: detects the file type and routes to full restore / CSV merge / Money Manager import. */
+    fun restoreAny(uri: Uri) {
+        restoreUi.value = RestoreUi.Reading
+        viewModelScope.launch(Dispatchers.IO) {
+            val cr = getApplication<Application>().contentResolver
+            val bytes = runCatching { cr.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+            if (bytes == null) { restoreUi.value = RestoreUi.Error("generic"); return@launch }
+            when (com.midroid.masarifi.data.backup.RestoreFileDetector.detect(bytes, BackupService.displayName(cr, uri))) {
+                com.midroid.masarifi.data.backup.RestoreFileKind.APP_BACKUP -> restoreUi.value = try {
+                    RestoreUi.Preview(BackupCodec.decode(String(bytes, Charsets.UTF_8)))
+                } catch (e: BackupFormatException) { RestoreUi.Error(if (e.code == "newer") "newer" else "invalid") }
+                com.midroid.masarifi.data.backup.RestoreFileKind.APP_CSV ->
+                    restoreUi.value = RestoreUi.CsvConfirm(uri, (CsvBackup.parse(String(bytes, Charsets.UTF_8).removePrefix("\uFEFF")).size - 1).coerceAtLeast(0))
+                com.midroid.masarifi.data.backup.RestoreFileKind.MONEY_MANAGER -> { restoreUi.value = null; withContext(Dispatchers.Main) { mmPick(uri) } }
+                com.midroid.masarifi.data.backup.RestoreFileKind.SYNC_FILE -> restoreUi.value = RestoreUi.Error("sync_file")
+                com.midroid.masarifi.data.backup.RestoreFileKind.UNKNOWN -> restoreUi.value = RestoreUi.Error("invalid")
+            }
+        }
+    }
+
+    fun restoreCsvConfirm(done: (Int) -> String) {
+        val r = restoreUi.value as? RestoreUi.CsvConfirm ?: return
+        restoreUi.value = null
+        importCsv(r.uri, done)
+    }
+
     // ---- repair lost categories (1.7.1) ----
     val relinkUi = MutableStateFlow<com.midroid.masarifi.data.catfix.CategoryRelink.Plan?>(null)
     val relinkError = MutableStateFlow(false)
     val uncategorizedCount: StateFlow<Int> = combine(txns, categories) { t, c ->
         val ids = c.map { it.id }.toSet()
-        t.count { it.type != TxnType.TRANSFER && (it.categoryId == null || it.categoryId !in ids) }
+        t.count { it.type != TxnType.TRANSFER && ((it.categoryId != null && it.categoryId !in ids) || (it.categoryId == null && it.isAuto)) }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     fun relinkPlan(uri: Uri?) = viewModelScope.launch(Dispatchers.IO) {

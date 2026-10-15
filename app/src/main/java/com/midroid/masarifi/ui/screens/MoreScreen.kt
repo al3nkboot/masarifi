@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
@@ -86,20 +87,10 @@ fun MoreScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier, 
         SwitchRow(Icons.Filled.Notifications, stringResource(R.string.spike_alerts), stringResource(R.string.spike_alerts_sub), s.spikeAlerts) { v -> vm.updateSettings { it.copy(spikeAlerts = v) } }
 
         SectionTitle(stringResource(R.string.section_backup))
-        SettingRow(AppIcons.Download, stringResource(R.string.export_csv), stringResource(R.string.export_csv_sub), onClick = { exportLauncher.launch("masarifi-${LocalDate.now()}.csv") })
-        SettingRow(AppIcons.Upload, stringResource(R.string.drive_backup), stringResource(R.string.drive_backup_sub), onClick = { navigate(Route.Backup) })
-        SettingRow(Icons.Filled.Refresh, stringResource(R.string.device_sync), stringResource(R.string.device_sync_sub), onClick = { navigate(Route.Sync) })
-        RelinkRow(vm)
-        SettingRow(AppIcons.Book, stringResource(R.string.mm_import), stringResource(R.string.mm_import_sub), onClick = {
-            mmLauncher.launch(
-                arrayOf(
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel",
-                    "text/csv", "text/comma-separated-values", "text/tab-separated-values", "application/csv", "text/plain",
-                    "application/octet-stream", "application/zip",
-                ),
-            )
-        })
-        SettingRow(AppIcons.Upload, stringResource(R.string.import_csv), stringResource(R.string.import_csv_sub), onClick = { importLauncher.launch(arrayOf("text/*", "text/csv", "text/comma-separated-values", "application/csv", "application/vnd.ms-excel")) })
+        SettingRow(AppIcons.Upload, stringResource(R.string.set_backup_restore), stringResource(R.string.set_backup_restore_sub), onClick = { navigate(Route.Backup) })
+        SettingRow(Icons.Filled.Refresh, stringResource(R.string.set_sync), stringResource(R.string.device_sync_sub), onClick = { navigate(Route.Sync) })
+        SettingRow(AppIcons.Book, stringResource(R.string.set_import_export), stringResource(R.string.set_import_export_sub), onClick = { navigate(Route.ImportExport) })
+        RelinkRow(vm, onlyWhenNeeded = true)
 
         SectionTitle(stringResource(R.string.about))
         SettingRow(Icons.Filled.Info, stringResource(R.string.app_name), "${stringResource(R.string.version)} ${BuildConfigInfo.versionName(ctx)} • com.midroid.masarifi")
@@ -154,14 +145,14 @@ fun ChoiceDialog(title: String, options: List<Pair<String, String>>, selected: S
 
 /** «إصلاح الفئات المفقودة»: re-links uncategorized transactions from a backup file of the other phone (1.7.1). */
 @Composable
-private fun RelinkRow(vm: AppViewModel) {
+fun RelinkRow(vm: AppViewModel, onlyWhenNeeded: Boolean = false) {
     val count by vm.uncategorizedCount.collectAsStateWithLifecycle()
     val plan by vm.relinkUi.collectAsStateWithLifecycle()
     val error by vm.relinkError.collectAsStateWithLifecycle()
     var intro by remember { mutableStateOf(false) }
     val doneFmt = stringResource(R.string.relink_done)
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) { intro = false; vm.relinkPlan(uri) } }
-    SettingRow(AppIcons.Category, stringResource(R.string.relink_title),
+    if (!onlyWhenNeeded || count > 0) SettingRow(AppIcons.Category, stringResource(R.string.relink_title),
         if (count > 0) stringResource(R.string.relink_sub_count, count) else stringResource(R.string.relink_sub), onClick = { intro = true })
     if (intro) AlertDialog(
         onDismissRequest = { intro = false },
@@ -184,4 +175,45 @@ private fun RelinkRow(vm: AppViewModel) {
             dismissButton = { TextButton(onClick = { vm.relinkDismiss() }) { Text(stringResource(R.string.cancel)) } },
         )
     }
+}
+
+
+/** «استيراد وتصدير»: Money Manager import, CSV export (Excel / Sheets) and CSV import. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+fun ImportExportScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: androidx.compose.material3.SnackbarHostState) {
+    val s by vm.settings.collectAsStateWithLifecycle()
+    val exportedFmt = stringResource(R.string.exported_n)
+    val importedFmt = stringResource(R.string.imported_n)
+    val failed = stringResource(R.string.operation_failed)
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri != null) vm.exportCsv(uri) { n -> if (n < 0) failed else String.format(java.util.Locale.US, exportedFmt, n) }
+    }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) vm.importCsv(uri) { n -> if (n < 0) failed else String.format(java.util.Locale.US, importedFmt, n) }
+    }
+    val mmLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) vm.mmPick(uri) }
+    androidx.compose.material3.Scaffold(
+        snackbarHost = { androidx.compose.material3.SnackbarHost(snackbar) },
+        topBar = {
+            androidx.compose.material3.TopAppBar(
+                title = { Text(stringResource(R.string.set_import_export)) },
+                navigationIcon = { androidx.compose.material3.IconButton(onClick = onBack) { androidx.compose.material3.Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
+                colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+            )
+        },
+    ) { padding ->
+        Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState())) {
+            SettingRow(AppIcons.Book, stringResource(R.string.mm_import), stringResource(R.string.mm_import_sub), onClick = {
+                mmLauncher.launch(arrayOf(
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel",
+                    "text/csv", "text/comma-separated-values", "text/tab-separated-values", "application/csv", "text/plain",
+                    "application/octet-stream", "application/zip",
+                ))
+            })
+            SettingRow(AppIcons.Download, stringResource(R.string.export_csv), stringResource(R.string.export_csv_sub), onClick = { exportLauncher.launch("masarifi-${LocalDate.now()}.csv") })
+            SettingRow(AppIcons.Upload, stringResource(R.string.import_csv), stringResource(R.string.import_csv_sub), onClick = { importLauncher.launch(arrayOf("text/*", "text/csv", "text/comma-separated-values", "application/csv", "application/vnd.ms-excel")) })
+        }
+    }
+    MmImportDialogs(vm)
 }

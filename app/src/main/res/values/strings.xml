@@ -24,6 +24,7 @@
     <string name="backup_folder_remove">Stop automatic backups to this folder</string>
     <string name="backup_folder_set">Folder set – first backup saved</string>
     <string name="backup_folder_unsupported">This location doesn\'t allow automatic backups. Use “Backup now” and choose Google Drive instead.</string>
+    <string name="backup_keep_note">Automatic backups keep the latest 10 files in the folder.</string>
     <string name="backup_last">Last backup</string>
     <string name="backup_last_failed">Failed %1$s: %2$s</string>
     <string name="backup_never">No backup yet</string>
@@ -245,10 +246,16 @@
     <string name="rescan_result">Checked %1$s messages from bank senders: %2$s new, %3$s linked to existing entries</string>
     <string name="rescan_sms">Re-scan messages</string>
     <string name="rescan_sms_sub">Imports messages from known bank/wallet senders in the last 90 days that were missed before (e.g. new formats). Already-recorded messages and transactions are skipped and manual entries are linked, so nothing is doubled.</string>
+    <string name="restore_any">Restore</string>
+    <string name="restore_any_sub">Pick a file: an app backup (.json) replaces all data; an app CSV export is merged (duplicates skipped); a Money Manager file opens its import.</string>
     <string name="restore_confirm">Replace &amp; restore</string>
+    <string name="restore_csv_body">This is a CSV export of the app (%1$d rows). Its transactions are added to your current data; rows that already exist (same date, amount and note) are skipped. Nothing is deleted.</string>
+    <string name="restore_csv_confirm">Merge</string>
+    <string name="restore_csv_title">Merge this CSV file?</string>
     <string name="restore_done">Restored %1$d transactions</string>
     <string name="restore_error_invalid">Not a valid Masarifi backup file.</string>
     <string name="restore_error_newer">This backup was made by a newer version of the app. Update the app first.</string>
+    <string name="restore_error_sync_file">This is the device-sync file, not a backup. Open «Sync between two phones» to use it.</string>
     <string name="restore_preview_body">Backup date: %1$s\nApp version: %2$s\nAccounts: %3$d • Categories: %4$d\nTransactions: %5$d • Repeating: %6$d • Budgets: %7$d\n\nAll current data on this phone will be replaced.</string>
     <string name="restore_preview_title">Restore this backup?</string>
     <string name="save">Save</string>
@@ -265,7 +272,12 @@
     <string name="selected_n">%1$s selected</string>
     <string name="sender">Sender</string>
     <string name="set">Set</string>
+    <string name="set_backup_restore">Backup &amp; restore</string>
+    <string name="set_backup_restore_sub">Back up now, restore a file, daily automatic backup</string>
     <string name="set_budget_for">Monthly budget: %1$s</string>
+    <string name="set_import_export">Import &amp; export</string>
+    <string name="set_import_export_sub">Import from Money Manager, export to CSV (Excel / Sheets)</string>
+    <string name="set_sync">Sync between two phones</string>
     <string name="sms_enable">Auto-record from bank SMS</string>
     <string name="sms_enable_sub">Needs SMS permission. Messages are processed only on this phone.</string>
     <string name="sms_import">Smart SMS import</string>

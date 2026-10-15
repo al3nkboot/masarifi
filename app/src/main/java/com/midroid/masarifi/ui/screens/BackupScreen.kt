@@ -65,14 +65,14 @@ fun BackupScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHostSta
         if (uri != null) vm.chooseBackupFolder(uri, folderOk, folderBad)
     }
     val openDoc = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) vm.restorePick(uri)
+        if (uri != null) vm.restoreAny(uri)
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.drive_backup)) },
+                title = { Text(stringResource(R.string.set_backup_restore)) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
@@ -105,12 +105,16 @@ fun BackupScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHostSta
             }
 
             SectionTitle(stringResource(R.string.backup_restore))
-            SettingRow(AppIcons.Download, stringResource(R.string.backup_restore), stringResource(R.string.backup_restore_sub), onClick = {
-                openDoc.launch(arrayOf("application/json", "text/plain", "application/octet-stream", "*/*"))
+            SettingRow(AppIcons.Download, stringResource(R.string.restore_any), stringResource(R.string.restore_any_sub), onClick = {
+                openDoc.launch(arrayOf("application/json", "text/plain", "text/csv", "text/comma-separated-values", "application/csv", "application/vnd.ms-excel",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/octet-stream", "application/zip", "*/*"))
             })
+            RelinkRow(vm, onlyWhenNeeded = true)
+            Text(stringResource(R.string.backup_keep_note), fontSize = 12.sp, color = AppTheme.colors.muted, modifier = Modifier.padding(16.dp))
         }
     }
 
+    MmImportDialogs(vm)
     if (busy) BusyDialog(stringResource(R.string.working))
     when (val r = restore) {
         null -> {}
@@ -118,9 +122,19 @@ fun BackupScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHostSta
         is RestoreUi.Error -> AlertDialog(
             onDismissRequest = vm::restoreDismiss,
             title = { Text(stringResource(R.string.backup_restore)) },
-            text = { Text(stringResource(when (r.code) { "newer" -> R.string.restore_error_newer; "invalid" -> R.string.restore_error_invalid; else -> R.string.operation_failed })) },
+            text = { Text(stringResource(when (r.code) { "newer" -> R.string.restore_error_newer; "invalid" -> R.string.restore_error_invalid; "sync_file" -> R.string.restore_error_sync_file; else -> R.string.operation_failed })) },
             confirmButton = { TextButton(onClick = vm::restoreDismiss) { Text(stringResource(R.string.ok)) } },
         )
+        is RestoreUi.CsvConfirm -> {
+            val importedFmt = stringResource(R.string.imported_n)
+            AlertDialog(
+                onDismissRequest = vm::restoreDismiss,
+                title = { Text(stringResource(R.string.restore_csv_title)) },
+                text = { Text(stringResource(R.string.restore_csv_body, r.rows)) },
+                confirmButton = { TextButton(onClick = { vm.restoreCsvConfirm { n -> if (n < 0) failed else String.format(Locale.US, importedFmt, n) } }) { Text(stringResource(R.string.restore_csv_confirm)) } },
+                dismissButton = { TextButton(onClick = vm::restoreDismiss) { Text(stringResource(R.string.cancel)) } },
+            )
+        }
         is RestoreUi.Preview -> {
             val d = r.data
             AlertDialog(

@@ -11,6 +11,7 @@ sealed interface Route {
     data object Recurring : Route
     data object SmsSettings : Route
     data object Backup : Route
+    data object ImportExport : Route
     data object Duplicates : Route
     data object Sync : Route
     data object Repair : Route

@@ -24,6 +24,7 @@
     <string name="backup_folder_remove">إيقاف النسخ التلقائي إلى هذا المجلد</string>
     <string name="backup_folder_set">تم تحديد المجلد وحفظ أول نسخة</string>
     <string name="backup_folder_unsupported">هذا الموقع لا يدعم النسخ التلقائي. استخدم «نسخ احتياطي الآن» واختر Google Drive بدلاً من ذلك.</string>
+    <string name="backup_keep_note">النسخ التلقائي يحتفظ بآخر 10 ملفات في المجلد.</string>
     <string name="backup_last">آخر نسخة احتياطية</string>
     <string name="backup_last_failed">فشلت %1$s: %2$s</string>
     <string name="backup_never">لا توجد نسخة بعد</string>
@@ -245,10 +246,16 @@
     <string name="rescan_result">تم فحص %1$s رسالة من البنوك: %2$s جديدة، و%3$s رُبطت بقيود موجودة</string>
     <string name="rescan_sms">إعادة فحص الرسائل</string>
     <string name="rescan_sms_sub">يستورد رسائل البنوك والمحافظ المعروفة من آخر 90 يوماً التي فاتت سابقاً (مثل الصيغ الجديدة). يتم تخطي الرسائل والمعاملات المسجلة مسبقاً وربط القيود اليدوية، فلا يتكرر شيء.</string>
+    <string name="restore_any">استعادة</string>
+    <string name="restore_any_sub">اختر ملفاً: نسخة التطبيق (.json) تستبدل كل البيانات، وملف CSV من التطبيق يُدمج مع تخطي المكرر، وملف Money Manager يفتح الاستيراد.</string>
     <string name="restore_confirm">استبدال واستعادة</string>
+    <string name="restore_csv_body">هذا ملف CSV مصدَّر من التطبيق (%1$d صف). ستُضاف معاملاته إلى بياناتك الحالية، وتُتخطى الصفوف الموجودة مسبقاً (نفس التاريخ والمبلغ والملاحظة). لا يُحذف شيء.</string>
+    <string name="restore_csv_confirm">دمج</string>
+    <string name="restore_csv_title">دمج ملف CSV هذا؟</string>
     <string name="restore_done">تمت استعادة %1$d معاملة</string>
     <string name="restore_error_invalid">ليس ملف نسخة احتياطية صالحاً لمصاريفي.</string>
     <string name="restore_error_newer">هذه النسخة من إصدار أحدث من التطبيق. حدّث التطبيق أولاً.</string>
+    <string name="restore_error_sync_file">هذا ملف المزامنة بين الأجهزة وليس نسخة احتياطية. افتح «المزامنة بين جهازين» لاستخدامه.</string>
     <string name="restore_preview_body">تاريخ النسخة: %1$s\nإصدار التطبيق: %2$s\nالحسابات: %3$d • الفئات: %4$d\nالمعاملات: %5$d • المتكررة: %6$d • الميزانيات: %7$d\n\nسيتم استبدال جميع البيانات الحالية على هذا الهاتف.</string>
     <string name="restore_preview_title">استعادة هذه النسخة؟</string>
     <string name="save">حفظ</string>
@@ -265,7 +272,12 @@
     <string name="selected_n">%1$s محدد</string>
     <string name="sender">المرسل</string>
     <string name="set">تحديد</string>
+    <string name="set_backup_restore">النسخ الاحتياطي والاستعادة</string>
+    <string name="set_backup_restore_sub">نسخ الآن، استعادة ملف، نسخ تلقائي يومي</string>
     <string name="set_budget_for">الميزانية الشهرية: %1$s</string>
+    <string name="set_import_export">استيراد وتصدير</string>
+    <string name="set_import_export_sub">استيراد من Money Manager، تصدير إلى CSV (Excel / Sheets)</string>
+    <string name="set_sync">المزامنة بين جهازين</string>
     <string name="sms_enable">التسجيل التلقائي من رسائل البنك</string>
     <string name="sms_enable_sub">يتطلب إذن الرسائل. تتم معالجة الرسائل على هاتفك فقط.</string>
     <string name="sms_import">الاستيراد الذكي من الرسائل</string>

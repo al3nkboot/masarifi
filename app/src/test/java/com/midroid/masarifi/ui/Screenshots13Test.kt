@@ -111,7 +111,7 @@ class Screenshots13Test {
 
         // ---- sync screen
         rule.onNodeWithText("المزيد").performClick()
-        rule.onNodeWithText("مزامنة الأجهزة").performScrollTo().performClick()
+        rule.onNodeWithText("المزامنة بين جهازين").performScrollTo().performClick()
         rule.waitUntil(5_000) { rule.onAllNodesWithText("مزامنة الحين").fetchSemanticsNodes().isNotEmpty() }
         val vmS = ViewModelProvider(rule.activity)[AppViewModel::class.java]
         check(vmS.syncState.value.configured) { "sync state not applied" }

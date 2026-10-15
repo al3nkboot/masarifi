@@ -93,7 +93,7 @@ class ScreenshotTest {
         rule.onNodeWithText("معاينة الاستيراد").assertExists()
         shotTopWindow("09_mm_preview")
         rule.runOnUiThread { vm.mmDismiss() }
-        rule.onNodeWithText("النسخ الاحتياطي على Google Drive").performScrollTo().performClick(); shot("10_backup")
+        rule.onNodeWithText("النسخ الاحتياطي والاستعادة").performScrollTo().performClick(); shot("10_backup")
         rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }
         rule.waitForIdle()
         rule.onNodeWithText("المعاملات").performClick()

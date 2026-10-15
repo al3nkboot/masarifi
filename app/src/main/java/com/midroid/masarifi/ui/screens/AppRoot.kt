@@ -86,6 +86,7 @@ private fun RouteContent(
         Route.Repair -> RepairScreen(vm, back, snackbar)
         Route.Summary -> com.midroid.masarifi.ui.summary.SummaryScreen(vm, navigate, back, snackbar)
         Route.Backup -> BackupScreen(vm, back, snackbar, onLanguageChanged)
+        Route.ImportExport -> ImportExportScreen(vm, back, snackbar)
         Route.Sync -> SyncScreen(vm, back, snackbar)
     }
 }
