@@ -152,3 +152,16 @@ Edit `DefaultSmsConfig.kt`: add a `BankProfile` with `senderIds`, and optionally
 `adb install -r masarifi-debug.apk` or copy the APK to the phone and open it (allow "Install unknown apps").
 SMS permissions are restricted on Google Play, so the SMS feature is intended for sideloading. On Android 13+ if the
 SMS permission is blocked, open App info › ⋮ › Allow restricted settings.
+
+## SMS reconciliation & repair tool (v1.6.0)
+- **Double SMS** (e.g. Bank Dhofar sends an account message and a card message for one operation): same bank, amount and
+  direction within 10 minutes, one card-style + one account-style text → recorded once; the second SMS is kept as a link
+  (splittable). Same wording within 10 minutes → flagged in «possible duplicates» instead of merged.
+- **Own transfers**: an outgoing transfer-style SMS (sent / transfer / top-up) and an incoming SMS of the same amount within
+  30 minutes on another own account (a Thawani/Mojab wallet, or an account whose configured card digits appear in the
+  outgoing SMS) → one TRANSFER. With only the outgoing side, a destination naming a mapped own card is still a transfer.
+- **Income wording** («استلمت», «أودع», «إيداع», received, credited) wins over generic debit matches.
+- **ATM / cash withdrawals** → TRANSFER to the Cash account (created if missing).
+- **Repair tool** (SMS settings › «إصلاح العمليات التلقائية»): re-parses the stored SMS text of auto transactions only,
+  previews merges / own transfers / income flips / ATM→cash with checkboxes, applies in one DB transaction and stores an
+  undo snapshot (`repair_batches`, DB v6, additive migration).

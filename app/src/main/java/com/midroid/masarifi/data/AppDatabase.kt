@@ -6,8 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [Txn::class, Account::class, Category::class, Budget::class, MerchantRule::class, Recurring::class, SmsLog::class, SmsLink::class, DupDismissed::class, SyncTombstone::class, SmsBalance::class, CardMapping::class],
-    version = 5,
+    entities = [Txn::class, Account::class, Category::class, Budget::class, MerchantRule::class, Recurring::class, SmsLog::class, SmsLink::class, DupDismissed::class, SyncTombstone::class, SmsBalance::class, CardMapping::class, RepairBatch::class],
+    version = 6,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -23,6 +23,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun syncDao(): com.midroid.masarifi.data.sync.SyncDao
     abstract fun smsBalanceDao(): SmsBalanceDao
     abstract fun cardMappingDao(): CardMappingDao
+    abstract fun repairDao(): RepairDao
 
     companion object {
         @Volatile private var instance: AppDatabase? = null

@@ -13,4 +13,5 @@ sealed interface Route {
     data object Backup : Route
     data object Duplicates : Route
     data object Sync : Route
+    data object Repair : Route
 }

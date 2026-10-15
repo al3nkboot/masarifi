@@ -176,6 +176,30 @@ interface SmsLogDao {
 
     @Query("SELECT COUNT(*) FROM sms_log WHERE status = 1")
     fun observeImportedCount(): Flow<Int>
+
+    @Query("SELECT sender FROM sms_log WHERE txnId = :txnId ORDER BY receivedAt LIMIT 1")
+    suspend fun senderFor(txnId: Long): String?
+
+    @Query("SELECT * FROM sms_log WHERE txnId IN (:ids)")
+    suspend fun forTxns(ids: List<Long>): List<SmsLog>
+
+    @Query("UPDATE sms_log SET txnId = :txnId WHERE hash = :hash")
+    suspend fun setTxn(hash: String, txnId: Long?)
+}
+
+@Dao
+interface RepairDao {
+    @Insert
+    suspend fun insert(b: RepairBatch): Long
+
+    @Query("SELECT * FROM repair_batches WHERE undone = 0 ORDER BY id DESC LIMIT 1")
+    fun observeLatest(): Flow<RepairBatch?>
+
+    @Query("SELECT * FROM repair_batches WHERE id = :id")
+    suspend fun get(id: Long): RepairBatch?
+
+    @Query("UPDATE repair_batches SET undone = 1 WHERE id = :id")
+    suspend fun markUndone(id: Long)
 }
 
 @Dao
@@ -194,6 +218,9 @@ interface DupDao {
 
     @Query("DELETE FROM sms_links WHERE id = :id")
     suspend fun deleteLink(id: Long)
+
+    @Query("UPDATE sms_links SET txnId = :txnId WHERE id = :id")
+    suspend fun setLinkTxn(id: Long, txnId: Long)
 
     @Query("UPDATE sms_links SET txnId = :keeper WHERE txnId IN (:ids)")
     suspend fun repointLinks(ids: List<Long>, keeper: Long)

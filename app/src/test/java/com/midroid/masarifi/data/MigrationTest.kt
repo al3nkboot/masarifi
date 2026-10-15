@@ -97,7 +97,7 @@ class MigrationTest {
             assertTrue(linkId > 0)
             db.dupDao().dismiss(listOf(DupDismissed(DupDismissed.key(1, 3))))
             assertEquals(listOf("1-3"), db.dupDao().dismissed())
-            assertEquals(5, db.openHelper.readableDatabase.version)
+            assertEquals(6, db.openHelper.readableDatabase.version)
         } finally {
             db.close()
         }
@@ -151,7 +151,7 @@ class MigrationTest {
             // new rows get uuids from the entity defaults
             val id = db.txnDao().insert(Txn(type = 1, amount = 1, accountId = 1, dateTime = 1))
             assertTrue(uuidRe.matches(db.txnDao().get(id)!!.uuid))
-            assertEquals(5, sql.version)
+            assertEquals(6, sql.version)
         } finally {
             db.close()
         }
@@ -181,7 +181,7 @@ class MigrationTest {
             db.smsBalanceDao().insert(SmsBalance(accountId = 1, dateTime = 20, balance = 205_000, smsHash = "h2"))
             assertEquals(5_000L, db.smsBalanceDao().latestBefore(1, 15)!!.balance)
             assertEquals(205_000L, db.smsBalanceDao().latest(1)!!.balance)
-            assertEquals(5, db.openHelper.readableDatabase.version)
+            assertEquals(6, db.openHelper.readableDatabase.version)
         } finally {
             db.close()
         }
@@ -210,7 +210,7 @@ class MigrationTest {
         }
         val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).addMigrations(*Migrations.ALL).allowMainThreadQueries().build()
         try {
-            assertEquals(5, db.openHelper.readableDatabase.version)
+            assertEquals(6, db.openHelper.readableDatabase.version)
             // existing data untouched
             assertEquals(listOf(4300L, 1500L, 7000L, 2000L), db.txnDao().all().sortedBy { it.id }.map { it.amount })
             assertEquals(48_250L, db.smsBalanceDao().latest(2)!!.balance)
@@ -230,6 +230,27 @@ class MigrationTest {
             assertTrue(repo.accountsMissingCardMapping().isEmpty())
             repo.ensureDefaults() // idempotent
             assertEquals(3, db.cardMappingDao().all().size)
+        } finally {
+            db.close()
+        }
+    }
+
+    /** 1.5.0 → 1.6.0: additive repair_batches table; data and card mappings untouched. */
+    @Test fun migrate5To6AddsRepairBatches() = runBlocking {
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        val name = "migration-test-v5.db"
+        val file = ctx.getDatabasePath(name).apply { parentFile?.mkdirs(); delete() }
+        createFrom(file, 5)
+        SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { d ->
+            d.execSQL("INSERT INTO card_mappings (bankId, last4, accountId, label, source, createdAt) VALUES ('thawani', '5501', 1, '', 0, 1)")
+        }
+        val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).addMigrations(*Migrations.ALL).allowMainThreadQueries().build()
+        try {
+            assertEquals(6, db.openHelper.readableDatabase.version)
+            assertEquals(listOf(4300L, 1500L, 7000L), db.txnDao().all().map { it.amount })
+            assertEquals("5501", db.cardMappingDao().all().single().last4)
+            val id = db.repairDao().insert(RepairBatch(changes = 2, snapshot = "{}"))
+            assertEquals(2, db.repairDao().get(id)!!.changes)
         } finally {
             db.close()
         }

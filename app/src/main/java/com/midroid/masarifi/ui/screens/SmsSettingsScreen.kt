@@ -66,7 +66,7 @@ import com.midroid.masarifi.ui.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SmsSettingsScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHostState) {
+fun SmsSettingsScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHostState, onRepair: () -> Unit = {}) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val rules by vm.merchantRules.collectAsStateWithLifecycle()
     val cats by vm.categories.collectAsStateWithLifecycle()
@@ -133,6 +133,9 @@ fun SmsSettingsScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHo
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp),
             ) { Text(stringResource(R.string.rescan_sms)) }
             Text(stringResource(R.string.rescan_sms_sub), fontSize = 12.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+
+            SettingRow(null, stringResource(R.string.repair_title), stringResource(R.string.repair_sub), onClick = onRepair)
+            HorizontalDivider(color = c.divider)
 
             CardMappingsSection(vm, s.arabic)
 

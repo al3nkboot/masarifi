@@ -24,7 +24,19 @@ data class ParsedSms(
     val categoryHint: String? = null,
     /** Set when the merchant is one of the user's own wallets (top-up) → recorded as a transfer, not an expense. */
     val topup: WalletTopup? = null,
+    /** ATM / cash withdrawal (recorded as a transfer to the Cash account, not an expense). */
+    val atm: Boolean = false,
+    /** Every masked card/account suffix (last 4) found in the body, e.g. source and destination of a transfer. */
+    val mentionedLast4: List<String> = emptyList(),
+    /** "card" vs "account" wording of the SMS (banks such as Bank Dhofar send one of each for the same operation). */
+    val style: SmsStyle = SmsStyle.UNKNOWN,
+    /** Money moved to another account/person (sent / transfer / top-up wording). */
+    val transferLike: Boolean = false,
+    /** Direction comes from explicit income wording («استلمت», «أودع», "received" …), see [SmsParser.strongCredit]. */
+    val incomeWording: Boolean = false,
 )
+
+enum class SmsStyle { CARD, ACCOUNT, UNKNOWN }
 
 object CategoryHints {
     /** Money sent to a person (mobile payment / transfer) → «تحويلات لأشخاص». */

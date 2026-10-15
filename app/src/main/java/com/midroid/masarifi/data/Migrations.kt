@@ -88,5 +88,15 @@ object Migrations {
     const val CREATE_CARD_MAPPINGS = "CREATE TABLE IF NOT EXISTS `card_mappings` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `bankId` TEXT, " +
         "`last4` TEXT NOT NULL, `accountId` INTEGER, `label` TEXT NOT NULL, `source` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL)"
 
-    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+    /** 1.5.0 (v5) → 1.6.0 (v6): additive, `repair_batches` (undo snapshots of the SMS repair tool). */
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `repair_batches` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `createdAt` INTEGER NOT NULL, " +
+                    "`changes` INTEGER NOT NULL, `snapshot` TEXT NOT NULL, `undone` INTEGER NOT NULL)",
+            )
+        }
+    }
+
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
 }

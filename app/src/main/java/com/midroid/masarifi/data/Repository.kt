@@ -4,6 +4,12 @@ import android.database.sqlite.SQLiteConstraintException
 import androidx.room.withTransaction
 import com.midroid.masarifi.data.dup.DuplicateDetector
 import com.midroid.masarifi.data.dup.SmsMatch
+import com.midroid.masarifi.data.repair.AutoRow
+import com.midroid.masarifi.data.repair.RepairItem
+import com.midroid.masarifi.data.repair.RepairKind
+import com.midroid.masarifi.data.repair.RepairPlanner
+import com.midroid.masarifi.data.repair.RepairSnapshot
+import com.midroid.masarifi.data.repair.SmsReconcile
 import com.midroid.masarifi.sms.BalanceCheck
 import com.midroid.masarifi.sms.CategoryHints
 import com.midroid.masarifi.sms.DefaultSmsConfig
@@ -37,6 +43,7 @@ class Repository(
     val dupDao = db.dupDao()
     val smsBalanceDao = db.smsBalanceDao()
     val cardMappingDao = db.cardMappingDao()
+    val repairDao = db.repairDao()
 
     private val categorizer = MerchantCategorizer()
     private val smsMutex = Mutex()
@@ -405,19 +412,130 @@ class Repository(
             if (balance != null) smsBalanceDao.insert(SmsBalance(accountId = account.id, dateTime = time, balance = Money.fromBigDecimal(balance), smsHash = rowHash))
         }
 
-        // Own-wallet top-up (e.g. bank card → ThawaniPay Topup): a transfer to the wallet, not an expense.
-        parsed.topup?.let { topup ->
-            val target = resolveTopupTarget(topup, ar)
-            if (target.id != account.id) {
+        // ---- reconcile with other SMS transactions (double SMS of one operation, own transfers) ----
+        val reparser = reparser()
+        val parsedCache = HashMap<Long, ParsedSms?>()
+        suspend fun parsedOf(t: Txn): ParsedSms? = parsedCache.getOrPut(t.id) {
+            runCatching { reparser.parse(smsLogDao.senderFor(t.id) ?: "", t.description) }.getOrNull()
+        }
+        val nearbyAuto = txnDao.between(time - SmsReconcile.SELF_WINDOW, time + SmsReconcile.SELF_WINDOW + 1)
+            .filter { it.isAuto }.sortedBy { kotlin.math.abs(it.dateTime - time) }
+        val accountsNow = accountDao.all()
+        val maps = cardMappingDao.all()
+        fun digitsOf(id: Long) = (maps.filter { it.accountId == id }.map { it.last4 } + listOfNotNull(accountsNow.firstOrNull { it.id == id }?.cardLast4)).toSet()
+        fun isWallet(id: Long) = accountsNow.firstOrNull { it.id == id }?.let { a -> DefaultSmsConfig.banks.any { it.wallet && walletAccount(it, listOf(a)) != null } } == true
+
+        /** Attaches this SMS to [target] (already recorded operation) as a linked message; [updated] replaces [target]. */
+        suspend fun linkTo(target: Txn, updated: Txn): SmsImportResult {
+            val linkId = inTransaction {
+                val id = dupDao.insertLink(
+                    SmsLink(
+                        txnId = target.id, smsHash = rowHash, sender = sender,
+                        type = if (direction == SmsTxnType.DEBIT) TxnType.EXPENSE else TxnType.INCOME, amount = amount, accountId = account.id,
+                        note = (parsed.merchant ?: "") + extraNote, description = body.take(500), dateTime = time,
+                        merchant = parsed.merchant, cardLast4 = parsed.cardLast4, prevMerchant = target.merchant,
+                    ),
+                )
+                if (updated != target) txnDao.update(updated)
+                smsLogDao.insert(SmsLog(hash, sender, receivedAt, SmsLog.IMPORTED, target.id))
+                recordBalance()
+                id
+            }
+            if (updated.type != target.type) onExpensesChanged()
+            val names = accountDao.all()
+            val accName = names.firstOrNull { it.id == updated.accountId }?.name ?: account.name
+            val toName = updated.toAccountId?.let { id -> names.firstOrNull { it.id == id }?.name }
+            return SmsImportResult(updated, "", if (toName != null) "$accName → $toName" else accName, linked = true, linkId = linkId, directionFromBalance = flipped)
+        }
+        fun asTransfer(t: Txn, from: Long, to: Long, note: String) =
+            t.copy(type = TxnType.TRANSFER, accountId = from, toAccountId = to, categoryId = null, note = note.ifBlank { t.note }, possibleDupOf = null)
+        val transferNote = if (ar) "تحويل بين حساباتي" else "Own transfer"
+
+        // 1) double SMS: same bank, amount and direction within minutes, one card + one account message → one transaction
+        var flagWith: Txn? = null
+        for (c in nearbyAuto) {
+            when (SmsReconcile.double(c, parsedOf(c), parsed, amount, time, direction)) {
+                SmsReconcile.Double.MERGE -> {
+                    val topup = parsed.topup
+                    val updated = if (topup != null && c.type == TxnType.EXPENSE) {
+                        val target = resolveTopupTarget(topup, ar)
+                        if (target.id != c.accountId) asTransfer(c, c.accountId, target.id, topup.name(ar)) else c
+                    } else c
+                    return@withLock linkTo(c, updated)
+                }
+                SmsReconcile.Double.FLAG -> if (flagWith == null) flagWith = c
+                SmsReconcile.Double.NONE -> {}
+            }
+        }
+
+        if (direction == SmsTxnType.CREDIT) {
+            // 2a) incoming side of a transfer that is already recorded (top-up / own transfer) → not income again
+            nearbyAuto.firstOrNull { it.type == TxnType.TRANSFER && it.toAccountId == account.id && it.amount == amount }
+                ?.let { return@withLock linkTo(it, it) }
+            // 2b) incoming side of an own transfer recorded as an expense on the other account → one transfer
+            for (c in nearbyAuto) {
+                if (c.type != TxnType.EXPENSE || c.amount != amount || c.accountId == account.id) continue
+                val pc = parsedOf(c) ?: continue
+                if (SmsReconcile.ownTransfer(pc, c.accountId, account.id, digitsOf(account.id), isWallet(account.id)))
+                    return@withLock linkTo(c, asTransfer(c, c.accountId, account.id, transferNote))
+            }
+        }
+
+        // ATM / cash withdrawal → transfer to the Cash account
+        if (direction == SmsTxnType.DEBIT && parsed.atm && parsed.topup == null) {
+            val cash = cashAccount(ar)
+            if (cash.id != account.id) {
                 val t = Txn(
-                    type = TxnType.TRANSFER, amount = amount, accountId = account.id, toAccountId = target.id,
-                    note = topup.name(ar) + extraNote, description = body.take(500), dateTime = time,
-                    isAuto = true, smsHash = rowHash, merchant = parsed.merchant,
+                    type = TxnType.TRANSFER, amount = amount, accountId = account.id, toAccountId = cash.id,
+                    note = (if (ar) "سحب نقدي" else "Cash withdrawal") + extraNote, description = body.take(500), dateTime = time,
+                    isAuto = true, smsHash = rowHash, merchant = parsed.merchant, possibleDupOf = flagWith?.id?.toString(),
                 )
                 val id = try { txnDao.insert(t) } catch (e: SQLiteConstraintException) { return@withLock null }
                 smsLogDao.insert(SmsLog(hash, sender, receivedAt, SmsLog.IMPORTED, id))
                 recordBalance()
-                return@withLock SmsImportResult(t.copy(id = id), "", "${account.name} → ${target.name}")
+                return@withLock SmsImportResult(t.copy(id = id), "", "${account.name} → ${cash.name}", flagged = flagWith != null)
+            }
+        }
+
+        // Own-wallet top-up (e.g. bank card → ThawaniPay Topup): a transfer to the wallet, not an expense.
+        parsed.topup?.let { topup ->
+            val target = resolveTopupTarget(topup, ar)
+            // the wallet's incoming SMS arrived first (recorded as income) → turn it into the transfer
+            nearbyAuto.firstOrNull { it.type == TxnType.INCOME && it.accountId == target.id && it.amount == amount }
+                ?.takeIf { target.id != account.id }
+                ?.let { return@withLock linkTo(it, asTransfer(it, account.id, target.id, topup.name(ar) + extraNote).copy(merchant = parsed.merchant)) }
+            if (target.id != account.id) {
+                val t = Txn(
+                    type = TxnType.TRANSFER, amount = amount, accountId = account.id, toAccountId = target.id,
+                    note = topup.name(ar) + extraNote, description = body.take(500), dateTime = time,
+                    isAuto = true, smsHash = rowHash, merchant = parsed.merchant, possibleDupOf = flagWith?.id?.toString(),
+                )
+                val id = try { txnDao.insert(t) } catch (e: SQLiteConstraintException) { return@withLock null }
+                smsLogDao.insert(SmsLog(hash, sender, receivedAt, SmsLog.IMPORTED, id))
+                recordBalance()
+                return@withLock SmsImportResult(t.copy(id = id), "", "${account.name} → ${target.name}", flagged = flagWith != null)
+            }
+        }
+
+        if (direction == SmsTxnType.DEBIT && parsed.transferLike) {
+            // 3a) own transfer whose incoming side (income on another own account) is already recorded
+            for (c in nearbyAuto) {
+                if (c.type != TxnType.INCOME || c.amount != amount || c.accountId == account.id) continue
+                if (SmsReconcile.ownTransfer(parsed, account.id, c.accountId, digitsOf(c.accountId), isWallet(c.accountId)))
+                    return@withLock linkTo(c, asTransfer(c, account.id, c.accountId, transferNote).copy(merchant = parsed.merchant))
+            }
+            // 3b) only this side: the destination is one of the user's own (mapped) accounts → transfer
+            val dest = SmsReconcile.destinationDigits(parsed).let { ds -> accountsNow.firstOrNull { a -> a.id != account.id && digitsOf(a.id).any { it in ds } } }
+            if (dest != null) {
+                val t = Txn(
+                    type = TxnType.TRANSFER, amount = amount, accountId = account.id, toAccountId = dest.id,
+                    note = transferNote + extraNote, description = body.take(500), dateTime = time,
+                    isAuto = true, smsHash = rowHash, merchant = parsed.merchant, possibleDupOf = flagWith?.id?.toString(),
+                )
+                val id = try { txnDao.insert(t) } catch (e: SQLiteConstraintException) { return@withLock null }
+                smsLogDao.insert(SmsLog(hash, sender, receivedAt, SmsLog.IMPORTED, id))
+                recordBalance()
+                return@withLock SmsImportResult(t.copy(id = id), "", "${account.name} → ${dest.name}", flagged = flagWith != null)
             }
         }
 
@@ -455,7 +573,7 @@ class Repository(
                 return@withLock SmsImportResult(r.second, linkedCat, linkedAccount, linked = true, linkId = r.first, directionFromBalance = flipped)
             }
             is SmsMatch.Flag -> txn = txn.copy(possibleDupOf = m.candidates.joinToString(",") { it.id.toString() })
-            SmsMatch.None -> {}
+            SmsMatch.None -> flagWith?.let { txn = txn.copy(possibleDupOf = it.id.toString()) }
         }
 
         val id = try { txnDao.insert(txn) } catch (e: SQLiteConstraintException) { return@withLock null }
@@ -463,6 +581,109 @@ class Repository(
         recordBalance()
         if (type == TxnType.EXPENSE) onExpensesChanged()
         SmsImportResult(txn.copy(id = id), category?.name(ar) ?: "", account.name, flagged = txn.possibleDupOf != null, directionFromBalance = flipped)
+    }
+
+    /** Parser used to re-read stored SMS texts (sender may be unknown → bank detected from the body). */
+    private fun reparser(): SmsParser {
+        val s = settings.current
+        return SmsParser(DefaultSmsConfig.config(s.extraSenderList, acceptUnknownSenders = true, defaultCurrency = s.currency, walletTopups = s.walletTopupList))
+    }
+
+    /** The «نقد» / Cash account: the default one, else any cash account, else created. */
+    suspend fun cashAccount(ar: Boolean): Account {
+        val accounts = accountDao.all()
+        accounts.firstOrNull { it.uuid == Defaults.CASH_ACCOUNT_UUID }?.let { return it }
+        accounts.firstOrNull { it.groupType == AccountGroup.CASH }?.let { return it }
+        val id = accountDao.insert(Account(name = if (ar) "نقد" else "Cash", groupType = AccountGroup.CASH, uuid = Defaults.CASH_ACCOUNT_UUID, updatedAt = 0, sortOrder = accounts.size))
+        return accountDao.all().first { it.id == id }
+    }
+
+    // ---------------- repair tool («إصلاح العمليات التلقائية») ----------------
+
+    /** Proposes fixes for transactions created from SMS (manual entries are never included). */
+    suspend fun planRepair(): List<RepairItem> {
+        val p = reparser()
+        val auto = txnDao.all().filter { it.isAuto }
+        val senders = auto.map { it.id }.chunked(500).flatMap { smsLogDao.forTxns(it) }.groupBy { it.txnId }
+        val rows = auto.map { t ->
+            AutoRow(t, runCatching { p.parse(senders[t.id]?.firstOrNull()?.sender ?: "", t.description) }.getOrNull())
+        }
+        val accounts = accountDao.all()
+        val maps = cardMappingDao.all()
+        val cash = accounts.firstOrNull { it.uuid == Defaults.CASH_ACCOUNT_UUID } ?: accounts.firstOrNull { it.groupType == AccountGroup.CASH }
+        return RepairPlanner.plan(
+            rows, accounts.map { it.id },
+            digitsOf = { id -> (maps.filter { it.accountId == id }.map { it.last4 } + listOfNotNull(accounts.firstOrNull { it.id == id }?.cardLast4)).toSet() },
+            isWallet = { id -> accounts.firstOrNull { it.id == id }?.let { a -> DefaultSmsConfig.banks.any { it.wallet && walletAccount(it, listOf(a)) != null } } == true },
+            cashId = cash?.id,
+        )
+    }
+
+    /** Applies [items] in one DB transaction and stores an undo snapshot. Returns the batch id (null if nothing applied). */
+    suspend fun applyRepair(items: List<RepairItem>): Long? {
+        if (items.isEmpty()) return null
+        val ar = settings.current.arabic
+        val id = inTransaction {
+            val touched = items.flatMap { listOfNotNull(it.primary.id, it.secondary?.id) }.distinct()
+            val current = touched.chunked(500).flatMap { txnDao.byIds(it) }.associateBy { it.id }
+            // never touch manual entries / rows changed since the preview
+            val valid = items.filter { i -> current[i.primary.id]?.isAuto == true && (i.secondary == null || current[i.secondary.id]?.isAuto == true) }
+            if (valid.isEmpty()) return@inTransaction null
+            val rows = valid.flatMap { listOfNotNull(current[it.primary.id], it.secondary?.let { s -> current[s.id] }) }
+            val createdLinks = ArrayList<Long>()
+            val moved = HashMap<Long, Long>()
+            val log = HashMap<String, Long?>()
+            val createdAccounts = ArrayList<Long>()
+            var cashId: Long? = null
+            for (i in valid) {
+                var after = i.after
+                if (after.toAccountId == RepairItem.CASH_PLACEHOLDER) {
+                    if (cashId == null) {
+                        val before = accountDao.all().map { it.id }.toSet()
+                        cashId = cashAccount(ar).id
+                        if (cashId !in before) createdAccounts += cashId!!
+                    }
+                    after = after.copy(toAccountId = cashId, note = if (ar) "سحب نقدي" else "Cash withdrawal")
+                }
+                if (i.kind == RepairKind.FLIP_INCOME) {
+                    val parsed = runCatching { reparser().parse("", after.description) }.getOrNull()
+                    val cat = parsed?.let { resolveCategory(it, after.description, TxnType.INCOME) }
+                    after = after.copy(categoryId = cat?.id)
+                }
+                if (i.kind == RepairKind.OWN_TRANSFER && i.primary.type != TxnType.TRANSFER) after = after.copy(note = if (ar) "تحويل بين حساباتي" else "Own transfer")
+                txnDao.update(after.copy(updatedAt = System.currentTimeMillis()))
+                val sec = i.secondary?.let { current[it.id] } ?: continue
+                for (l in dupDao.linksFor(sec.id)) moved[l.id] = sec.id
+                dupDao.repointLinks(listOf(sec.id), after.id)
+                for (l in smsLogDao.forTxns(listOf(sec.id))) { log[l.hash] = l.txnId; smsLogDao.setTxn(l.hash, after.id) }
+                val link = DuplicateDetector.linkFrom(sec, after)
+                txnDao.deleteByIds(listOf(sec.id))
+                if (dupDao.countLinkHash(link.smsHash) == 0) createdLinks += dupDao.insertLink(link)
+            }
+            val snap = RepairSnapshot(rows, createdLinks, moved, log, createdAccounts)
+            repairDao.insert(RepairBatch(changes = valid.size, snapshot = snap.encode()))
+        }
+        onExpensesChanged()
+        return id
+    }
+
+    /** Restores the state before repair batch [batchId]. */
+    suspend fun undoRepair(batchId: Long): Boolean {
+        val ok = inTransaction {
+            val b = repairDao.get(batchId) ?: return@inTransaction false
+            if (b.undone) return@inTransaction false
+            val snap = RepairSnapshot.decode(b.snapshot)
+            snap.createdLinkIds.forEach { dupDao.deleteLink(it) }
+            snap.movedLinks.forEach { (linkId, txnId) -> dupDao.setLinkTxn(linkId, txnId) }
+            snap.logTxn.forEach { (hash, txnId) -> smsLogDao.setTxn(hash, txnId) }
+            txnDao.deleteByIds(snap.rows.map { it.id })
+            txnDao.restore(snap.rows)
+            for (a in snap.createdAccountIds) if (txnDao.countForAccount(a) == 0) accountDao.all().firstOrNull { it.id == a }?.let { accountDao.delete(it) }
+            repairDao.markUndone(batchId)
+            true
+        }
+        onExpensesChanged()
+        return ok
     }
 
     private fun bankNameAr(p: ParsedSms) = DefaultSmsConfig.banks.firstOrNull { it.id == p.bankId }?.nameAr

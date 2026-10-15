@@ -451,6 +451,28 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /** Own-wallet top-up rules (empty list is stored as "[]"; [reset] restores the defaults). */
+    // ---- SMS repair tool ----
+    val repairPlan = MutableStateFlow<List<com.midroid.masarifi.data.repair.RepairItem>?>(null)
+    val repairBusy = MutableStateFlow(false)
+    val lastRepair: StateFlow<com.midroid.masarifi.data.RepairBatch?> = repo.repairDao.observeLatest().stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    fun scanRepair() = viewModelScope.launch {
+        repairBusy.value = true
+        repairPlan.value = withContext(Dispatchers.IO) { repo.planRepair() }
+        repairBusy.value = false
+    }
+    fun applyRepair(items: List<com.midroid.masarifi.data.repair.RepairItem>, done: (Int) -> String) = viewModelScope.launch {
+        repairBusy.value = true
+        withContext(Dispatchers.IO) { repo.applyRepair(items) }
+        repairPlan.value = null
+        repairBusy.value = false
+        message(done(items.size))
+    }
+    fun undoRepair(id: Long, done: String) = viewModelScope.launch {
+        withContext(Dispatchers.IO) { repo.undoRepair(id) }
+        repairPlan.value = null
+        message(done)
+    }
+
     // ---- Card / account mappings (SMS last 4 digits → account), stored on the device only ----
     val cardMappings: StateFlow<List<com.midroid.masarifi.data.CardMapping>> =
         repo.cardMappingDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())

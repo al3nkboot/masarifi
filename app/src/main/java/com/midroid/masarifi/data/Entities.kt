@@ -223,3 +223,13 @@ data class CardMapping(
     val source: Int = 0,
     val createdAt: Long = System.currentTimeMillis(),
 )
+
+/** One applied run of the SMS repair tool: [snapshot] (JSON, see RepairSnapshot) restores the previous state (undo). */
+@Entity(tableName = "repair_batches")
+data class RepairBatch(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val createdAt: Long = System.currentTimeMillis(),
+    val changes: Int,
+    val snapshot: String,
+    val undone: Boolean = false,
+)

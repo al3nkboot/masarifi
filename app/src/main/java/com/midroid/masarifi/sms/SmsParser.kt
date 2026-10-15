@@ -86,9 +86,18 @@ class SmsParser(private val config: SmsParserConfig = DefaultSmsConfig.config())
         }
         if (result == null) result = heuristic(body, bank) ?: return null
 
+        // Explicit income wording ("لقد استلمت OMR …", "received", "أودع") wins over a generic debit match / heuristic.
+        if (result.type == SmsTxnType.DEBIT && result.ruleId.let { it == "heuristic" || it.startsWith("gen_") } && strongCredit(body)) {
+            result = result.copy(type = SmsTxnType.CREDIT, categoryHint = null, incomeWording = true)
+        } else if (result.ruleId in INCOME_RULES) result = result.copy(incomeWording = true)
         val merchant = result.merchant ?: findMerchant(body)
-        val topup = if (result.type == SmsTxnType.DEBIT) config.walletTopups.firstOrNull { it.matches(merchant) } else null
+        val topup = if (result.type == SmsTxnType.DEBIT) config.walletTopups.firstOrNull { it.matches(merchant) || it.matches(body) && topupWording(body) } else null
+        val lower = body.lowercase()
         return result.copy(
+            atm = result.type == SmsTxnType.DEBIT && topup == null && isAtm(lower),
+            mentionedLast4 = allCards(body),
+            style = styleOf(lower),
+            transferLike = result.type == SmsTxnType.DEBIT && (result.categoryHint == CategoryHints.P2P || topup != null || TRANSFER_WORDS.any { containsWord(lower, it) }),
             merchant = merchant,
             cardLast4 = result.cardLast4 ?: findCard(body),
             dateTime = result.dateTime ?: findDateTime(body),
@@ -97,6 +106,36 @@ class SmsParser(private val config: SmsParserConfig = DefaultSmsConfig.config())
             topup = topup,
         )
     }
+
+    /** Strong income wording that is not preceded by an explicit debit wording. */
+    fun strongCredit(body: String): Boolean {
+        val lower = body.lowercase()
+        val c = STRONG_CREDIT.map { indexOfWord(lower, it) }.filter { it >= 0 }.minOrNull() ?: return false
+        val d = STRONG_DEBIT.map { indexOfWord(lower, it) }.filter { it >= 0 }.minOrNull()
+        return d == null || c < d
+    }
+
+    private fun topupWording(body: String) = Regex("top\\s*-?\\s*up|شحن", RegexOption.IGNORE_CASE).containsMatchIn(body)
+
+    fun isAtm(lower: String): Boolean = ATM_WORDS.any { containsWord(lower, it) }
+
+    /** Card-style vs account-style wording: whichever word comes first ("Card of a/c …" = card, "حسابكم رقم …" = account). */
+    fun styleOf(lower: String): SmsStyle {
+        val card = Regex("\\bcard\\b|بطاق").find(lower)?.range?.first
+        val acct = Regex("\\ba/?c\\b|\\baccount\\b|\\bacct\\b|حساب").find(lower)?.range?.first
+        return when {
+            card == null && acct == null -> SmsStyle.UNKNOWN
+            acct == null -> SmsStyle.CARD
+            card == null -> SmsStyle.ACCOUNT
+            card < acct -> SmsStyle.CARD
+            else -> SmsStyle.ACCOUNT
+        }
+    }
+
+    /** All masked card/account suffixes in the body (last 4 digits), in order, without duplicates. */
+    fun allCards(body: String): List<String> =
+        (maskedCardRegex.findAll(body).map { it.groupValues[1].takeLast(4) } + endingCardRegex.findAll(body).map { it.groupValues[1] })
+            .distinct().toList()
 
     /** Bank transaction id ("Txn Id BMCT010000000114", "Ref No. 12345678", "رقم العملية …"); must contain a digit. */
     fun findRef(body: String): String? = refRegex.findAll(body)
@@ -297,6 +336,20 @@ class SmsParser(private val config: SmsParserConfig = DefaultSmsConfig.config())
             "(?=\\s+(?:has|have|was|is)\\s|\\s+on\\s|\\s+dated|\\s+for\\s|\\s+using|\\s+via|\\s+avl|\\s+available|\\s+bal\\b|\\s+card\\b|\\s+ref\\b|[.,]\\s|[.,]?$|\\n|$)"
         private const val END_AR =
             "(?=\\s+بتاريخ|\\s+يوم|\\s+الساعة|\\s+الرصيد|\\s+رصيد|\\s+عبر|\\s+في\\s+\\d|[.،,]\\s|[.،,]?$|\\n|$)"
+        private val STRONG_CREDIT = listOf(
+            "لقد استلمت", "استلمت", "تم استلام", "received", "you have received", "credited", "deposited",
+            "أودع", "اودع", "أُودع", "تم إيداع", "تم ايداع", "إيداع", "ايداع",
+        )
+        private val INCOME_RULES = setOf("gen_istalamt_ar", "gen_istalamt_amt_first_ar", "gen_ooda3_ar", "gen_ooda3_amt_first_ar", "gen_received_first_en")
+        private val STRONG_DEBIT = listOf(
+            "debited", "deducted", "you have sent", "sent", "spent", "paid", "purchase", "withdrawn", "withdrawal",
+            "تم خصم", "خصم", "سحب", "دفع", "شراء", "أرسلت", "ارسلت", "تحويل صادر", "تم تحويل",
+        )
+        private val ATM_WORDS = listOf("atm", "cash withdrawal", "الصراف", "صراف آلي", "الصراف الآلي", "سحب نقدي", "سحب نقود")
+        private val TRANSFER_WORDS = listOf(
+            "transfer", "transferred", "sent", "you have sent", "topup", "top up", "top-up", "remittance",
+            "تحويل", "حوالة", "أرسلت", "ارسلت", "شحن",
+        )
         private val MONTHS = listOf("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
 
         fun normalizeSender(s: String): String = s.filter { it.isLetterOrDigit() }.lowercase()

@@ -82,7 +82,8 @@ private fun RouteContent(
         Route.Duplicates -> DuplicatesScreen(vm, navigate, back, snackbar)
         Route.Categories -> CategoriesScreen(vm, back)
         Route.Recurring -> RecurringScreen(vm, back)
-        Route.SmsSettings -> SmsSettingsScreen(vm, back, snackbar)
+        Route.SmsSettings -> SmsSettingsScreen(vm, back, snackbar, onRepair = { navigate(Route.Repair) })
+        Route.Repair -> RepairScreen(vm, back, snackbar)
         Route.Backup -> BackupScreen(vm, back, snackbar, onLanguageChanged)
         Route.Sync -> SyncScreen(vm, back, snackbar)
     }

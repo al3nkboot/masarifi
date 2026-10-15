@@ -89,6 +89,13 @@ object DefaultSmsConfig {
 
     /** Generic rules that work for many banks (EN + AR). Tried after bank-specific rules. */
     val genericRules: List<SmsRule> = listOf(
+        // Explicit income wording first (takes precedence over generic amount/debit rules):
+        // "لقد استلمت OMR 150.000 من …", "You have received OMR …", "أودع مبلغ …", "تم إيداع OMR …"
+        SmsRule("gen_istalamt_ar", "(?:لقد\\s+)?استلمت\\s+(?:مبلغ\\s+)?{CUR}\\s*{AMT}", CREDIT),
+        SmsRule("gen_istalamt_amt_first_ar", "(?:لقد\\s+)?استلمت\\s+(?:مبلغ\\s+)?{AMT}\\s*{CUR}", CREDIT),
+        SmsRule("gen_ooda3_ar", "(?:تم\\s+)?(?:[أا]ُ?ودع|إيداع|ايداع)\\s+(?:مبلغ\\s+)?{CUR}\\s*{AMT}", CREDIT),
+        SmsRule("gen_ooda3_amt_first_ar", "(?:تم\\s+)?(?:[أا]ُ?ودع|إيداع|ايداع)\\s+(?:مبلغ\\s+)?{AMT}\\s*{CUR}", CREDIT),
+        SmsRule("gen_received_first_en", "(?:you(?:\\s+have)?\\s+)?received\\s+{CUR}\\s?{AMT}", CREDIT),
         // English: "OMR 4.300 has been debited from your card XXXX1234 at LULU ..."
         SmsRule("gen_amt_first_debit_en", "{CUR}\\s?{AMT}\\s+(?:has been|was|is)?\\s*(?:debited|deducted|spent|charged|withdrawn|paid)", DEBIT),
         SmsRule("gen_amt_first_credit_en", "{CUR}\\s?{AMT}\\s+(?:has been|was|is)?\\s*(?:credited|deposited|received|refunded)", CREDIT),
@@ -146,7 +153,7 @@ object DefaultSmsConfig {
         "transfer from", "transferred from",
         "قد أدخل فيه", "قد ادخل فيه", "أدخل فيه", "ادخل فيه",
         "تم إيداع", "تم ايداع", "إيداع", "ايداع", "دائن", "تم استلام", "استلام", "وارد", "حوالة واردة", "راتب",
-        "استرداد", "مسترد", "تمت إضافة", "تمت اضافة",
+        "استرداد", "مسترد", "تمت إضافة", "تمت اضافة", "استلمت", "لقد استلمت", "أودع", "اودع",
     )
 
     /** Default own-wallet top-ups: Thawani Pay (Mojab card) topped up from a bank card / account. */
