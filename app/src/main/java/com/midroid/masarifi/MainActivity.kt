@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         pendingTxnId = intent?.getLongExtra(EXTRA_TXN_ID, -1L)?.takeIf { it > 0 }
+        if (intent?.getBooleanExtra(EXTRA_OPEN_BILLS, false) == true) vm.openBills.value = true
         setContent {
             val settings by vm.settings.collectAsStateWithLifecycle()
             MasarifiTheme(settings.theme) {
@@ -61,6 +62,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         pendingTxnId = intent.getLongExtra(EXTRA_TXN_ID, -1L).takeIf { it > 0 }
+        if (intent.getBooleanExtra(EXTRA_OPEN_BILLS, false)) vm.openBills.value = true
     }
 
     @Composable
@@ -78,5 +80,6 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_TXN_ID = "txn_id"
+        const val EXTRA_OPEN_BILLS = "open_bills"
     }
 }

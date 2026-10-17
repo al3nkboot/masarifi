@@ -28,8 +28,8 @@ android {
         applicationId = "com.midroid.masarifi"
         minSdk = 26
         targetSdk = 35
-        versionCode = 11
-        versionName = "2.0.0"
+        versionCode = 12
+        versionName = "2.1.0"
     }
 
     signingConfigs {
@@ -60,7 +60,12 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
         unitTests.isIncludeAndroidResources = true
-        unitTests.all { it.maxHeapSize = "1536m" }
+        unitTests.all {
+            it.maxHeapSize = "1536m"
+            // AppDatabase is a process-wide singleton: a fresh JVM per test class keeps Robolectric UI tests independent
+            it.forkEvery = 1
+            it.maxParallelForks = 4
+        }
     }
 }
 

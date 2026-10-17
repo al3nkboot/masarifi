@@ -151,6 +151,19 @@ class SyncService(
             val cu = catU[m.categoryId] ?: return@forEach
             add(SyncRecord.live("m:${m.merchantKey}", Kind.MERCHANT, m.updatedAt, "merchantKey" to m.merchantKey, "category" to cu, *catInfo(m.categoryId)))
         }
+        val billDao = db.billDao()
+        val bills = billDao.all()
+        val billU = bills.associate { it.id to it.uuid }
+        bills.forEach { x ->
+            add(SyncRecord.live(x.uuid, Kind.BILL, x.updatedAt, "name" to x.name, "amount" to x.amount, "category" to x.categoryId?.let { catU[it] },
+                "account" to x.accountId?.let { accU[it] }, "recurrence" to x.recurrence, "recurInterval" to x.recurInterval, "anchorDay" to x.anchorDay,
+                "nextDue" to x.nextDue, "reminderDays" to x.reminderDays, "notes" to x.notes, "active" to x.active, "createdAt" to x.createdAt, *catInfo(x.categoryId)))
+        }
+        billDao.payments().forEach { p ->
+            val bu = billU[p.billId] ?: return@forEach
+            add(SyncRecord.live(p.uuid, Kind.BILL_PAY, p.updatedAt, "bill" to bu, "amount" to p.amount, "dueDate" to p.dueDate, "paidAt" to p.paidAt,
+                "txn" to p.txnUuid, "ownTxn" to p.ownTxn))
+        }
         val s = settings.current
         add(SyncRecord.live(SETTINGS_UUID, Kind.SETTINGS, settings.syncedUpdatedAt, "currency" to s.currency, "weekStartsSaturday" to s.weekStartsSaturday,
             "dupWindowHours" to s.dupWindowHours, "budgetAlerts" to s.budgetAlerts, "spikeAlerts" to s.spikeAlerts))
@@ -212,9 +225,11 @@ class SyncService(
             Kind.TXN -> dao.deleteTxn(r.uuid)
             Kind.SMS_LINK -> dao.deleteSmsLink(r.uuid)
             Kind.RECURRING -> dao.recurring(r.uuid)?.let { dao.clearTxnRecurring(it.id); dao.deleteRecurring(r.uuid) }
-            Kind.ACCOUNT -> dao.deleteAccount(r.uuid)
+            Kind.ACCOUNT -> { dao.account(r.uuid)?.let { db.billDao().clearAccount(it.id) }; dao.deleteAccount(r.uuid) }
+            Kind.BILL -> db.billDao().byUuid(r.uuid)?.let { db.billDao().deletePaymentsFor(it.id); db.billDao().delete(it.id) }
+            Kind.BILL_PAY -> db.billDao().deletePaymentByUuid(r.uuid)
             Kind.CATEGORY -> dao.category(r.uuid)?.let { c ->
-                dao.clearTxnCategory(c.id); dao.clearRecurringCategory(c.id); repo.budgetDao.delete(c.id); dao.deleteCategory(r.uuid)
+                dao.clearTxnCategory(c.id); dao.clearRecurringCategory(c.id); db.billDao().clearCategory(c.id); repo.budgetDao.delete(c.id); dao.deleteCategory(r.uuid)
             }
             Kind.BUDGET -> categoryIdFor(r.uuid, "b:")?.let { repo.budgetDao.delete(it) }
             Kind.MERCHANT -> repo.merchantRuleDao.delete(r.uuid.removePrefix("m:"))
@@ -278,6 +293,27 @@ class SyncService(
                     accId("account") ?: 0, catId(), r.str("note") ?: "", r.str("description") ?: "", r.long("dateTime") ?: 0, r.str("merchant"),
                     r.str("cardLast4"), r.str("prevMerchant"), r.long("createdAt") ?: r.updatedAt, r.uuid, r.updatedAt)
                 if (ex != null) dao.updateSmsLink(l) else dao.insertSmsLink(l)
+            }
+            Kind.BILL -> {
+                val bd = db.billDao()
+                val ex = bd.byUuid(r.uuid)
+                val due = r.long("nextDue") ?: return false
+                val b = com.midroid.masarifi.bills.Bill(
+                    id = ex?.id ?: 0, name = r.str("name") ?: "", amount = r.long("amount") ?: 0, categoryId = catId(), accountId = accId("account"),
+                    recurrence = r.str("recurrence") ?: "MONTHLY", recurInterval = int("recurInterval").coerceAtLeast(1),
+                    anchorDay = int("anchorDay").takeIf { it in 1..31 } ?: java.time.LocalDate.ofEpochDay(due).dayOfMonth, nextDue = due,
+                    reminderDays = int("reminderDays"), notes = r.str("notes") ?: "", active = r.bool("active") ?: true,
+                    createdAt = r.long("createdAt") ?: r.updatedAt, uuid = r.uuid, updatedAt = r.updatedAt,
+                )
+                if (ex != null) bd.update(b) else bd.insert(b)
+            }
+            Kind.BILL_PAY -> {
+                val bd = db.billDao()
+                val billId = r.str("bill")?.let { bd.byUuid(it)?.id } ?: return false
+                val ex = bd.paymentByUuid(r.uuid)
+                val p = com.midroid.masarifi.bills.BillPayment(ex?.id ?: 0, billId, r.long("amount") ?: 0, r.long("dueDate") ?: 0, r.long("paidAt") ?: 0,
+                    r.str("txn"), r.bool("ownTxn") ?: false, r.uuid, r.updatedAt)
+                if (ex != null) bd.updatePayment(p) else bd.insertPayment(p)
             }
             Kind.BUDGET -> {
                 val cid = categoryIdFor(r.uuid, "b:") ?: return false

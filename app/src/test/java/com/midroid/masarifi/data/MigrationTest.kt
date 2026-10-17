@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.runBlocking
+import com.midroid.masarifi.data.AppDatabase.Companion.configure
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -97,7 +98,7 @@ class MigrationTest {
             assertTrue(linkId > 0)
             db.dupDao().dismiss(listOf(DupDismissed(DupDismissed.key(1, 3))))
             assertEquals(listOf("1-3"), db.dupDao().dismissed())
-            assertEquals(6, db.openHelper.readableDatabase.version)
+            assertEquals(7, db.openHelper.readableDatabase.version)
         } finally {
             db.close()
         }
@@ -151,7 +152,7 @@ class MigrationTest {
             // new rows get uuids from the entity defaults
             val id = db.txnDao().insert(Txn(type = 1, amount = 1, accountId = 1, dateTime = 1))
             assertTrue(uuidRe.matches(db.txnDao().get(id)!!.uuid))
-            assertEquals(6, sql.version)
+            assertEquals(7, sql.version)
         } finally {
             db.close()
         }
@@ -181,7 +182,7 @@ class MigrationTest {
             db.smsBalanceDao().insert(SmsBalance(accountId = 1, dateTime = 20, balance = 205_000, smsHash = "h2"))
             assertEquals(5_000L, db.smsBalanceDao().latestBefore(1, 15)!!.balance)
             assertEquals(205_000L, db.smsBalanceDao().latest(1)!!.balance)
-            assertEquals(6, db.openHelper.readableDatabase.version)
+            assertEquals(7, db.openHelper.readableDatabase.version)
         } finally {
             db.close()
         }
@@ -210,7 +211,7 @@ class MigrationTest {
         }
         val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).addMigrations(*Migrations.ALL).allowMainThreadQueries().build()
         try {
-            assertEquals(6, db.openHelper.readableDatabase.version)
+            assertEquals(7, db.openHelper.readableDatabase.version)
             // existing data untouched
             assertEquals(listOf(4300L, 1500L, 7000L, 2000L), db.txnDao().all().sortedBy { it.id }.map { it.amount })
             assertEquals(48_250L, db.smsBalanceDao().latest(2)!!.balance)
@@ -246,7 +247,7 @@ class MigrationTest {
         }
         val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).addMigrations(*Migrations.ALL).allowMainThreadQueries().build()
         try {
-            assertEquals(6, db.openHelper.readableDatabase.version)
+            assertEquals(7, db.openHelper.readableDatabase.version)
             assertEquals(listOf(4300L, 1500L, 7000L), db.txnDao().all().map { it.amount })
             assertEquals("5501", db.cardMappingDao().all().single().last4)
             val id = db.repairDao().insert(RepairBatch(changes = 2, snapshot = "{}"))
@@ -254,5 +255,61 @@ class MigrationTest {
         } finally {
             db.close()
         }
+    }
+    /**
+     * 2.0.0 (v6) → 2.1.0 (v7): additive bills tables. A database exactly as 2.0.0 created it (from 6.json, with data in
+     * every table) is opened by the 2.1.0 Room database: every row of every 2.0.0 table is byte-identical afterwards.
+     */
+    @Test fun migrate6To7AddsBillsAndKeepsEveryRow() = runBlocking {
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        val name = "migration-test-v6.db"
+        val file = ctx.getDatabasePath(name).apply { parentFile?.mkdirs(); delete() }
+        createFrom(file, 6)
+        val v6Tables = JSONObject(File(schemaDir, "6.json").readText()).getJSONObject("database").getJSONArray("entities").let { a -> (0 until a.length()).map { a.getJSONObject(it).getString("tableName") } }
+        fun dump(d: android.database.sqlite.SQLiteDatabase): Map<String, List<String>> = v6Tables.associateWith { t ->
+            d.rawQuery("SELECT * FROM `$t` ORDER BY rowid", null).use { c ->
+                buildList { while (c.moveToNext()) add((0 until c.columnCount).joinToString("|") { c.getColumnName(it) + "=" + c.getString(it) }) }
+            }
+        }
+        val before = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { d ->
+            d.execSQL("INSERT INTO card_mappings (bankId, last4, accountId, label, source, createdAt) VALUES ('bm', '0099', 1, '', 0, 1)")
+            d.execSQL("INSERT INTO repair_batches (createdAt, changes, snapshot, undone) VALUES (1, 2, '{}', 0)")
+            d.execSQL("INSERT INTO sms_balances (accountId, dateTime, balance, smsHash, createdAt) VALUES (1, 1, 48250, 'hb', 1)")
+            d.execSQL("INSERT INTO sync_tombstones (uuid, entity, deletedAt) VALUES ('gone', 'txn', 5)")
+            dump(d)
+        }
+        assertTrue(before.values.sumOf { it.size } >= 12)
+        val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).configure().allowMainThreadQueries().build()
+        try {
+            assertEquals(7, db.openHelper.readableDatabase.version)
+            // nothing touched: compare raw rows of all 2.0.0 tables (updatedAt included → no trigger fired)
+            db.close()
+            val after = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY).use { dump(it) }
+            assertEquals(before, after)
+            val db2 = Room.databaseBuilder(ctx, AppDatabase::class.java, name).configure().allowMainThreadQueries().build()
+            try {
+                assertTrue(db2.billDao().all().isEmpty())
+                val bid = db2.billDao().insert(com.midroid.masarifi.bills.Bill(name = "Rent", amount = 250_000, categoryId = 1, accountId = 1, anchorDay = 31, nextDue = 20_000))
+                db2.billDao().insertPayment(com.midroid.masarifi.bills.BillPayment(billId = bid, amount = 250_000, dueDate = 19_970, txnUuid = db2.txnDao().all().first().uuid, ownTxn = false))
+                assertEquals(listOf(db2.txnDao().all().first().id), db2.billDao().billTxnIds())
+                val sql = db2.openHelper.writableDatabase
+                sql.query("SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'billsync_%'").use { c -> c.moveToFirst(); assertEquals(SyncSchema.billTriggers().size, c.getInt(0)) }
+                db2.billDao().delete(bid)
+                assertTrue(db2.syncDao().tombstones().any { it.entity == "bill" })
+            } finally { db2.close() }
+        } finally {
+            if (db.isOpen) db.close()
+        }
+    }
+
+    @Test fun exportedV7SchemaIsV6PlusBillTables() {
+        fun tables(v: Int) = JSONObject(File(schemaDir, "$v.json").readText()).getJSONObject("database").getJSONArray("entities").let { a ->
+            (0 until a.length()).associate { a.getJSONObject(it).getString("tableName") to a.getJSONObject(it).getString("createSql") }
+        }
+        val v6 = tables(6); val v7 = tables(7)
+        assertEquals(v6.keys + setOf("bills", "bill_payments"), v7.keys)
+        v6.forEach { (t, sql) -> assertEquals("table $t unchanged", sql, v7[t]) }
+        assertEquals(v7["bills"]!!.replace("\${TABLE_NAME}", "bills"), Migrations.CREATE_BILLS)
+        assertEquals(v7["bill_payments"]!!.replace("\${TABLE_NAME}", "bill_payments"), Migrations.CREATE_BILL_PAYMENTS)
     }
 }

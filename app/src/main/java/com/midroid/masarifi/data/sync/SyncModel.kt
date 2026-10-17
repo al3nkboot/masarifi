@@ -47,9 +47,12 @@ object Kind {
     const val BUDGET = "budget"
     const val MERCHANT = "merchant"
     const val SETTINGS = "settings"
+    /** Bills and their payments (app 2.1.0; older apps keep these records in the file and ignore them). */
+    const val BILL = "bill"
+    const val BILL_PAY = "billpay"
 
     /** Order in which live records are applied (referenced entities first). Deletes are applied in reverse. */
-    val APPLY_ORDER = listOf(SETTINGS, CATEGORY, ACCOUNT, RECURRING, TXN, SMS_LINK, BUDGET, MERCHANT)
+    val APPLY_ORDER = listOf(SETTINGS, CATEGORY, ACCOUNT, RECURRING, TXN, SMS_LINK, BILL, BILL_PAY, BUDGET, MERCHANT)
 }
 
 /** Grow-only set entry: an SMS that was already processed on some device (prevents re-importing it). */

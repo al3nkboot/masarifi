@@ -58,9 +58,26 @@ object SyncSchema {
 
     fun createTriggers(db: SupportSQLiteDatabase) = triggers().forEach { db.execSQL(it) }
 
+    /** Bill tables (schema v7, app 2.1.0) and their sync kinds; kept apart from [UUID_TABLES] because older migrations loop over those. */
+    val BILL_TABLES = linkedMapOf("bills" to "bill", "bill_payments" to "billpay")
+
+    /** Same three triggers as [triggers] for the bill tables (named `billsync_*`). */
+    fun billTriggers(): List<String> = buildList {
+        for ((t, kind) in BILL_TABLES) {
+            add("CREATE TRIGGER IF NOT EXISTS `billsync_upd_$t` AFTER UPDATE ON `$t` WHEN NEW.updatedAt = OLD.updatedAt BEGIN " +
+                "UPDATE `$t` SET updatedAt = MAX($NOW, OLD.updatedAt + 1) WHERE id = NEW.id; END")
+            add("CREATE TRIGGER IF NOT EXISTS `billsync_del_$t` AFTER DELETE ON `$t` BEGIN " +
+                "INSERT OR REPLACE INTO sync_tombstones(uuid, entity, deletedAt) VALUES (OLD.uuid, '$kind', $NOW); END")
+            add("CREATE TRIGGER IF NOT EXISTS `billsync_ins_$t` AFTER INSERT ON `$t` WHEN EXISTS (SELECT 1 FROM sync_tombstones WHERE uuid = NEW.uuid) BEGIN " +
+                "UPDATE `$t` SET updatedAt = MAX($NOW, NEW.updatedAt) WHERE id = NEW.id; DELETE FROM sync_tombstones WHERE uuid = NEW.uuid; END")
+        }
+    }
+
+    fun createBillTriggers(db: SupportSQLiteDatabase) = billTriggers().forEach { db.execSQL(it) }
+
     /** Installs the triggers on fresh databases (migrations install them for upgraded ones). */
     val callback = object : RoomDatabase.Callback() {
-        override fun onCreate(db: SupportSQLiteDatabase) = createTriggers(db)
-        override fun onOpen(db: SupportSQLiteDatabase) = createTriggers(db) // IF NOT EXISTS: no-op normally
+        override fun onCreate(db: SupportSQLiteDatabase) { createTriggers(db); createBillTriggers(db) }
+        override fun onOpen(db: SupportSQLiteDatabase) { createTriggers(db); createBillTriggers(db) } // IF NOT EXISTS: no-op normally
     }
 }

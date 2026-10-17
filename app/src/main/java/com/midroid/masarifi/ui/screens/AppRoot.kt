@@ -62,6 +62,13 @@ fun AppRoot(vm: AppViewModel, openTxnId: Long?, onOpenTxnConsumed: () -> Unit, o
         }
     }
 
+    LaunchedEffect(undoLabel) {
+        vm.billUndo.collect { ev ->
+            val r = snackbar.showSnackbar(ev.message, actionLabel = undoLabel, duration = androidx.compose.material3.SnackbarDuration.Long)
+            if (r == androidx.compose.material3.SnackbarResult.ActionPerformed) vm.undoBillPayment(ev.result)
+        }
+    }
+
     BackHandler(enabled = stack.size > 1) { back() }
 
     val r = stack.last()
@@ -88,6 +95,7 @@ private fun RouteContent(
         Route.Backup -> BackupScreen(vm, back, snackbar, onLanguageChanged)
         Route.ImportExport -> ImportExportScreen(vm, back, snackbar)
         Route.Sync -> SyncScreen(vm, back, snackbar)
+        is Route.BillEdit -> com.midroid.masarifi.ui.bills.BillEditScreen(vm, r.billId, back)
     }
 }
 
@@ -95,12 +103,14 @@ private fun RouteContent(
 private fun HomeScaffold(vm: AppViewModel, navigate: (Route) -> Unit, snackbar: SnackbarHostState, onLanguageChanged: () -> Unit) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val settings by vm.settings.collectAsStateWithLifecycle()
+    val openBills by vm.openBills.collectAsStateWithLifecycle()
+    LaunchedEffect(openBills) { if (openBills) { tab = 3; vm.openBills.value = false } }
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
-            if (tab == 0 && !vm.selectionActive) {
+            if ((tab == 0 && !vm.selectionActive) || tab == 3) {
                 FloatingActionButton(
-                    onClick = { navigate(Route.Edit(date = vm.selectedDayForAdd())) },
+                    onClick = { if (tab == 3) navigate(Route.BillEdit()) else navigate(Route.Edit(date = vm.selectedDayForAdd())) },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White,
                 ) { Icon(Icons.Filled.Add, stringResource(R.string.add)) }
@@ -112,6 +122,7 @@ private fun HomeScaffold(vm: AppViewModel, navigate: (Route) -> Unit, snackbar: 
                     R.string.tab_trans to AppIcons.Book,
                     R.string.tab_stats to AppIcons.PieChart,
                     R.string.tab_accounts to AppIcons.Wallet,
+                    R.string.tab_bills to AppIcons.Receipt,
                     R.string.tab_more to AppIcons.MoreHoriz,
                 )
                 items.forEachIndexed { i, (label, icon) ->
@@ -140,6 +151,7 @@ private fun HomeScaffold(vm: AppViewModel, navigate: (Route) -> Unit, snackbar: 
                 0 -> TransScreen(vm, navigate, m)
                 1 -> StatsScreen(vm, navigate, m)
                 2 -> AccountsScreen(vm, navigate, m)
+                3 -> com.midroid.masarifi.ui.bills.BillsScreen(vm, navigate, m)
                 else -> MoreScreen(vm, navigate, m, onLanguageChanged)
             }
         }

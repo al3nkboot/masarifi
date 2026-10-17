@@ -18,12 +18,14 @@ object Notifier {
     const val CH_AUTO = "auto_txn"
     const val CH_BUDGET = "budget"
     const val CH_INSIGHTS = "insights"
+    const val CH_BILLS = "bills"
 
     fun createChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
         nm.createNotificationChannel(NotificationChannel(CH_AUTO, context.getString(R.string.channel_auto), NotificationManager.IMPORTANCE_DEFAULT))
         nm.createNotificationChannel(NotificationChannel(CH_BUDGET, context.getString(R.string.channel_budget), NotificationManager.IMPORTANCE_HIGH))
         nm.createNotificationChannel(NotificationChannel(CH_INSIGHTS, context.getString(R.string.channel_insights), NotificationManager.IMPORTANCE_DEFAULT))
+        nm.createNotificationChannel(NotificationChannel(CH_BILLS, context.getString(R.string.channel_bills), NotificationManager.IMPORTANCE_HIGH))
     }
 
     fun canNotify(context: Context): Boolean =
@@ -35,11 +37,12 @@ object Notifier {
 
     fun cancel(context: Context, id: Int) = runCatching { NotificationManagerCompat.from(context).cancel(id) }
 
-    fun show(context: Context, channel: String, id: Int, title: String, text: String, openTxnId: Long? = null, action: Action? = null) {
+    fun show(context: Context, channel: String, id: Int, title: String, text: String, openTxnId: Long? = null, action: Action? = null, openBills: Boolean = false) {
         if (!canNotify(context)) return
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             if (openTxnId != null) putExtra(MainActivity.EXTRA_TXN_ID, openTxnId)
+            if (openBills) putExtra(MainActivity.EXTRA_OPEN_BILLS, true)
         }
         val pi = PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val n = NotificationCompat.Builder(context, channel)

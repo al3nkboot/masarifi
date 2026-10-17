@@ -32,6 +32,9 @@ data class BackupData(
     val dupDismissed: List<DupDismissed> = emptyList(),
     /** Card / account digits → account (v4, app 1.7.1); null for older files (the device keeps and re-maps its own). */
     val cardMappings: List<CardMapping>? = null,
+    /** Bills + payment history (optional arrays, app 2.1.0); null for older files (restore then keeps the device's bills). */
+    val bills: List<com.midroid.masarifi.bills.Bill>? = null,
+    val billPayments: List<com.midroid.masarifi.bills.BillPayment>? = null,
 )
 
 class BackupFormatException(val code: String, msg: String) : Exception(msg)
@@ -45,6 +48,8 @@ class BackupFormatException(val code: String, msg: String) : Exception(msg)
  * v3 (app 1.3.0) adds uuid + updatedAt to accounts, categories, transactions, recurring and smsLinks, and budgets[].updatedAt
  * (needed so a restored device keeps the same identities for merge sync). Older files get fresh uuids.
  * v4 (app 1.7.1) adds "cardMappings" (SMS card/account digits → account); old files get the stable ids a device derives itself.
+ * App 2.1.0 adds the optional arrays "bills" and "billPayments" (still schema 4: purely additive, so 2.0.0 can still read
+ * the file and ignores them; files without them restore as before and keep the device's bills).
  * Readers ignore unknown fields; older schema versions are upgraded in [decode] (missing fields get defaults).
  */
 object BackupCodec {
@@ -118,6 +123,8 @@ object BackupCodec {
             })
         }
         o.put("dupDismissed", JSONArray().apply { d.dupDismissed.forEach { put(JSONObject().put("pairKey", it.pairKey).put("createdAt", it.createdAt)) } })
+        d.bills?.let { l -> o.put("bills", JSONArray().apply { l.forEach { put(com.midroid.masarifi.bills.BillsJson.bill(it)) } }) }
+        d.billPayments?.let { l -> o.put("billPayments", JSONArray().apply { l.forEach { put(com.midroid.masarifi.bills.BillsJson.payment(it)) } }) }
         return o.toString()
     }
 
@@ -202,6 +209,8 @@ object BackupCodec {
             cardMappings = if (o.has("cardMappings")) o.list("cardMappings") { m ->
                 CardMapping(m.optLong("id"), m.optStringOrNull("bankId"), m.getString("last4"), m.optLongOrNull("accountId"), m.optString("label"), m.optInt("source"), m.optLong("createdAt"))
             } else null,
+            bills = com.midroid.masarifi.bills.BillsJson.bills(o.optJSONArray("bills")),
+            billPayments = com.midroid.masarifi.bills.BillsJson.payments(o.optJSONArray("billPayments")) ?: if (o.has("bills")) emptyList() else null,
         ).let { d ->
             // stable ids derived from names can collide (two rows with one name): later rows get a fresh id
             fun <T> uniq(l: List<T>, u: (T) -> String, set: (T, String) -> T): List<T> { val seen = HashSet<String>(); return l.map { if (seen.add(u(it))) it else set(it, newUuid()) } }

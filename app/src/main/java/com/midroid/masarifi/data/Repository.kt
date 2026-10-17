@@ -44,6 +44,9 @@ class Repository(
     val smsBalanceDao = db.smsBalanceDao()
     val cardMappingDao = db.cardMappingDao()
     val repairDao = db.repairDao()
+    val billDao = db.billDao()
+    /** Bills («الفواتير», 2.1.0). */
+    val bills by lazy { com.midroid.masarifi.bills.BillRepository(this) }
 
     private val categorizer = MerchantCategorizer()
     private val smsMutex = Mutex()
@@ -330,6 +333,7 @@ class Repository(
     suspend fun deleteAccount(a: Account) {
         txnDao.deleteForAccount(a.id)
         smsBalanceDao.deleteForAccount(a.id)
+        billDao.clearAccount(a.id)
         accountDao.delete(a)
     }
 
@@ -337,6 +341,7 @@ class Repository(
 
     suspend fun deleteCategory(c: Category) {
         txnDao.clearCategory(c.id)
+        billDao.clearCategory(c.id)
         budgetDao.delete(c.id)
         categoryDao.delete(c)
     }
@@ -551,7 +556,7 @@ class Repository(
 
         // ---- duplicate detection against manual / imported entries ----
         val nearby = txnDao.between(time - DuplicateDetector.WEAK_WINDOW, time + DuplicateDetector.WEAK_WINDOW + 1)
-        when (val m = DuplicateDetector.matchSms(type, amount, time, nearby, s.dupWindowHours)) {
+        when (val m = DuplicateDetector.matchSms(type, amount, time, nearby, s.dupWindowHours, billDao.billTxnIds().toSet())) {
             is SmsMatch.Link -> {
                 val target = m.txn
                 val r = inTransaction {

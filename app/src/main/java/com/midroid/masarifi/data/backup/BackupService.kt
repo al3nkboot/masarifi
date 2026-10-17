@@ -63,6 +63,7 @@ class BackupService(
             accounts = dao.accounts(), categories = dao.categories(), transactions = dao.transactions(),
             recurring = dao.recurring(), budgets = dao.budgets(), merchantRules = dao.merchantRules(), smsLog = dao.smsLog(),
             smsLinks = dao.smsLinks(), dupDismissed = dao.dupDismissed(), cardMappings = dao.cardMappings(),
+            bills = repo.billDao.all(), billPayments = repo.billDao.payments(),
         )
     }
 
@@ -72,6 +73,7 @@ class BackupService(
             // card mappings of this phone point at its own account ids: keep them (re-pointed by account id / name) when the file has none
             val oldAccounts = dao.accounts().associateBy { it.id }
             val oldMaps = dao.cardMappings()
+            val oldCats = dao.categories().associateBy { it.id }
             dao.clearCardMappings(); dao.clearRepairBatches() // repair undo data refers to the replaced rows
             dao.clearTransactions(); dao.clearRecurring(); dao.clearBudgets(); dao.clearMerchantRules(); dao.clearSmsLog()
             dao.clearSmsLinks(); dao.clearDupDismissed(); repo.database.smsBalanceDao().clear()
@@ -89,6 +91,22 @@ class BackupService(
             }
             val valid = d.accounts.map { it.id }.toSet()
             dao.insertCardMappings(maps.filter { it.accountId == null || it.accountId in valid })
+            // bills: replaced when the file has them; an older file keeps this phone's bills, re-pointed to the restored
+            // accounts / categories (by uuid, then name) so nothing is lost
+            val billDao = repo.billDao
+            if (d.bills != null) {
+                billDao.clearPayments(); billDao.clearBills()
+                val cats = d.categories.map { it.id }.toSet()
+                billDao.insertBills(d.bills.map { b -> b.copy(accountId = b.accountId?.takeIf { it in valid }, categoryId = b.categoryId?.takeIf { it in cats }) })
+                val ids = d.bills.map { it.id }.toSet()
+                billDao.insertPayments(d.billPayments.orEmpty().filter { it.billId in ids })
+            } else {
+                for (b in billDao.all()) {
+                    val acc = b.accountId?.let { oldAccounts[it] }?.let { old -> d.accounts.firstOrNull { it.uuid == old.uuid } ?: d.accounts.firstOrNull { it.name == old.name } }
+                    val cat = b.categoryId?.let { oldCats[it] }?.let { old -> d.categories.firstOrNull { it.uuid == old.uuid } ?: d.categories.firstOrNull { it.type == old.type && it.nameAr == old.nameAr } }
+                    billDao.update(b.copy(accountId = acc?.id, categoryId = cat?.id))
+                }
+            }
         }
         d.settings?.let { s -> settings.update { s } }
         repo.ensureDefaults()

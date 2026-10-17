@@ -258,12 +258,31 @@ private fun BudgetTab(vm: AppViewModel, all: List<Txn>, cats: List<Category>, ym
     var editing by remember { mutableStateOf<Pair<Long, String>?>(null) }
     val overallLabel = stringResource(R.string.overall_budget)
     val isCurrent = ym == YearMonth.now()
+    val bills by vm.bills.collectAsStateWithLifecycle()
+    val upcoming = remember(bills, ym) { com.midroid.masarifi.bills.BillLogic.upcomingInMonth(bills, vm.today(), ym) }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
         item {
             val spent = exp.sumOf { it.amount }
             val b = bmap[0L] ?: 0L
             InfoCard(overallLabel) {
                 BudgetLine(spent, b, s, isCurrent, ym) { editing = 0L to overallLabel }
+            }
+            if (upcoming.isNotEmpty()) InfoCard("🧾 " + stringResource(R.string.bill_budget_card)) {
+                val due = upcoming.sumOf { it.amount }
+                Text(stringResource(R.string.bill_budget_line, Fmt.money(due, s), upcoming.size), fontSize = 14.sp)
+                val projected = spent + due
+                Text(
+                    stringResource(R.string.bill_budget_projected, Fmt.money(projected, s)) + if (b > 0) " / ${Fmt.money(b, s)}" else "",
+                    fontSize = 12.sp, color = if (b > 0 && projected > b) c.expense else c.muted,
+                )
+                if (b > 0) { Spacer(Modifier.height(6.dp)); ProgressBar(projected.toDouble() / b) }
+                Spacer(Modifier.height(6.dp))
+                upcoming.take(5).forEach { o ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                        Text(o.bill.name + " • " + com.midroid.masarifi.ui.bills.dateLabel(o.date, s.arabic), Modifier.weight(1f), fontSize = 12.sp, color = c.muted, maxLines = 1)
+                        Text(Fmt.money(o.amount, s), fontSize = 12.sp)
+                    }
+                }
             }
             Text(stringResource(R.string.budget_hint), fontSize = 12.sp, color = c.muted, modifier = Modifier.padding(8.dp))
         }

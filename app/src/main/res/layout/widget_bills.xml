@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="12dp" android:background="@drawable/widget_bg" android:layoutDirection="locale">
+    <TextView android:id="@+id/w_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="#F25C54" android:textSize="14sp" android:textStyle="bold" android:text="@string/widget_title" />
+    <LinearLayout android:id="@+id/w_row1" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingTop="6dp">
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+            <TextView android:id="@+id/w_name1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ECECEE" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" />
+            <TextView android:id="@+id/w_when1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#8E8F95" android:textSize="11sp" />
+        </LinearLayout>
+        <TextView android:id="@+id/w_amount1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ECECEE" android:textSize="13sp" android:textStyle="bold" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/w_row2" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingTop="6dp">
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+            <TextView android:id="@+id/w_name2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ECECEE" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" />
+            <TextView android:id="@+id/w_when2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#8E8F95" android:textSize="11sp" />
+        </LinearLayout>
+        <TextView android:id="@+id/w_amount2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ECECEE" android:textSize="13sp" android:textStyle="bold" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/w_row3" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingTop="6dp">
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+            <TextView android:id="@+id/w_name3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ECECEE" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" />
+            <TextView android:id="@+id/w_when3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#8E8F95" android:textSize="11sp" />
+        </LinearLayout>
+        <TextView android:id="@+id/w_amount3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#ECECEE" android:textSize="13sp" android:textStyle="bold" />
+    </LinearLayout>
+    <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+    <TextView android:id="@+id/w_total" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#F25C54" android:textSize="12sp" />
+</LinearLayout>

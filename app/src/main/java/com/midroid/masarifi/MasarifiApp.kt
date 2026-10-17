@@ -42,7 +42,7 @@ class MasarifiApp : Application() {
         // Debounced automatic backup after data changes (only active when a backup folder is set and enabled).
         runCatching {
             AppDatabase.get(this).invalidationTracker.addObserver(object : InvalidationTracker.Observer(
-                arrayOf("transactions", "accounts", "categories", "budgets", "recurring", "merchant_rules", "sms_links", "sync_tombstones"),
+                arrayOf("transactions", "accounts", "categories", "budgets", "recurring", "merchant_rules", "sms_links", "sync_tombstones", "bills", "bill_payments"),
             ) {
                 override fun onInvalidated(tables: Set<String>) {
                     BackupWorker.onDataChanged(this@MasarifiApp)
@@ -52,6 +52,7 @@ class MasarifiApp : Application() {
         }
         try {
             WorkScheduler.scheduleDaily(this)
+            WorkScheduler.scheduleBills(this)
             BackupWorker.schedule(this)
             com.midroid.masarifi.work.SyncWorker.schedule(this)
         } catch (e: IllegalStateException) {

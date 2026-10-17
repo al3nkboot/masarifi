@@ -59,7 +59,7 @@ object CategoryLinks {
         for (r in out.values.toList()) {
             if (r.deleted) continue
             when (r.kind) {
-                Kind.TXN, Kind.RECURRING, Kind.SMS_LINK, Kind.MERCHANT -> {
+                Kind.TXN, Kind.RECURRING, Kind.SMS_LINK, Kind.MERCHANT, Kind.BILL -> {
                     val ref = r.str("category") ?: continue
                     if (live(ref) && ref !in alias) continue
                     val to = resolve(ref, r) ?: continue

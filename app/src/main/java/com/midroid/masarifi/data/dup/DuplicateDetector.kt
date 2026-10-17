@@ -41,10 +41,16 @@ object DuplicateDetector {
     private fun dist(a: Long, b: Long) = abs(a - b)
 
     /** Matching rule for an incoming SMS (type, amount in base-currency thousandths, time). Transfers never match. */
-    fun matchSms(type: Int, amount: Long, time: Long, existing: List<Txn>, windowHours: Int): SmsMatch {
+    fun matchSms(type: Int, amount: Long, time: Long, existing: List<Txn>, windowHours: Int, billTxnIds: Set<Long> = emptySet()): SmsMatch {
         if (type == TxnType.TRANSFER || amount <= 0) return SmsMatch.None
         val pool = existing.filter { !isSms(it) && it.type == type && it.amount == amount }
         val strong = pool.filter { dist(it.dateTime, time) <= windowHours * HOUR }.sortedBy { dist(it.dateTime, time) }
+        // A bill marked «تم الدفع» is matched by the bank SMS of that payment over the whole weak window (banks often
+        // debit days before / after): a single bill payment with no other manual candidate is merged (no double count,
+        // undo = split); otherwise the SMS is flagged so the duplicates screen offers the merge.
+        val bill = pool.filter { it.id in billTxnIds && dist(it.dateTime, time) <= WEAK_WINDOW }
+        if (bill.size == 1 && strong.none { it.id !in billTxnIds }) return SmsMatch.Link(bill.first())
+        if (bill.isNotEmpty()) return SmsMatch.Flag((strong + bill).distinct().sortedBy { dist(it.dateTime, time) }, strong = true)
         if (strong.size == 1) return SmsMatch.Link(strong.first())
         if (strong.size > 1) return SmsMatch.Flag(strong, strong = true)
         val weak = pool.filter { dist(it.dateTime, time) <= WEAK_WINDOW }.sortedBy { dist(it.dateTime, time) }
@@ -73,7 +79,7 @@ object DuplicateDetector {
      *  - pairs flagged at SMS time ([Txn.possibleDupOf]).
      * Pairs the user dismissed ("keep both") are skipped. Overlapping pairs are joined into groups.
      */
-    fun scan(txns: List<Txn>, windowHours: Int, dismissed: Set<String>): List<DupGroup> {
+    fun scan(txns: List<Txn>, windowHours: Int, dismissed: Set<String>, billTxnIds: Set<Long> = emptySet()): List<DupGroup> {
         val byId = txns.associateBy { it.id }
         val pairs = LinkedHashMap<String, Pair<Long, Long>>()
         val smsPairs = HashSet<String>()
@@ -97,6 +103,13 @@ object DuplicateDetector {
                     if (exactSame(a, b)) add(a.id, b.id, sms = false)
                     j++
                 }
+            }
+        }
+        // bill payments vs bank SMS of the same amount within the weak window (see [matchSms])
+        if (billTxnIds.isNotEmpty()) {
+            val bills = txns.filter { it.id in billTxnIds && !isSms(it) && it.type != TxnType.TRANSFER }
+            for (b in bills) for (o in txns) {
+                if (o.id != b.id && isSms(o) && o.type == b.type && o.amount == b.amount && dist(o.dateTime, b.dateTime) <= WEAK_WINDOW) add(b.id, o.id, sms = true)
             }
         }
         for (t in txns) {

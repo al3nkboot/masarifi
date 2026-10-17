@@ -81,6 +81,7 @@ object SyncMerge {
                 val ref = when (rec.kind) {
                     Kind.TXN, Kind.RECURRING -> rec.str("account")
                     Kind.SMS_LINK -> rec.str("txn")
+                    Kind.BILL_PAY -> rec.str("bill")
                     else -> continue
                 }
                 if (gone(ref)) out[rec.uuid] = rec.tombstone(maxOf(rec.updatedAt, refTs(ref)))

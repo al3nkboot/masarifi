@@ -98,5 +98,30 @@ object Migrations {
         }
     }
 
-    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+    const val CREATE_BILLS = "CREATE TABLE IF NOT EXISTS `bills` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `amount` INTEGER NOT NULL, " +
+        "`categoryId` INTEGER, `accountId` INTEGER, `recurrence` TEXT NOT NULL, `recurInterval` INTEGER NOT NULL, `anchorDay` INTEGER NOT NULL, " +
+        "`nextDue` INTEGER NOT NULL, `reminderDays` INTEGER NOT NULL, `notes` TEXT NOT NULL, `active` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, " +
+        "`uuid` TEXT NOT NULL DEFAULT '', `updatedAt` INTEGER NOT NULL DEFAULT 0)"
+    const val CREATE_BILL_PAYMENTS = "CREATE TABLE IF NOT EXISTS `bill_payments` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `billId` INTEGER NOT NULL, " +
+        "`amount` INTEGER NOT NULL, `dueDate` INTEGER NOT NULL, `paidAt` INTEGER NOT NULL, `txnUuid` TEXT, `ownTxn` INTEGER NOT NULL, " +
+        "`uuid` TEXT NOT NULL DEFAULT '', `updatedAt` INTEGER NOT NULL DEFAULT 0)"
+
+    /**
+     * 2.0.0 (v6) → 2.1.0 (v7): additive only. New `bills` + `bill_payments` tables (bills merged in from Mi5G Bills),
+     * their indices and sync triggers. No existing table or row is touched.
+     */
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(CREATE_BILLS)
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_bills_nextDue` ON `bills` (`nextDue`)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_bills_uuid` ON `bills` (`uuid`)")
+            db.execSQL(CREATE_BILL_PAYMENTS)
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_bill_payments_billId` ON `bill_payments` (`billId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_bill_payments_txnUuid` ON `bill_payments` (`txnUuid`)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_bill_payments_uuid` ON `bill_payments` (`uuid`)")
+            SyncSchema.createBillTriggers(db)
+        }
+    }
+
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 }

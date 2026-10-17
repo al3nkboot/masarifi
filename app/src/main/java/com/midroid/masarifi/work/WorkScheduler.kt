@@ -22,6 +22,17 @@ object WorkScheduler {
         WorkManager.getInstance(context).enqueueUniquePeriodicWork("daily_check", ExistingPeriodicWorkPolicy.KEEP, req)
     }
 
+    /** Bill reminders («الفواتير»): once a day at 09:00 local time. */
+    fun scheduleBills(context: Context) {
+        val now = LocalDateTime.now()
+        var target = now.toLocalDate().atTime(9, 0)
+        if (!target.isAfter(now)) target = target.plusDays(1)
+        val req = PeriodicWorkRequestBuilder<BillReminderWorker>(1, TimeUnit.DAYS)
+            .setInitialDelay(Duration.between(now, target).toMinutes(), TimeUnit.MINUTES)
+            .build()
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork("bill_reminders", ExistingPeriodicWorkPolicy.KEEP, req)
+    }
+
     /** Re-evaluate budgets shortly after expenses change (debounced by REPLACE). */
     fun checkSoon(context: Context) = runCatching {
         val req = OneTimeWorkRequestBuilder<DailyCheckWorker>()

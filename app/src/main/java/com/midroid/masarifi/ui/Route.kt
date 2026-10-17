@@ -16,4 +16,5 @@ sealed interface Route {
     data object Sync : Route
     data object Repair : Route
     data object Summary : Route
+    data class BillEdit(val billId: Long? = null) : Route
 }

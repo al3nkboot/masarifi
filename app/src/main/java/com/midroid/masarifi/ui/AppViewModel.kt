@@ -95,6 +95,58 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     val month = MutableStateFlow(YearMonth.now())
 
+    // ---------------- bills («الفواتير», 2.1.0) ----------------
+
+    /** Set by the widget / a bill notification: switch to the bills tab. */
+    val openBills = MutableStateFlow(false)
+
+    val bills: StateFlow<List<com.midroid.masarifi.bills.Bill>> = repo.billDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val billPayments: StateFlow<List<com.midroid.masarifi.bills.BillPayment>> = repo.billDao.observePayments().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** "Today" for bill states (overridable by screenshot tests). */
+    var todayOverride: java.time.LocalDate? = null
+    fun today(): java.time.LocalDate = todayOverride ?: java.time.LocalDate.now()
+
+    data class BillUndo(val message: String, val result: com.midroid.masarifi.bills.PayResult)
+    private val _billUndo = MutableSharedFlow<BillUndo>(extraBufferCapacity = 4)
+    val billUndo: SharedFlow<BillUndo> = _billUndo
+
+    private fun billsChanged() { com.midroid.masarifi.widget.BillsWidget.refresh(getApplication()) }
+
+    fun saveBill(b: com.midroid.masarifi.bills.Bill) = viewModelScope.launch(Dispatchers.IO) { repo.bills.save(b); billsChanged() }
+    fun deleteBill(b: com.midroid.masarifi.bills.Bill) = viewModelScope.launch(Dispatchers.IO) { repo.bills.delete(b.id); billsChanged() }
+    suspend fun billSmsMatches(amount: Long): List<Txn> = withContext(Dispatchers.IO) { repo.bills.smsMatches(amount, System.currentTimeMillis()) }
+
+    fun payBill(b: com.midroid.masarifi.bills.Bill, amount: Long, accountId: Long, categoryId: Long?, linkTxnId: Long?) = viewModelScope.launch(Dispatchers.IO) {
+        val r = repo.bills.pay(b.id, amount, accountId, categoryId, System.currentTimeMillis(), linkTxnId) ?: return@launch
+        val res = com.midroid.masarifi.work.LocalizedRes.of(getApplication(), settings.value.arabic)
+        val msg = when {
+            !r.createdTxn -> res.getString(com.midroid.masarifi.R.string.bill_paid_merged, b.name)
+            r.flaggedDup -> res.getString(com.midroid.masarifi.R.string.bill_paid_flagged, b.name)
+            else -> res.getString(com.midroid.masarifi.R.string.bill_paid_done, b.name)
+        }
+        _billUndo.tryEmit(BillUndo(msg, r))
+        billsChanged()
+    }
+
+    fun undoBillPayment(r: com.midroid.masarifi.bills.PayResult) = viewModelScope.launch(Dispatchers.IO) { repo.bills.undoPay(r); billsChanged() }
+    fun deleteBillPayment(p: com.midroid.masarifi.bills.BillPayment) = viewModelScope.launch(Dispatchers.IO) { repo.bills.deletePayment(p.id); billsChanged() }
+
+    fun importMi5g(uri: Uri) = viewModelScope.launch(Dispatchers.IO) {
+        val res = com.midroid.masarifi.work.LocalizedRes.of(getApplication(), settings.value.arabic)
+        val msg = try {
+            val text = BackupService.readFrom(getApplication<Application>().contentResolver, uri)
+            val r = repo.bills.importMi5g(text, settings.value.currency)
+            res.getString(com.midroid.masarifi.R.string.bill_import_done, r.first, r.second)
+        } catch (e: com.midroid.masarifi.bills.Mi5gImportException) {
+            res.getString(if (e.code == "encrypted") com.midroid.masarifi.R.string.bill_import_encrypted else com.midroid.masarifi.R.string.bill_import_invalid)
+        } catch (e: Exception) {
+            res.getString(com.midroid.masarifi.R.string.bill_import_invalid)
+        }
+        message(msg)
+        billsChanged()
+    }
+
     /** Day selected in the calendar view (used as default date when adding). */
     /** True while a transaction list is in multi-select mode (hides the add FAB). */
     var selectionActive by androidx.compose.runtime.mutableStateOf(false)
@@ -440,8 +492,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     val dismissedPairs: StateFlow<List<String>> = repo.dupDao.observeDismissed().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    val dupGroups: StateFlow<List<DupGroup>> = combine(txns, dismissedPairs, settings) { t, d, s ->
-        DuplicateDetector.scan(t, s.dupWindowHours, d.toHashSet())
+    val dupGroups: StateFlow<List<DupGroup>> = combine(txns, dismissedPairs, settings, billPayments) { t, d, s, p ->
+        val billUuids = p.mapNotNull { it.txnUuid }.toHashSet()
+        DuplicateDetector.scan(t, s.dupWindowHours, d.toHashSet(), t.filter { it.uuid in billUuids }.map { it.id }.toHashSet())
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Existing transactions that look like [draft] (same type + amount within the window). */
