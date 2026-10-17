@@ -60,11 +60,12 @@ class Screenshots210Test {
     /** With a text field in a dialog the cursor blinks forever: drive the clock by hand until [t] shows. */
     private fun advanceUntil(t: String) {
         repeat(300) {
-            rule.mainClock.advanceTimeBy(100)
+            rule.mainClock.advanceTimeBy(100); rule.runOnIdle { }; org.robolectric.shadows.ShadowLooper.idleMainLooper()
             if (rule.onAllNodesWithText(t, substring = true).fetchSemanticsNodes().isNotEmpty()) return
             Thread.sleep(50)
         }
-        error("not shown: $t")
+        val m = runBlocking { rule.activity.app.repository.bills.smsMatches(25_000, System.currentTimeMillis()) }
+        error("not shown: $t; matches=${m.map { it.id }} titles=${rule.onAllNodesWithText("دفع", substring = true).fetchSemanticsNodes().map { it.config.toString().take(80) }}")
     }
     private fun back() { rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }; rule.waitForIdle() }
     private fun waitText(t: String) = rule.waitUntil(5_000) { rule.onAllNodesWithText(t, substring = true).fetchSemanticsNodes().isNotEmpty() }
@@ -96,9 +97,13 @@ class Screenshots210Test {
         rule.onAllNodesWithText("الفواتير").onFirst().performClick()
         waitText("عمانتل فايبر")
         shot("01_bills_list")
-        rule.mainClock.autoAdvance = false
         rule.onAllNodesWithText("تم الدفع").onFirst().performClick()
-        advanceUntil("دمج مع")
+        repeat(200) {
+            if (rule.onAllNodesWithText("دمج مع", substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()) return@repeat
+            org.robolectric.shadows.ShadowLooper.idleMainLooper(16, java.util.concurrent.TimeUnit.MILLISECONDS); Thread.sleep(30); rule.waitForIdle()
+        }
+        check(rule.onAllNodesWithText("دمج مع", substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()) { "merge offer not shown" }
+        rule.mainClock.autoAdvance = false
         rule.mainClock.advanceTimeBy(600)
         shotWithDialog("02_pay_dialog_merge_offer")
         // dialog confirm is the last «تم الدفع»

@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -224,13 +225,15 @@ fun PayBillDialog(vm: AppViewModel, b: Bill, onDismiss: () -> Unit) {
     var editAmount by remember { mutableStateOf(false) }
     var accId by remember { mutableStateOf(b.accountId?.takeIf { id -> accs.any { it.id == id } } ?: accs.firstOrNull()?.id) }
     var catId by remember { mutableStateOf(b.categoryId) }
-    var matches by remember { mutableStateOf<List<Txn>>(emptyList()) }
     var linkTo by remember { mutableStateOf<Long?>(null) }
     val parsed: Long? = amountMilli
-    LaunchedEffect(parsed) {
-        matches = if (parsed != null && parsed > 0) vm.billSmsMatches(parsed) else emptyList()
-        linkTo = matches.firstOrNull()?.id
+    // looked up before the dialog appears so it opens at its final size (no jump when the SMS offer arrives)
+    val loaded by produceState<List<Txn>?>(null, parsed) {
+        val m = if (parsed != null && parsed > 0) vm.billSmsMatches(parsed) else emptyList()
+        linkTo = m.firstOrNull()?.id
+        value = m
     }
+    val matches = loaded ?: return
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.bill_pay_title, b.name)) },
