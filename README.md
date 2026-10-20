@@ -4,7 +4,7 @@
 
 # مصاريفي · Masarifi
 
-**مصاريفك تتسجّل بروحها من رسائل البنك. بالريال العُماني، وبياناتك تظل في تلفونك.**
+**تطبيق لإدارة مصاريفك: إدخال يدوي، ميزانيات، تحليل، فواتير ونسخ احتياطي، وبياناتك تظل في تلفونك. ومع البنوك العُمانية تتسجّل مصاريفك بروحها من رسائل البنك.**
 
 [![أحدث إصدار](https://img.shields.io/github/v/release/al3nkboot/masarifi?label=%D8%A7%D9%84%D8%A5%D8%B5%D8%AF%D8%A7%D8%B1&color=F25C54)](https://github.com/al3nkboot/masarifi/releases)
 [![نسخة تجريبية](https://img.shields.io/github/v/release/al3nkboot/masarifi?include_prereleases&label=beta&color=4A90E2)](https://github.com/al3nkboot/masarifi/releases)
@@ -26,10 +26,10 @@
 
 ## المزايا
 
-تطبيق أندرويد لإدارة المصاريف على طريقة Money Manager، بثيم داكن وواجهة عربية (والإنجليزية متوفرة)، والعملة الافتراضية الريال العُماني بثلاث خانات عشرية.
+تطبيق أندرويد لإدارة المصاريف على طريقة Money Manager، بثيم داكن وواجهة عربية (والإنجليزية متوفرة). تسجّل عملياتك يدويًا أو تلقائيًا من رسائل البنك. عملة واحدة للتطبيق تختارها من الإعدادات: الريال العُماني (الافتراضي)، الدرهم الإماراتي، الريال السعودي، الدينار الكويتي، الدينار البحريني، الريال القطري، الدولار، اليورو، أو الروبية الهندية. لا يدعم حاليًا عدة عملات في نفس الوقت.
 
-### 📩 تسجيل تلقائي من رسائل البنك
-- يقرأ رسائل SMS من البنوك العُمانية ويحوّلها إلى عمليات، مع قواعد قابلة للتعديل.
+### 📩 تسجيل تلقائي من رسائل البنك (البنوك العُمانية حاليًا)
+- يقرأ رسائل SMS من البنوك العُمانية فقط حاليًا ويحوّلها إلى عمليات، مع قواعد قابلة للتعديل.
 - يربط كل بطاقة بحسابها (البنك + آخر 4 أرقام).
 - يدمج الرسالتين المكررتين لنفس العملية، ويسجّل التحويل بين حساباتك عملية تحويل واحدة، والسحب من الصراف تحويلًا إلى النقد.
 - أداة «إصلاح العمليات التلقائية» لمراجعة العمليات القديمة وتصحيحها مع إمكانية التراجع.
@@ -62,7 +62,7 @@
 | بنك ظفار (وميسرة) | قواعد مخصصة للرسائل العربية: الخصم والإيداع |
 | البنك الوطني العماني، صحار الدولي، بنك عمان العربي، HSBC عُمان، البنك الأهلي، بنك نزوى، العز الإسلامي | يتعرّف على المرسل ويطبّق القواعد العامة. لم تُختبر على رسائل حقيقية بعد |
 
-بنكك مو في القائمة أو رسائله ما تنقرأ صح؟ شوف قسم [ساهم](#ساهم).
+التسجيل التلقائي يدعم حاليًا البنوك العُمانية فقط. بنكك من دولة ثانية، أو مو في القائمة، أو رسائله ما تنقرأ صح؟ شوف قسم [ساهم](#ساهم). باقي مزايا التطبيق تشتغل بدون رسائل البنك.
 
 ## الخصوصية
 
@@ -81,7 +81,7 @@
 
 ## ساهم
 
-أكبر مساعدة: **عيّنات من رسائل بنكك** حتى نضيف بنوك أكثر. افتح [Issue جديد](https://github.com/al3nkboot/masarifi/issues/new?template=bank-sms.md) والصق نص الرسالة كما هو، بعد **إخفاء** رقم البطاقة والحساب والرصيد والأسماء (مثلًا `XXXX1234` ← `XXXX0000`).
+أكبر مساعدة: **عيّنات من رسائل بنكك** حتى نضيف بنوك أكثر، من عُمان أو من أي دولة ثانية. افتح [Issue جديد](https://github.com/al3nkboot/masarifi/issues/new?template=bank-sms.md) والصق نص الرسالة كما هو، بعد **إخفاء** رقم البطاقة والحساب والرصيد والأسماء (مثلًا `XXXX1234` ← `XXXX0000`).
 
 البلاغات والاقتراحات مرحّب فيها كذلك.
 
@@ -105,7 +105,9 @@
 
 ## English
 
-**Masarifi** is an Android expense tracker in the style of Money Manager, with a dark theme and the Omani Rial (OMR) as the default currency. Arabic is the default language and English is available. It logs spending automatically from Omani bank SMS (Bank Muscat, Bank Dhofar, Thawani/Mojab card).
+**Masarifi** is an Android expense tracker in the style of Money Manager, with a dark theme. Arabic is the default language and English is available. Add transactions manually, or have them logged automatically from bank SMS. The app uses one currency, chosen in Settings: OMR (default), AED, SAR, KWD, BHD, QAR, USD, EUR or INR. Multiple currencies at once are not supported.
+
+**Automatic SMS logging currently supports Omani banks only:** dedicated rules for Bank Muscat, Bank Dhofar and Thawani/Mojab card; other Omani banks use generic rules that haven't been tested on real messages yet. Every other feature works without bank SMS.
 
 - Budgets with 80%/100% alerts, charts, a financial summary and spending tips.
 - Duplicate detection between manual entries and SMS, multi-select delete with undo, recurring transactions, and import from Money Manager.
@@ -114,5 +116,5 @@
 - **Privacy:** there's no server and no ads. The app doesn't even request the `INTERNET` permission. Your data stays on your phone and in your own Drive.
 
 **[Download the APK from Releases](https://github.com/al3nkboot/masarifi/releases)** (Android 8.0+). Play Protect may warn you because the app reads SMS. Tap *More details → Install anyway*.
-If your bank isn't supported, [open an issue](https://github.com/al3nkboot/masarifi/issues/new?template=bank-sms.md) with a **masked** sample SMS.
+If your bank (from any country) isn't supported, [open an issue](https://github.com/al3nkboot/masarifi/issues/new?template=bank-sms.md) with a **masked** sample SMS.
 Technical docs: [docs/README.en.md](docs/README.en.md). © All rights reserved. No open-source license has been granted.
