@@ -95,6 +95,9 @@ data class BankProfile(
     /** Words in the body that identify the bank when the sender is unknown. */
     val bodyNames: List<String> = emptyList(),
     val rules: List<SmsRule> = emptyList(),
+    /** Extra bank-specific debit/credit words for the keyword heuristic (added to the global lists). */
+    val debitKeywords: List<String> = emptyList(),
+    val creditKeywords: List<String> = emptyList(),
     /** Name of auto-created accounts (default: bank name), e.g. "ثواني – بطاقة موجب" → "ثواني – بطاقة موجب ••5501". */
     val accountNameAr: String? = null,
     val accountNameEn: String? = null,

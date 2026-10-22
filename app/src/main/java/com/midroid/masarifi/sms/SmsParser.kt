@@ -174,7 +174,7 @@ class SmsParser(private val config: SmsParserConfig = DefaultSmsConfig.config())
     }
 
     private fun heuristic(body: String, bank: BankProfile?): ParsedSms? {
-        val type = detectType(body) ?: return null
+        val type = detectType(body, bank) ?: return null
         val amt = findAmount(body) ?: return null
         return ParsedSms(
             type = type, amount = amt.first, currency = amt.second,
@@ -184,12 +184,12 @@ class SmsParser(private val config: SmsParserConfig = DefaultSmsConfig.config())
     }
 
     /** Earliest debit/credit keyword wins. "debit card"/"credit card" are not direction words. */
-    fun detectType(body: String): SmsTxnType? {
+    fun detectType(body: String, bank: BankProfile? = null): SmsTxnType? {
         val text = body.lowercase()
             .replace(Regex("(debit|credit)\\s+card"), "card")
             .replace(Regex("بطاقة\\s+(?:ال)?(?:خصم|ائتمان|الائتمان|مدين)"), "بطاقة")
-        val d = firstIndex(text, config.debitKeywords)
-        val c = firstIndex(text, config.creditKeywords)
+        val d = firstIndex(text, config.debitKeywords + bank?.debitKeywords.orEmpty())
+        val c = firstIndex(text, config.creditKeywords + bank?.creditKeywords.orEmpty())
         return when {
             d < 0 && c < 0 -> null
             d < 0 -> SmsTxnType.CREDIT

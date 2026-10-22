@@ -86,6 +86,15 @@
 
 البلاغات والاقتراحات مرحّب فيها كذلك.
 
+### إضافة بنك (للمطوّرين)
+
+كل البنوك في جدول واحد: `banks` في [`DefaultSmsConfig.kt`](app/src/main/java/com/midroid/masarifi/sms/DefaultSmsConfig.kt). إضافة بنك = إضافة عنصر `BankProfile` واحد بدون كود جديد:
+- `senderIds` و`bodyNames`: اسم المرسل والكلمات التي تعرّف البنك في نص الرسالة.
+- `rules`: قواعد `SmsRule` (regex) بالرموز `{AMT}` `{CUR}` `{MERCHANT}` `{CARD}` `{DATE}` `{ANY}`، وكل قاعدة `DEBIT` أو `CREDIT`.
+- `debitKeywords` و`creditKeywords` (اختياري): كلمات خصم/إيداع إضافية خاصة بالبنك.
+
+اكتب القواعد من رسالة حقيقية مُخفاة فقط (من [قالب عيّنة رسالة بنك](.github/ISSUE_TEMPLATE/bank-sms.md))، وأضف لها اختبارًا في `BankTableTest.kt`.
+
 ## البناء من المصدر
 
 ```bash
@@ -118,4 +127,5 @@
 
 **[Download the APK from Releases](https://github.com/al3nkboot/masarifi/releases)** (Android 8.0+). Play Protect may warn you because the app reads SMS. Tap *More details → Install anyway*.
 If your bank (from any country) isn't supported, [open an issue](https://github.com/al3nkboot/masarifi/issues/new?template=bank-sms.md) with a **masked** sample SMS.
+To add a bank in code: add one `BankProfile` entry (sender IDs, `SmsRule` regexes using `{AMT}` `{CUR}` `{MERCHANT}` `{CARD}` `{DATE}`, optional debit/credit keywords) to `banks` in [`DefaultSmsConfig.kt`](app/src/main/java/com/midroid/masarifi/sms/DefaultSmsConfig.kt), based only on a real masked sample ([template](.github/ISSUE_TEMPLATE/bank-sms.md)), plus a test in `BankTableTest.kt`.
 Technical docs: [docs/README.en.md](docs/README.en.md). © All rights reserved. No open-source license has been granted.

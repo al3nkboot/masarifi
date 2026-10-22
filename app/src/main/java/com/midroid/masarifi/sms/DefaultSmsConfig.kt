@@ -6,6 +6,12 @@ import com.midroid.masarifi.sms.SmsTxnType.DEBIT
 /**
  * Default, editable configuration of known Omani bank sender IDs and regex rules.
  * Bank-specific rules are tried first, then generic rules, then a keyword heuristic.
+ *
+ * Adding a bank = adding one [BankProfile] entry to [banks] (no parser code):
+ *  - senderIds / bodyNames: how the bank is recognised;
+ *  - rules: [SmsRule] regexes using {AMT} {CUR} {MERCHANT} {CARD} {DATE} {ANY} (see [SmsPatterns.expand]), each DEBIT or CREDIT;
+ *  - debitKeywords / creditKeywords: optional extra words for the keyword heuristic.
+ * Only add rules for real (masked) SMS samples, with a test in BankTableTest.
  */
 object DefaultSmsConfig {
 
