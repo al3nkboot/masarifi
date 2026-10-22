@@ -70,6 +70,7 @@
 - بياناتك محفوظة في تلفونك فقط. النسخ الاحتياطي والمزامنة يكتبان ملفًا في **حسابك أنت** على Google Drive عن طريق منتقي الملفات في النظام، بدون تسجيل دخول داخل التطبيق.
 - الصلاحيات المطلوبة: قراءة واستقبال الرسائل (للتسجيل التلقائي)، والإشعارات (للتنبيهات والتذكيرات).
 - أرقام البطاقات التي تربطها في الإعدادات تُحفظ على الجهاز فقط.
+- التفاصيل: [سياسة الخصوصية](docs/privacy-policy.md).
 
 ## التثبيت
 
@@ -113,7 +114,7 @@
 - Duplicate detection between manual entries and SMS, multi-select delete with undo, recurring transactions, and import from Money Manager.
 - Automatic daily backup to your own Google Drive (keeps the last 10 copies), plus two-device sync through one shared Drive file.
 - **2.1 beta:** recurring bills with reminders, a "Paid" button that records the expense, a bills calendar and a home-screen widget.
-- **Privacy:** there's no server and no ads. The app doesn't even request the `INTERNET` permission. Your data stays on your phone and in your own Drive.
+- **Privacy:** there's no server and no ads. The app doesn't even request the `INTERNET` permission. Your data stays on your phone and in your own Drive. See the [privacy policy](docs/privacy-policy.md).
 
 **[Download the APK from Releases](https://github.com/al3nkboot/masarifi/releases)** (Android 8.0+). Play Protect may warn you because the app reads SMS. Tap *More details → Install anyway*.
 If your bank (from any country) isn't supported, [open an issue](https://github.com/al3nkboot/masarifi/issues/new?template=bank-sms.md) with a **masked** sample SMS.
