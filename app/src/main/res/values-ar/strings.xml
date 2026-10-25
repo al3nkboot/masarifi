@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="about">حول التطبيق</string>
+    <string name="support_paypal">دعم المطور عبر PayPal</string>
+    <string name="support_paypal_sub">paypal.me/Midroid5G · لدعم استمرار تطوير التطبيق مجاناً وبدون إعلانات</string>
+    <string name="developer_x">حساب المطور على X (@midroid5G)</string>
     <string name="account">الحساب</string>
     <string name="accounts_summary">الحسابات</string>
     <string name="add">إضافة</string>

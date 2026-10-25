@@ -9,6 +9,8 @@
 [![أحدث إصدار](https://img.shields.io/github/v/release/al3nkboot/masarifi?label=%D8%A7%D9%84%D8%A5%D8%B5%D8%AF%D8%A7%D8%B1&color=F25C54)](https://github.com/al3nkboot/masarifi/releases)
 [![نسخة تجريبية](https://img.shields.io/github/v/release/al3nkboot/masarifi?include_prereleases&label=beta&color=4A90E2)](https://github.com/al3nkboot/masarifi/releases)
 ![Android 8+](https://img.shields.io/badge/Android-8.0%2B-3DBE7A)
+[![PayPal Support](https://img.shields.io/badge/PayPal-Midroid5G-00457C?logo=paypal&logoColor=white)](https://paypal.me/Midroid5G)
+[![X @midroid5G](https://img.shields.io/badge/X-%40midroid5G-000000?logo=x&logoColor=white)](https://x.com/midroid5G)
 
 ### [⬇️ تحميل التطبيق (APK)](https://github.com/al3nkboot/masarifi/releases)
 
@@ -103,6 +105,13 @@
 ```
 يتطلب Android SDK و JDK 17. التفاصيل التقنية بالإنجليزية في [`docs/README.en.md`](docs/README.en.md).
 
+## 💙 دعم استمرارية تطوير التطبيق
+
+إذا أعجبك التطبيق واستفدت منه، يمكنك دعم المطور **أحمد الأسد (`@midroid5G`)** للمساهمة في استمرار تطوير التطبيق وتحديثه مجانًا وبدون إعلانات:
+
+- **PayPal:** [**paypal.me/Midroid5G**](https://paypal.me/Midroid5G) (`@Midroid5G`)
+- **حساب X (تويتر):** [**@midroid5G**](https://x.com/midroid5G)
+
 ## الحقوق
 
 من تطوير [@midroid5G](https://x.com/midroid5G). مبني بـ Kotlin و Jetpack Compose و Material 3 و Room و WorkManager.
@@ -128,4 +137,6 @@
 **[Download the APK from Releases](https://github.com/al3nkboot/masarifi/releases)** (Android 8.0+). Play Protect may warn you because the app reads SMS. Tap *More details → Install anyway*.
 If your bank (from any country) isn't supported, [open an issue](https://github.com/al3nkboot/masarifi/issues/new?template=bank-sms.md) with a **masked** sample SMS.
 To add a bank in code: add one `BankProfile` entry (sender IDs, `SmsRule` regexes using `{AMT}` `{CUR}` `{MERCHANT}` `{CARD}` `{DATE}`, optional debit/credit keywords) to `banks` in [`DefaultSmsConfig.kt`](app/src/main/java/com/midroid/masarifi/sms/DefaultSmsConfig.kt), based only on a real masked sample ([template](.github/ISSUE_TEMPLATE/bank-sms.md)), plus a test in `BankTableTest.kt`.
+- **Support development:** [**PayPal (@Midroid5G)**](https://paypal.me/Midroid5G) · [**@midroid5G on X**](https://x.com/midroid5G)
+
 Technical docs: [docs/README.en.md](docs/README.en.md). © All rights reserved. No open-source license has been granted.

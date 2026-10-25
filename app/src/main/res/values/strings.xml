@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="about">About</string>
+    <string name="support_paypal">Support on PayPal (@Midroid5G)</string>
+    <string name="support_paypal_sub">paypal.me/Midroid5G · Support free, ad-free development</string>
+    <string name="developer_x">Developer on X (@midroid5G)</string>
     <string name="account">Account</string>
     <string name="accounts_summary">Accounts</string>
     <string name="add">Add</string>

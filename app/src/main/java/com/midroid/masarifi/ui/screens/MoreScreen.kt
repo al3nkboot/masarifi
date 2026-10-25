@@ -94,6 +94,26 @@ fun MoreScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier, 
 
         SectionTitle(stringResource(R.string.about))
         SettingRow(Icons.Filled.Info, stringResource(R.string.app_name), "${stringResource(R.string.version)} ${BuildConfigInfo.versionName(ctx)} • com.midroid.masarifi")
+        SettingRow(
+            AppIcons.Money,
+            stringResource(R.string.support_paypal),
+            stringResource(R.string.support_paypal_sub),
+            onClick = {
+                runCatching {
+                    ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://paypal.me/Midroid5G")))
+                }
+            },
+        )
+        SettingRow(
+            Icons.Filled.Info,
+            stringResource(R.string.developer_x),
+            "x.com/midroid5G",
+            onClick = {
+                runCatching {
+                    ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://x.com/midroid5G")))
+                }
+            },
+        )
         HorizontalDivider(color = AppTheme.colors.divider)
         androidx.compose.foundation.layout.Spacer(Modifier.padding(24.dp))
     }
