@@ -136,15 +136,11 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
             IconButton(onClick = { navigate(Route.Search) }) { Icon(Icons.Filled.Search, stringResource(R.string.search)) }
         }
         if (dupGroups.isNotEmpty() && !sel.active) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.xs)
-                    .background(AppTheme.colors.warning.copy(alpha = 0.16f), MaterialTheme.shapes.medium)
-                    .clickable { navigate(Route.Duplicates) }.padding(horizontal = Spacing.md, vertical = Spacing.sm),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(com.midroid.masarifi.ui.components.AppIcons.Copy, null, tint = AppTheme.colors.warning, modifier = Modifier.padding(end = Spacing.sm))
-                Text(stringResource(R.string.dup_banner, dupGroups.size.toString()), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-            }
+            com.midroid.masarifi.ui.components.InfoStrip(
+                text = stringResource(R.string.dup_banner, dupGroups.size.toString()), icon = com.midroid.masarifi.ui.components.AppIcons.Copy,
+                tint = AppTheme.colors.warning, container = AppTheme.colors.warning.copy(alpha = 0.14f),
+                onClick = { navigate(Route.Duplicates) },
+            )
         }
         MonthSwitcher(
             label = if (isYearTab) ym.year.toString() else Fmt.monthTitle(ym, s.arabic),
@@ -188,7 +184,7 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
 fun DailyList(txns: List<Txn>, labels: Labels, s: AppSettings, navigate: (Route) -> Unit, sel: TxnSelection? = null) {
     if (txns.isEmpty()) { EmptyState(stringResource(R.string.empty_month)); return }
     val groups = remember(txns) { txns.groupBy { Fmt.toDate(it.dateTime) }.toSortedMap(compareByDescending { it }) }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = Spacing.fabClearance)) {
+    LazyColumn(Modifier.fillMaxSize(), state = com.midroid.masarifi.ui.components.rememberFabAwareListState(), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = Spacing.fabClearance)) {
         groups.forEach { (date, list) ->
             stickyHeader(key = "h$date") {
                 DayHeader(date, list, s, onClick = if (sel?.active == true) { { sel.toggleAll(list.map { it.id }) } } else null)
@@ -250,7 +246,7 @@ fun CalendarView(vm: AppViewModel, ym: YearMonth, txns: List<Txn>, labels: Label
     val rows = (cells + 6) / 7
     val today = LocalDate.now()
 
-    LazyColumn(Modifier.fillMaxSize()) {
+    LazyColumn(Modifier.fillMaxSize(), state = com.midroid.masarifi.ui.components.rememberFabAwareListState()) {
         item {
             Row(Modifier.fillMaxWidth()) {
                 days.forEach { d ->

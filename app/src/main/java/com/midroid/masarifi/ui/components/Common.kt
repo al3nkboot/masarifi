@@ -1,6 +1,7 @@
 package com.midroid.masarifi.ui.components
 
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -74,21 +75,53 @@ fun MonthSwitcher(label: String, onPrev: () -> Unit, onNext: () -> Unit, modifie
 @Composable
 fun SummaryRow(income: Long, expense: Long, s: AppSettings) {
     val c = AppTheme.colors
+    SummaryCard(
+        listOf(
+            Triple(stringResource(R.string.income), Fmt.money(income, s, false), c.income),
+            Triple(stringResource(R.string.expenses), Fmt.money(expense, s, false), c.expense),
+            Triple(stringResource(R.string.total), Fmt.money(income - expense, s, false), MaterialTheme.colorScheme.onSurface),
+        ),
+        footer = if (s.arabic) s.currencyInfo.nameAr else s.currencyInfo.nameEn,
+    )
+}
+
+/** Tonal card with 2–3 labelled figures; used by Home, Search, Accounts, Bills. */
+@Composable
+fun SummaryCard(cells: List<Triple<String, String, Color>>, footer: String? = null, modifier: Modifier = Modifier) {
     androidx.compose.material3.Card(
-        Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+        modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.sm),
         shape = MaterialTheme.shapes.large,
         colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
-        Row(Modifier.fillMaxWidth().padding(vertical = Spacing.md, horizontal = Spacing.sm)) {
-            SummaryCell(stringResource(R.string.income), Fmt.money(income, s, false), c.income, Modifier.weight(1f))
-            SummaryCell(stringResource(R.string.expenses), Fmt.money(expense, s, false), c.expense, Modifier.weight(1f))
-            SummaryCell(stringResource(R.string.total), Fmt.money(income - expense, s, false), MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth().padding(top = Spacing.md, bottom = if (footer == null) Spacing.md else Spacing.xs, start = Spacing.sm, end = Spacing.sm)) {
+            cells.forEach { (title, value, color) -> SummaryCell(title, value, color, Modifier.weight(1f)) }
         }
-        Text(
-            s.currencyInfo.nameAr.takeIf { s.arabic } ?: s.currencyInfo.nameEn,
-            style = MaterialTheme.typography.labelSmall, color = AppTheme.colors.muted,
+        if (footer != null) Text(
+            footer, style = MaterialTheme.typography.labelSmall, color = AppTheme.colors.muted,
             modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.sm), textAlign = TextAlign.Center,
         )
+    }
+}
+
+/** Compact single-line info card with an optional action and close button. */
+@Composable
+fun InfoStrip(
+    text: String, icon: ImageVector?, tint: Color, container: Color,
+    onClick: (() -> Unit)? = null, action: String? = null, onDismiss: (() -> Unit)? = null,
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.xs)
+            .background(container, MaterialTheme.shapes.medium)
+            .let { if (onClick != null) it.clickable(onClick = onClick) else it }
+            .padding(start = Spacing.md, end = Spacing.xs).height(44.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon != null) { Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(Spacing.sm)) }
+        Text(text, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        if (action != null && onClick != null) TextButton(onClick = onClick) { Text(action) }
+        if (onDismiss != null) IconButton(onClick = onDismiss, modifier = Modifier.size(36.dp)) {
+            Icon(androidx.compose.material.icons.Icons.Filled.Close, stringResource(R.string.card_banner_dismiss), Modifier.size(18.dp))
+        }
     }
 }
 

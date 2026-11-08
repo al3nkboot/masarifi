@@ -104,13 +104,10 @@ fun BillsScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
         val overdue = month.filter { it.date.isBefore(today) }
         BillsSummaryCard(month.sumOf { it.amount }, month.size, overdue.sumOf { it.amount }, overdue.size, s)
         val tabs = listOf(R.string.bill_tab_list, R.string.bill_tab_calendar, R.string.bill_tab_history)
-        SecondaryTabRow(
-            selectedTabIndex = tab, containerColor = Color.Transparent,
-            indicator = { TabRowDefaults.SecondaryIndicator(Modifier.tabIndicatorOffset(tab), color = MaterialTheme.colorScheme.primary) },
-        ) {
+        androidx.compose.material3.PrimaryTabRow(selectedTabIndex = tab, containerColor = Color.Transparent, divider = { HorizontalDivider(color = AppTheme.colors.divider) }) {
             tabs.forEachIndexed { i, res ->
                 Tab(selected = tab == i, onClick = { tab = i }, text = { Text(stringResource(res), maxLines = 1) },
-                    selectedContentColor = MaterialTheme.colorScheme.onBackground, unselectedContentColor = AppTheme.colors.muted)
+                    selectedContentColor = MaterialTheme.colorScheme.primary, unselectedContentColor = AppTheme.colors.muted)
             }
         }
         when (tab) {
@@ -125,20 +122,13 @@ fun BillsScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
 @Composable
 private fun BillsSummaryCard(monthTotal: Long, monthCount: Int, overdue: Long, overdueCount: Int, s: AppSettings) {
     val c = AppTheme.colors
-    Card(colors = CardDefaults.cardColors(containerColor = c.card), modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
-        Row(Modifier.padding(14.dp)) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.bill_due_this_month), fontSize = 12.sp, color = c.muted)
-                Text(Fmt.money(monthTotal, s), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = c.expense)
-                Text(stringResource(R.string.bill_n_bills, monthCount), fontSize = 11.sp, color = c.muted)
-            }
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                Text(stringResource(R.string.bill_overdue), fontSize = 12.sp, color = c.muted)
-                Text(Fmt.money(overdue, s), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = if (overdueCount > 0) Brand.Coral else c.muted)
-                Text(stringResource(R.string.bill_n_bills, overdueCount), fontSize = 11.sp, color = c.muted)
-            }
-        }
-    }
+    com.midroid.masarifi.ui.components.SummaryCard(
+        listOf(
+            Triple(stringResource(R.string.bill_due_this_month) + " (" + monthCount + ")", Fmt.money(monthTotal, s, false), c.expense),
+            Triple(stringResource(R.string.bill_overdue) + " (" + overdueCount + ")", Fmt.money(overdue, s, false), if (overdueCount > 0) c.negative else c.muted),
+        ),
+        footer = if (s.arabic) s.currencyInfo.nameAr else s.currencyInfo.nameEn,
+    )
 }
 
 @Composable
@@ -146,9 +136,9 @@ fun stateLabel(b: Bill, today: LocalDate): Pair<String, Color> {
     val d = BillLogic.daysLeft(b, today)
     val c = AppTheme.colors
     return when (BillLogic.state(b, today)) {
-        BillState.OVERDUE -> stringResource(R.string.bill_overdue_days, -d) to Brand.Coral
-        BillState.DUE_TODAY -> stringResource(R.string.bill_due_today) to Brand.Orange
-        BillState.SOON -> stringResource(R.string.bill_in_days, d) to Brand.Orange
+        BillState.OVERDUE -> stringResource(R.string.bill_overdue_days, -d) to c.negative
+        BillState.DUE_TODAY -> stringResource(R.string.bill_due_today) to c.warning
+        BillState.SOON -> stringResource(R.string.bill_in_days, d) to c.warning
         BillState.UPCOMING -> stringResource(R.string.bill_in_days, d) to c.muted
         BillState.INACTIVE -> stringResource(R.string.bill_inactive) to c.muted
     }
@@ -159,7 +149,7 @@ private fun BillList(bills: List<Bill>, cats: List<Category>, s: AppSettings, to
     val groups = remember(bills, today) {
         bills.groupBy { BillLogic.state(it, today).let { st -> if (st == BillState.DUE_TODAY) BillState.SOON else st } }
     }
-    LazyColumn(Modifier.fillMaxSize()) {
+    LazyColumn(Modifier.fillMaxSize(), state = com.midroid.masarifi.ui.components.rememberFabAwareListState()) {
         if (bills.isEmpty()) item { EmptyState(stringResource(R.string.bill_empty)) }
         listOf(BillState.OVERDUE to R.string.bill_sec_overdue, BillState.SOON to R.string.bill_sec_soon, BillState.UPCOMING to R.string.bill_sec_upcoming, BillState.INACTIVE to R.string.bill_sec_inactive)
             .forEach { (st, title) ->
@@ -169,7 +159,7 @@ private fun BillList(bills: List<Bill>, cats: List<Category>, s: AppSettings, to
                     items(l, key = { it.id }) { b -> BillRow(b, cats.firstOrNull { it.id == b.categoryId }, s, today, { onOpen(b) }, { onPay(b) }) }
                 }
             }
-        item { Spacer(Modifier.height(88.dp)) }
+        item { Spacer(Modifier.height(com.midroid.masarifi.ui.theme.Spacing.fabClearance)) }
     }
 }
 
@@ -177,26 +167,30 @@ private fun BillList(bills: List<Bill>, cats: List<Category>, s: AppSettings, to
 fun BillRow(b: Bill, cat: Category?, s: AppSettings, today: LocalDate, onClick: () -> Unit, onPay: () -> Unit) {
     val c = AppTheme.colors
     val (label, color) = stateLabel(b, today)
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(40.dp).background(c.chip, CircleShape), contentAlignment = Alignment.Center) { Text(cat?.emoji ?: "🧾", fontSize = 18.sp) }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(b.name, fontSize = 16.sp, maxLines = 1)
-            Text(
-                (cat?.name(s.arabic)?.let { "$it • " } ?: "") + recurrenceLabel(b) + " • " + dateLabel(b.dueDate, s.arabic),
-                fontSize = 12.sp, color = c.muted, maxLines = 1,
-            )
-            Text(label, fontSize = 12.sp, color = color, fontWeight = FontWeight.Medium)
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(Fmt.money(b.amount, s), fontSize = 15.sp, color = c.expense, fontWeight = FontWeight.Medium)
-            if (b.active) Button(
-                onClick = onPay, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                modifier = Modifier.height(32.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White),
-            ) { Text(stringResource(R.string.bill_paid_btn), fontSize = 12.sp) }
-        }
-    }
-    HorizontalDivider(color = c.divider)
+    androidx.compose.material3.ListItem(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
+        leadingContent = { com.midroid.masarifi.ui.components.CategoryBadge(cat?.emoji ?: "🧾", color.takeIf { it != c.muted } ?: c.expense) },
+        headlineContent = { Text(b.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+        supportingContent = {
+            Column {
+                Text(
+                    (cat?.name(s.arabic)?.let { "$it • " } ?: "") + recurrenceLabel(b) + " • " + dateLabel(b.dueDate, s.arabic),
+                    style = MaterialTheme.typography.bodySmall, color = c.muted, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                Text(label, style = MaterialTheme.typography.labelMedium, color = color)
+            }
+        },
+        trailingContent = {
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(com.midroid.masarifi.ui.theme.Spacing.xs)) {
+                Text(Fmt.money(b.amount, s, false), style = com.midroid.masarifi.ui.theme.Amount, fontSize = 15.sp, color = c.expense, maxLines = 1)
+                if (b.active) androidx.compose.material3.FilledTonalButton(
+                    onClick = onPay, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                    modifier = Modifier.height(32.dp),
+                ) { Text(stringResource(R.string.bill_paid_btn), style = MaterialTheme.typography.labelMedium, maxLines = 1) }
+            }
+        },
+    )
 }
 
 fun dateLabel(d: LocalDate, ar: Boolean): String = d.format(DateTimeFormatter.ofPattern("d MMM yyyy", Fmt.locale(ar)))
@@ -209,7 +203,7 @@ private fun BillCalendar(bills: List<Bill>, payments: List<BillPayment>, s: AppS
     val items = remember(bills, payments, ym) { BillLogic.calendar(bills, payments, ym) }
     val first = if (s.weekStartsSaturday) DayOfWeek.SATURDAY else DayOfWeek.SUNDAY
     val cells = remember(ym, first) { BillLogic.monthGrid(ym, first) }
-    LazyColumn(Modifier.fillMaxSize()) {
+    LazyColumn(Modifier.fillMaxSize(), state = com.midroid.masarifi.ui.components.rememberFabAwareListState()) {
         item {
             MonthSwitcher(Fmt.monthTitle(ym, s.arabic), { ym = ym.minusMonths(1) }, { ym = ym.plusMonths(1) }, Modifier.fillMaxWidth(), onLabelClick = { ym = YearMonth.from(today) })
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
@@ -235,8 +229,8 @@ private fun BillCalendar(bills: List<Bill>, payments: List<BillPayment>, s: AppS
                                 ) {
                                     Text(d.dayOfMonth.toString(), fontSize = 13.sp)
                                     Row {
-                                        if (unpaid.isNotEmpty()) Dot(if (d.isBefore(today)) Brand.Coral else Brand.Orange)
-                                        if (list.any { it.paid }) Dot(Brand.Green)
+                                        if (unpaid.isNotEmpty()) Dot(if (d.isBefore(today)) c.negative else c.warning)
+                                        if (list.any { it.paid }) Dot(c.positive)
                                     }
                                 }
                             }
@@ -245,9 +239,9 @@ private fun BillCalendar(bills: List<Bill>, payments: List<BillPayment>, s: AppS
                 }
             }
             Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Dot(Brand.Orange); Text(" " + stringResource(R.string.bill_legend_due) + "   ", fontSize = 11.sp, color = c.muted)
-                Dot(Brand.Coral); Text(" " + stringResource(R.string.bill_overdue) + "   ", fontSize = 11.sp, color = c.muted)
-                Dot(Brand.Green); Text(" " + stringResource(R.string.bill_legend_paid), fontSize = 11.sp, color = c.muted)
+                Dot(c.warning); Text(" " + stringResource(R.string.bill_legend_due) + "   ", fontSize = 11.sp, color = c.muted)
+                Dot(c.negative); Text(" " + stringResource(R.string.bill_overdue) + "   ", fontSize = 11.sp, color = c.muted)
+                Dot(c.positive); Text(" " + stringResource(R.string.bill_legend_paid), fontSize = 11.sp, color = c.muted)
             }
             HorizontalDivider(color = c.divider)
             SectionTitle(dateLabel(sel, s.arabic))
@@ -257,14 +251,14 @@ private fun BillCalendar(bills: List<Bill>, payments: List<BillPayment>, s: AppS
         items(day, key = { "${it.bill.id}-${it.date}-${it.paid}" }) { o ->
             Row(Modifier.fillMaxWidth().clickable { onOpen(o.bill) }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(o.bill.name, Modifier.weight(1f))
-                Text(Fmt.money(o.amount, s), color = if (o.paid) Brand.Green else c.expense)
+                Text(Fmt.money(o.amount, s), color = if (o.paid) c.positive else c.expense)
                 Spacer(Modifier.width(8.dp))
-                if (o.paid) Text(stringResource(R.string.bill_legend_paid), fontSize = 12.sp, color = Brand.Green)
+                if (o.paid) Text(stringResource(R.string.bill_legend_paid), fontSize = 12.sp, color = c.positive)
                 else if (o.date == o.bill.dueDate && o.bill.active) TextButton(onClick = { onPay(o.bill) }) { Text(stringResource(R.string.bill_paid_btn)) }
             }
             HorizontalDivider(color = c.divider)
         }
-        item { Spacer(Modifier.height(88.dp)) }
+        item { Spacer(Modifier.height(com.midroid.masarifi.ui.theme.Spacing.fabClearance)) }
     }
 }
 
@@ -282,7 +276,7 @@ private fun PaymentHistory(vm: AppViewModel, bills: List<Bill>, payments: List<B
             item(key = "m$ym") { SectionTitle(Fmt.monthTitle(ym, s.arabic) + " • " + Fmt.money(list.sumOf { it.amount }, s)) }
             items(list, key = { it.id }) { p -> PaymentRow(p, byId[p.billId]?.name ?: "—", s) { deleting = p } }
         }
-        item { Spacer(Modifier.height(88.dp)) }
+        item { Spacer(Modifier.height(com.midroid.masarifi.ui.theme.Spacing.fabClearance)) }
     }
     deleting?.let { p ->
         ConfirmDialog(stringResource(R.string.delete), stringResource(R.string.bill_confirm_delete_payment), stringResource(R.string.delete), { vm.deleteBillPayment(p) }, { deleting = null })

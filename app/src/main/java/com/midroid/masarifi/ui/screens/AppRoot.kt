@@ -106,6 +106,9 @@ private fun HomeScaffold(vm: AppViewModel, navigate: (Route) -> Unit, snackbar: 
     val settings by vm.settings.collectAsStateWithLifecycle()
     val openBills by vm.openBills.collectAsStateWithLifecycle()
     LaunchedEffect(openBills) { if (openBills) { tab = 3; vm.openBills.value = false } }
+    val fabExpanded = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
+    LaunchedEffect(tab) { fabExpanded.value = true }
+    androidx.compose.runtime.CompositionLocalProvider(com.midroid.masarifi.ui.components.LocalFabExpanded provides fabExpanded) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
@@ -114,6 +117,7 @@ private fun HomeScaffold(vm: AppViewModel, navigate: (Route) -> Unit, snackbar: 
                     onClick = { if (tab == 3) navigate(Route.BillEdit()) else navigate(Route.Edit(date = vm.selectedDayForAdd())) },
                     icon = { Icon(Icons.Filled.Add, stringResource(R.string.add)) },
                     text = { Text(stringResource(R.string.add)) },
+                    expanded = fabExpanded.value,
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                 )
@@ -159,23 +163,15 @@ private fun HomeScaffold(vm: AppViewModel, navigate: (Route) -> Unit, snackbar: 
             }
         }
     }
+    }
 }
 
 /** One-time banner after the 1.5.0 upgrade when some SMS account has no card digits (dismiss = never shown again). */
 @Composable
 private fun CardSetupBanner(names: String, onOpen: () -> Unit, onDismiss: () -> Unit) {
-    androidx.compose.material3.Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = com.midroid.masarifi.ui.theme.Spacing.lg, vertical = com.midroid.masarifi.ui.theme.Spacing.sm),
-        shape = MaterialTheme.shapes.large,
-        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-    ) {
-        androidx.compose.foundation.layout.Row(Modifier.padding(start = 16.dp, top = 12.dp, end = 4.dp)) {
-            Text(stringResource(R.string.card_banner_text, names), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-            androidx.compose.material3.IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, stringResource(R.string.card_banner_dismiss)) }
-        }
-        androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = 8.dp)) {
-            androidx.compose.material3.TextButton(onClick = onOpen) { Text(stringResource(R.string.card_banner_open)) }
-            androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(R.string.card_banner_dismiss)) }
-        }
-    }
+    com.midroid.masarifi.ui.components.InfoStrip(
+        text = stringResource(R.string.card_banner_text, names), icon = AppIcons.Wallet,
+        tint = MaterialTheme.colorScheme.onSecondaryContainer, container = MaterialTheme.colorScheme.secondaryContainer,
+        onClick = onOpen, action = stringResource(R.string.card_banner_open), onDismiss = onDismiss,
+    )
 }

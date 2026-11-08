@@ -1,5 +1,10 @@
 package com.midroid.masarifi.ui.screens
 
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.size
+import com.midroid.masarifi.ui.theme.Spacing
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -51,6 +56,14 @@ import com.midroid.masarifi.util.Money
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
+fun groupEmoji(g: Int): String = when (g) {
+    AccountGroup.CASH -> "💵"
+    AccountGroup.BANK -> "🏦"
+    AccountGroup.CARD -> "💳"
+    AccountGroup.SAVINGS -> "🐖"
+    else -> "👛"
+}
+
 @Composable
 fun groupLabel(g: Int): String = stringResource(
     when (g) {
@@ -80,35 +93,44 @@ fun AccountsScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifi
             Text(stringResource(R.string.tab_accounts), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 12.dp).weight(1f))
             IconButton(onClick = { editing = Account(name = "", groupType = AccountGroup.BANK) }) { Icon(Icons.Filled.Add, stringResource(R.string.add_account)) }
         }
-        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            Cell(stringResource(R.string.assets), Fmt.money(assets, s, false), c.income)
-            Cell(stringResource(R.string.liabilities), Fmt.money(-liabilities, s, false), c.expense)
-            Cell(stringResource(R.string.total), Fmt.money(assets + liabilities, s, false), MaterialTheme.colorScheme.onBackground)
-        }
-        HorizontalDivider(color = c.divider)
+        com.midroid.masarifi.ui.components.SummaryCard(
+            listOf(
+                Triple(stringResource(R.string.assets), Fmt.money(assets, s, false), c.income),
+                Triple(stringResource(R.string.liabilities), Fmt.money(-liabilities, s, false), c.expense),
+                Triple(stringResource(R.string.total), Fmt.money(assets + liabilities, s, false), MaterialTheme.colorScheme.onSurface),
+            ),
+            footer = if (s.arabic) s.currencyInfo.nameAr else s.currencyInfo.nameEn,
+        )
         LazyColumn(Modifier.fillMaxSize()) {
             balances.groupBy { it.account.groupType }.toSortedMap().forEach { (g, list) ->
                 item(key = "g$g") {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                        Text(groupLabel(g), color = c.muted, modifier = Modifier.weight(1f), fontSize = 13.sp)
-                        Text(Fmt.money(list.sumOf { it.balance }, s), color = c.muted, fontSize = 13.sp)
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.md, bottom = Spacing.xs),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(groupLabel(g), style = MaterialTheme.typography.titleSmall, color = c.muted, modifier = Modifier.weight(1f))
+                        Text("\u200E" + Fmt.money(list.sumOf { it.balance }, s, false), style = com.midroid.masarifi.ui.theme.Amount, fontSize = 13.sp, color = c.muted)
                     }
                 }
                 items(list, key = { it.account.id }) { ab ->
-                    Row(
-                        Modifier.fillMaxWidth().clickable {
-                            navigate(Route.TxnList(ab.account.name, accountId = ab.account.id))
-                        }.padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(ab.account.name, fontSize = 16.sp)
-                            if (ab.account.cardLast4 != null) Text("•••• ${ab.account.cardLast4}", fontSize = 12.sp, color = c.muted)
-                        }
-                        Text(Fmt.money(ab.balance, s), color = if (ab.balance >= 0) c.income else c.expense, fontWeight = FontWeight.Medium)
-                        TextButton(onClick = { editing = ab.account }) { Text(stringResource(R.string.edit), fontSize = 12.sp) }
-                    }
-                    HorizontalDivider(color = c.divider)
+                    androidx.compose.material3.ListItem(
+                        modifier = Modifier.fillMaxWidth().clickable { navigate(Route.TxnList(ab.account.name, accountId = ab.account.id)) },
+                        colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+                        leadingContent = {
+                            com.midroid.masarifi.ui.components.CategoryBadge(groupEmoji(g), MaterialTheme.colorScheme.secondary)
+                        },
+                        headlineContent = { Text(ab.account.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1) },
+                        supportingContent = ab.account.cardLast4?.let { l4 -> { Text("•••• $l4", style = MaterialTheme.typography.bodySmall, color = c.muted) } },
+                        trailingContent = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "\u200E" + Fmt.money(ab.balance, s, false), style = com.midroid.masarifi.ui.theme.Amount, fontSize = 15.sp,
+                                    color = if (ab.balance >= 0) c.income else c.expense,
+                                )
+                                IconButton(onClick = { editing = ab.account }) { Icon(Icons.Filled.Edit, stringResource(R.string.edit), tint = c.muted, modifier = Modifier.size(20.dp)) }
+                            }
+                        },
+                    )
                 }
             }
             item { Spacer(Modifier.height(24.dp)) }
