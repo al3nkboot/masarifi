@@ -51,6 +51,8 @@ import com.midroid.masarifi.data.Txn
 import com.midroid.masarifi.data.TxnType
 import com.midroid.masarifi.ui.Fmt
 import com.midroid.masarifi.ui.theme.AppTheme
+import com.midroid.masarifi.ui.theme.Amount
+import com.midroid.masarifi.ui.theme.Spacing
 import com.midroid.masarifi.util.Money
 import java.time.YearMonth
 
@@ -72,30 +74,47 @@ fun MonthSwitcher(label: String, onPrev: () -> Unit, onNext: () -> Unit, modifie
 @Composable
 fun SummaryRow(income: Long, expense: Long, s: AppSettings) {
     val c = AppTheme.colors
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+    androidx.compose.material3.Card(
+        Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+        shape = MaterialTheme.shapes.large,
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
-        SummaryCell(stringResource(R.string.income), Fmt.money(income, s, false), c.income, Modifier.weight(1f))
-        SummaryCell(stringResource(R.string.expenses), Fmt.money(expense, s, false), c.expense, Modifier.weight(1f))
-        SummaryCell(stringResource(R.string.total), Fmt.money(income - expense, s, false), MaterialTheme.colorScheme.onBackground, Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth().padding(vertical = Spacing.md, horizontal = Spacing.sm)) {
+            SummaryCell(stringResource(R.string.income), Fmt.money(income, s, false), c.income, Modifier.weight(1f))
+            SummaryCell(stringResource(R.string.expenses), Fmt.money(expense, s, false), c.expense, Modifier.weight(1f))
+            SummaryCell(stringResource(R.string.total), Fmt.money(income - expense, s, false), MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+        }
+        Text(
+            s.currencyInfo.nameAr.takeIf { s.arabic } ?: s.currencyInfo.nameEn,
+            style = MaterialTheme.typography.labelSmall, color = AppTheme.colors.muted,
+            modifier = Modifier.fillMaxWidth().padding(bottom = Spacing.sm), textAlign = TextAlign.Center,
+        )
     }
-    HorizontalDivider(color = c.divider)
 }
 
 @Composable
 private fun SummaryCell(title: String, value: String, color: Color, modifier: Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(title, style = MaterialTheme.typography.labelMedium, color = AppTheme.colors.muted)
-        Text(value, color = color, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1)
+        Spacer(Modifier.height(Spacing.xxs))
+        Text(value, color = color, style = Amount, fontSize = 17.sp, maxLines = 1)
     }
 }
 
 @Composable
-fun AmountText(t: Txn, s: AppSettings, modifier: Modifier = Modifier) {
+fun AmountText(t: Txn, s: AppSettings, modifier: Modifier = Modifier, withSymbol: Boolean = true) {
     val c = AppTheme.colors
     val color = when (t.type) { TxnType.INCOME -> c.income; TxnType.EXPENSE -> c.expense; else -> c.transfer }
-    Text(Fmt.money(t.amount, s), color = color, fontWeight = FontWeight.Medium, modifier = modifier, maxLines = 1, fontSize = 14.sp)
+    Text(Fmt.money(t.amount, s, withSymbol), color = color, style = Amount, modifier = modifier, maxLines = 1, fontSize = 15.sp)
+}
+
+/** Tonal circle holding the category emoji (or a fallback glyph). */
+@Composable
+fun CategoryBadge(emoji: String, tint: Color) {
+    Box(
+        Modifier.size(40.dp).background(tint.copy(alpha = 0.16f), androidx.compose.foundation.shape.CircleShape),
+        contentAlignment = Alignment.Center,
+    ) { Text(emoji, fontSize = 18.sp) }
 }
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -110,51 +129,55 @@ fun TxnRow(
     selectionMode: Boolean = false,
     selected: Boolean = false,
     onLongClick: (() -> Unit)? = null,
+    showCurrency: Boolean = true,
 ) {
     val c = AppTheme.colors
-    Row(
-        Modifier.fillMaxWidth()
-            .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else Color.Transparent)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (selectionMode) {
-            Icon(
-                if (selected) Icons.Filled.CheckCircle else AppIcons.CircleOutline,
-                contentDescription = null,
-                tint = if (selected) MaterialTheme.colorScheme.primary else c.muted,
-                modifier = Modifier.size(22.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-        }
-        Text(
-            categoryLabel, color = c.muted, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(if (selectionMode) 80.dp else 96.dp),
-        )
-        Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
+    val first = categoryLabel.substringBefore(' ')
+    val hasEmoji = categoryLabel.contains(' ') && first.isNotEmpty() && !first.first().isLetterOrDigit()
+    val emoji = if (hasEmoji) first else if (t.type == TxnType.TRANSFER) "⇄" else "•"
+    val catName = if (hasEmoji) categoryLabel.substringAfter(' ') else categoryLabel
+    val typeColor = when (t.type) { TxnType.INCOME -> c.income; TxnType.EXPENSE -> c.expense; else -> c.transfer }
+    androidx.compose.material3.ListItem(
+        modifier = Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        colors = androidx.compose.material3.ListItemDefaults.colors(
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f) else Color.Transparent,
+        ),
+        leadingContent = {
+            if (selectionMode) {
+                Icon(
+                    if (selected) Icons.Filled.CheckCircle else AppIcons.CircleOutline,
+                    contentDescription = null,
+                    tint = if (selected) MaterialTheme.colorScheme.primary else c.muted,
+                    modifier = Modifier.size(40.dp).padding(Spacing.sm),
+                )
+            } else CategoryBadge(emoji, typeColor)
+        },
+        headlineContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    t.note.ifBlank { categoryLabel.substringAfter(' ') },
-                    fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+                    t.note.ifBlank { catName }, style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
                 )
-                if (t.isAuto || t.smsLinked) { Spacer(Modifier.width(6.dp)); Chip("SMS") }
+                if (t.isAuto || t.smsLinked) { Spacer(Modifier.width(Spacing.xs + 2.dp)); Chip("SMS") }
                 if (t.smsLinked) {
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(Spacing.xs))
                     Icon(AppIcons.Link, stringResource(R.string.dup_linked_badge), Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
                 }
-                if (t.recurringId != null) { Spacer(Modifier.width(4.dp)); Icon(AppIcons.Repeat, null, Modifier.size(14.dp), tint = c.muted) }
+                if (t.recurringId != null) { Spacer(Modifier.width(Spacing.xs)); Icon(AppIcons.Repeat, null, Modifier.size(14.dp), tint = c.muted) }
             }
-            if (t.possibleDupOf != null) {
-                Chip(stringResource(R.string.dup_possible_badge), bg = com.midroid.masarifi.ui.theme.Brand.Orange.copy(alpha = 0.25f))
+        },
+        supportingContent = {
+            Column {
+                if (t.possibleDupOf != null) Chip(stringResource(R.string.dup_possible_badge), bg = c.warning.copy(alpha = 0.25f))
+                Text(
+                    (if (showDate) Fmt.dateLabel(t.dateTime, s.arabic) + " • " else "") +
+                        (if (t.note.isNotBlank() && t.type != TxnType.TRANSFER) "$catName • " else "") + accountLabel,
+                    style = MaterialTheme.typography.bodySmall, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
             }
-            Text(
-                (if (showDate) Fmt.dateLabel(t.dateTime, s.arabic) + " • " else "") + accountLabel,
-                color = c.muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
-        }
-        AmountText(t, s)
-    }
+        },
+        trailingContent = { AmountText(t, s, withSymbol = showCurrency) },
+    )
 }
 
 @Composable

@@ -482,4 +482,6 @@
     <string name="bill_budget_card">فواتير قادمة هذا الشهر</string>
     <string name="bill_budget_line">%1$s في %2$s فواتير متبقية للدفع</string>
     <string name="bill_budget_projected">المصروف + الفواتير: %1$s</string>
+    <string name="today_label">اليوم</string>
+    <string name="yesterday_label">أمس</string>
 </resources>

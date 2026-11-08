@@ -67,6 +67,7 @@ import com.midroid.masarifi.ui.components.rememberTxnSelection
 import com.midroid.masarifi.ui.components.click
 import com.midroid.masarifi.ui.theme.AppTheme
 import com.midroid.masarifi.ui.theme.Brand
+import com.midroid.masarifi.ui.theme.Spacing
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -136,13 +137,13 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
         }
         if (dupGroups.isNotEmpty() && !sel.active) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp)
-                    .background(Brand.Orange.copy(alpha = 0.18f), RoundedCornerShape(8.dp))
-                    .clickable { navigate(Route.Duplicates) }.padding(horizontal = 12.dp, vertical = 8.dp),
+                Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.xs)
+                    .background(AppTheme.colors.warning.copy(alpha = 0.16f), MaterialTheme.shapes.medium)
+                    .clickable { navigate(Route.Duplicates) }.padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(com.midroid.masarifi.ui.components.AppIcons.Copy, null, tint = Brand.Orange, modifier = Modifier.padding(end = 8.dp))
-                Text(stringResource(R.string.dup_banner, dupGroups.size.toString()), fontSize = 13.sp, modifier = Modifier.weight(1f))
+                Icon(com.midroid.masarifi.ui.components.AppIcons.Copy, null, tint = AppTheme.colors.warning, modifier = Modifier.padding(end = Spacing.sm))
+                Text(stringResource(R.string.dup_banner, dupGroups.size.toString()), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             }
         }
         MonthSwitcher(
@@ -153,18 +154,17 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
             modifier = Modifier.align(Alignment.CenterHorizontally),
         )
         val tabs = listOf(R.string.daily, R.string.calendar, R.string.monthly, R.string.total, R.string.note)
-        SecondaryTabRow(
+        androidx.compose.material3.PrimaryScrollableTabRow(
             selectedTabIndex = tab,
             containerColor = Color.Transparent,
-            indicator = {
-                TabRowDefaults.SecondaryIndicator(Modifier.tabIndicatorOffset(tab), color = MaterialTheme.colorScheme.primary)
-            },
+            edgePadding = Spacing.sm,
+            divider = { HorizontalDivider(color = AppTheme.colors.divider) },
         ) {
             tabs.forEachIndexed { i, res ->
                 Tab(
                     selected = tab == i, onClick = { tab = i },
-                    text = { Text(stringResource(res), fontSize = 13.sp, maxLines = 1) },
-                    selectedContentColor = MaterialTheme.colorScheme.onBackground,
+                    text = { Text(stringResource(res), style = MaterialTheme.typography.titleSmall, maxLines = 1) },
+                    selectedContentColor = MaterialTheme.colorScheme.primary,
                     unselectedContentColor = AppTheme.colors.muted,
                 )
             }
@@ -183,31 +183,31 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun DailyList(txns: List<Txn>, labels: Labels, s: AppSettings, navigate: (Route) -> Unit, sel: TxnSelection? = null) {
     if (txns.isEmpty()) { EmptyState(stringResource(R.string.empty_month)); return }
     val groups = remember(txns) { txns.groupBy { Fmt.toDate(it.dateTime) }.toSortedMap(compareByDescending { it }) }
-    LazyColumn(Modifier.fillMaxSize()) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = Spacing.fabClearance)) {
         groups.forEach { (date, list) ->
-            item(key = "h$date") {
+            stickyHeader(key = "h$date") {
                 DayHeader(date, list, s, onClick = if (sel?.active == true) { { sel.toggleAll(list.map { it.id }) } } else null)
             }
-            items(list, key = { it.id }) { t -> SelectableTxnRow(t, labels, s, navigate, sel) }
-            item(key = "d$date") { Spacer(Modifier.height(8.dp)) }
+            items(list, key = { it.id }) { t -> SelectableTxnRow(t, labels, s, navigate, sel, showCurrency = false) }
         }
-        item { Spacer(Modifier.height(80.dp)) }
     }
 }
 
 /** Transaction row wired to multi-select: long-press starts selection, tap toggles while selecting. */
 @Composable
-fun SelectableTxnRow(t: Txn, labels: Labels, s: AppSettings, navigate: (Route) -> Unit, sel: TxnSelection?, showDate: Boolean = false) {
+fun SelectableTxnRow(t: Txn, labels: Labels, s: AppSettings, navigate: (Route) -> Unit, sel: TxnSelection?, showDate: Boolean = false, showCurrency: Boolean = true) {
     TxnRow(
         t, labels.category(t), labels.account(t), s,
         onClick = { if (sel != null) sel.click(t.id) { navigate(Route.Edit(txnId = t.id)) } else navigate(Route.Edit(txnId = t.id)) },
         showDate = showDate,
         selectionMode = sel?.active == true, selected = sel?.isSelected(t.id) == true,
         onLongClick = sel?.let { { it.start(t.id) } },
+        showCurrency = showCurrency,
     )
 }
 
@@ -216,26 +216,24 @@ fun DayHeader(date: LocalDate, list: List<Txn>, s: AppSettings, onClick: (() -> 
     val c = AppTheme.colors
     val inc = list.filter { it.type == TxnType.INCOME }.sumOf { it.amount }
     val exp = list.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount }
-    val chipColor = when (date.dayOfWeek) {
-        DayOfWeek.FRIDAY -> Brand.Coral
-        DayOfWeek.SATURDAY -> Brand.Blue
-        else -> c.chip
+    val net = inc - exp
+    val today = LocalDate.now()
+    val title = when (date) {
+        today -> stringResource(R.string.today_label)
+        today.minusDays(1) -> stringResource(R.string.yesterday_label)
+        else -> "${Fmt.weekdayShort(date.dayOfWeek, s.arabic)} ${date.dayOfMonth}"
     }
-    Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainer).let { if (onClick != null) it.clickable(onClick = onClick) else it }) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(date.dayOfMonth.toString(), fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(8.dp))
-            Box(Modifier.background(chipColor, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) {
-                Text(Fmt.weekdayShort(date.dayOfWeek, s.arabic), fontSize = 11.sp, color = Color.White)
-            }
-            Spacer(Modifier.width(8.dp))
-            Text("%02d.%d".format(java.util.Locale.US, date.monthValue, date.year), fontSize = 12.sp, color = c.muted)
-            Spacer(Modifier.weight(1f))
-            if (inc > 0) Text(Fmt.money(inc, s), color = c.income, fontSize = 13.sp)
-            Spacer(Modifier.width(12.dp))
-            if (exp > 0) Text(Fmt.money(exp, s), color = c.expense, fontSize = 13.sp)
-        }
-        HorizontalDivider(color = c.divider)
+    Row(
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
+            .let { if (onClick != null) it.clickable(onClick = onClick) else it }
+            .padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.md, bottom = Spacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, style = MaterialTheme.typography.titleSmall, color = c.muted, modifier = Modifier.weight(1f))
+        Text(
+            (if (net > 0) "+" else "") + Fmt.money(net, s, false), style = com.midroid.masarifi.ui.theme.Amount,
+            fontSize = 13.sp, color = if (net >= 0) c.income else c.muted,
+        )
     }
 }
 
@@ -299,7 +297,7 @@ fun CalendarView(vm: AppViewModel, ym: YearMonth, txns: List<Txn>, labels: Label
             if (list.isEmpty()) item { EmptyState(stringResource(R.string.no_transactions_day)) }
             items(list, key = { it.id }) { t -> SelectableTxnRow(t, labels, s, navigate, selection) }
         }
-        item { Spacer(Modifier.height(80.dp)) }
+        item { Spacer(Modifier.height(Spacing.fabClearance)) }
     }
 }
 
@@ -329,7 +327,7 @@ fun MonthlyList(yearTxns: List<Txn>, year: Int, s: AppSettings, onOpen: (YearMon
             }
             HorizontalDivider(color = c.divider)
         }
-        item { Spacer(Modifier.height(80.dp)) }
+        item { Spacer(Modifier.height(Spacing.fabClearance)) }
     }
 }
 
@@ -379,7 +377,7 @@ fun TotalView(vm: AppViewModel, ym: YearMonth, all: List<Txn>, monthTxns: List<T
                 }
             }
         }
-        item { Spacer(Modifier.height(80.dp)) }
+        item { Spacer(Modifier.height(Spacing.fabClearance)) }
     }
 }
 
@@ -428,7 +426,7 @@ fun NoteView(txns: List<Txn>, labels: Labels, s: AppSettings, navigate: (Route) 
                 }
                 HorizontalDivider(color = c.divider)
             }
-            item { Spacer(Modifier.height(80.dp)) }
+            item { Spacer(Modifier.height(Spacing.fabClearance)) }
         }
     }
 }

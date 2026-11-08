@@ -7,6 +7,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -109,11 +110,13 @@ private fun HomeScaffold(vm: AppViewModel, navigate: (Route) -> Unit, snackbar: 
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
             if ((tab == 0 && !vm.selectionActive) || tab == 3) {
-                FloatingActionButton(
+                androidx.compose.material3.ExtendedFloatingActionButton(
                     onClick = { if (tab == 3) navigate(Route.BillEdit()) else navigate(Route.Edit(date = vm.selectedDayForAdd())) },
+                    icon = { Icon(Icons.Filled.Add, stringResource(R.string.add)) },
+                    text = { Text(stringResource(R.string.add)) },
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White,
-                ) { Icon(Icons.Filled.Add, stringResource(R.string.add)) }
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                )
             }
         },
         bottomBar = {
@@ -134,7 +137,7 @@ private fun HomeScaffold(vm: AppViewModel, navigate: (Route) -> Unit, snackbar: 
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.primary,
                             selectedTextColor = MaterialTheme.colorScheme.primary,
-                            indicatorColor = Color.Transparent,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                             unselectedIconColor = AppTheme.colors.muted,
                             unselectedTextColor = AppTheme.colors.muted,
                         ),
@@ -161,13 +164,18 @@ private fun HomeScaffold(vm: AppViewModel, navigate: (Route) -> Unit, snackbar: 
 /** One-time banner after the 1.5.0 upgrade when some SMS account has no card digits (dismiss = never shown again). */
 @Composable
 private fun CardSetupBanner(names: String, onOpen: () -> Unit, onDismiss: () -> Unit) {
-    androidx.compose.material3.Surface(color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.fillMaxWidth()) {
-        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Text(stringResource(R.string.card_banner_text, names), fontSize = 13.sp)
-            androidx.compose.foundation.layout.Row {
-                androidx.compose.material3.TextButton(onClick = onOpen) { Text(stringResource(R.string.card_banner_open)) }
-                androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(R.string.card_banner_dismiss)) }
-            }
+    androidx.compose.material3.Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = com.midroid.masarifi.ui.theme.Spacing.lg, vertical = com.midroid.masarifi.ui.theme.Spacing.sm),
+        shape = MaterialTheme.shapes.large,
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        androidx.compose.foundation.layout.Row(Modifier.padding(start = 16.dp, top = 12.dp, end = 4.dp)) {
+            Text(stringResource(R.string.card_banner_text, names), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            androidx.compose.material3.IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, stringResource(R.string.card_banner_dismiss)) }
+        }
+        androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = 8.dp)) {
+            androidx.compose.material3.TextButton(onClick = onOpen) { Text(stringResource(R.string.card_banner_open)) }
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(R.string.card_banner_dismiss)) }
         }
     }
 }

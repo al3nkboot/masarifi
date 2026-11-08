@@ -482,4 +482,6 @@
     <string name="bill_budget_card">Upcoming bills this month</string>
     <string name="bill_budget_line">%1$s in %2$s bills still to pay</string>
     <string name="bill_budget_projected">Spent + bills: %1$s</string>
+    <string name="today_label">Today</string>
+    <string name="yesterday_label">Yesterday</string>
 </resources>
