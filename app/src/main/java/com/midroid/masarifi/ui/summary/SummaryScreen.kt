@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.summary
 
+import com.midroid.masarifi.ui.icon
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -94,7 +96,7 @@ sealed interface PeriodChoice {
 fun summaryTexts(cats: List<Category>, money: (Long) -> String, ar: Boolean, noCat: String) = SummaryCalc.Texts(
     money = money,
     month = { Fmt.monthTitle(it, ar) },
-    catName = { id -> cats.firstOrNull { it.id == id }?.let { it.emoji + " " + it.name(ar) } ?: noCat },
+    catName = { id -> cats.firstOrNull { it.id == id }?.let { it.icon + " " + it.name(ar) } ?: noCat },
 )
 
 @OptIn(ExperimentalMaterial3Api::class)

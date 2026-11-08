@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.screens
 
+import com.midroid.masarifi.ui.icon
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -89,7 +91,7 @@ fun CategoriesScreen(vm: AppViewModel, onBack: () -> Unit) {
                         Modifier.fillMaxWidth().clickable { editing = cat }.padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(cat.emoji, fontSize = 22.sp)
+                        Text(cat.icon, fontSize = 22.sp)
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
                             Text(cat.name(s.arabic), fontSize = 16.sp)

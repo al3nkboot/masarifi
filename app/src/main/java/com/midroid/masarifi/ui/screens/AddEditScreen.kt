@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.screens
 
+import com.midroid.masarifi.ui.icon
+
 import androidx.compose.material3.SegmentedButton
 
 import androidx.compose.foundation.background
@@ -224,7 +226,7 @@ fun AddEditScreen(vm: AppViewModel, route: Route.Edit, onBack: () -> Unit, onEdi
                 FieldRow(stringResource(R.string.to)) { ValueText(toAccountName) { picker = "to" } }
             } else {
                 FieldRow(stringResource(R.string.account)) { ValueText(accountName) { picker = "account" } }
-                FieldRow(stringResource(R.string.category)) { ValueText(cat?.let { it.emoji + " " + it.name(s.arabic) } ?: "") { picker = "category" } }
+                FieldRow(stringResource(R.string.category)) { ValueText(cat?.let { it.icon + " " + it.name(s.arabic) } ?: "") { picker = "category" } }
             }
             FieldRow(stringResource(R.string.note)) { PlainField(note, { note = it }, KeyboardType.Text) }
             FieldRow(stringResource(R.string.description)) { PlainField(description, { description = it }, KeyboardType.Text, singleLine = false) }
@@ -375,7 +377,7 @@ fun AddEditScreen(vm: AppViewModel, route: Route.Edit, onBack: () -> Unit, onEdi
             }) {
                 LazyVerticalGrid(GridCells.Fixed(3), Modifier.heightIn(max = 460.dp)) {
                     items(list) { cg ->
-                        GridCell(cg.emoji + "\n" + cg.name(s.arabic), selected = categoryId == cg.id) { categoryId = cg.id; picker = null }
+                        GridCell(cg.icon + "\n" + cg.name(s.arabic), selected = categoryId == cg.id) { categoryId = cg.id; picker = null }
                     }
                 }
             }

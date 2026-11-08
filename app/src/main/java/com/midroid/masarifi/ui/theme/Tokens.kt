@@ -22,5 +22,5 @@ object Spacing {
     val xl = 24.dp
     val xxl = 32.dp
     /** Bottom content padding so the last row clears the extended FAB. */
-    val fabClearance = 96.dp
+    val fabClearance = 128.dp
 }

@@ -28,8 +28,8 @@ android {
         applicationId = "com.midroid.masarifi"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "2.3.0"
+        versionCode = 17
+        versionName = "2.3.1"
     }
 
     signingConfigs {

@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.bills
 
+import com.midroid.masarifi.ui.icon
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -152,8 +154,8 @@ fun BillEditScreen(vm: AppViewModel, billId: Long?, onBack: () -> Unit) {
             OutlinedTextField(amount, { amount = it }, label = { Text(stringResource(R.string.bill_amount)) }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), suffix = { Text(s.currencyInfo.symbol(s.arabic)) },
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
-            PickField(stringResource(R.string.bill_category), cats.firstOrNull { it.id == catId }?.let { it.emoji + " " + it.name(s.arabic) } ?: "—",
-                listOf<Category?>(null) + expCats, { c -> c?.let { it.emoji + " " + it.name(s.arabic) } ?: "—" }, { catId = it?.id })
+            PickField(stringResource(R.string.bill_category), cats.firstOrNull { it.id == catId }?.let { it.icon + " " + it.name(s.arabic) } ?: "—",
+                listOf<Category?>(null) + expCats, { c -> c?.let { it.icon + " " + it.name(s.arabic) } ?: "—" }, { catId = it?.id })
             PickField(stringResource(R.string.bill_account), accs.firstOrNull { it.id == accId }?.name ?: stringResource(R.string.bill_account_ask),
                 listOf<Account?>(null) + accs, { a -> a?.name ?: "—" }, { accId = it?.id })
             Box(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -244,8 +246,8 @@ fun PayBillDialog(vm: AppViewModel, b: Bill, onDismiss: () -> Unit) {
                 PickField(stringResource(R.string.bill_amount), Fmt.money(parsed ?: 0, s), emptyList<Unit>(), { "" }, {}, onClick = { editAmount = true })
                 if (linkTo == null) {
                     PickField(stringResource(R.string.bill_account), accs.firstOrNull { it.id == accId }?.name ?: "—", accs, { it.name }, { accId = it.id })
-                    PickField(stringResource(R.string.bill_category), cats.firstOrNull { it.id == catId }?.let { it.emoji + " " + it.name(s.arabic) } ?: "—",
-                        cats.filter { it.type == TxnType.EXPENSE }, { it.emoji + " " + it.name(s.arabic) }, { catId = it.id })
+                    PickField(stringResource(R.string.bill_category), cats.firstOrNull { it.id == catId }?.let { it.icon + " " + it.name(s.arabic) } ?: "—",
+                        cats.filter { it.type == TxnType.EXPENSE }, { it.icon + " " + it.name(s.arabic) }, { catId = it.id })
                 }
                 if (matches.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))

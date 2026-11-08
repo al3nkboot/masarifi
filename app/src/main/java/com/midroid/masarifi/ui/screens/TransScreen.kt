@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.screens
 
+import com.midroid.masarifi.ui.icon
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -77,7 +79,7 @@ class Labels(val categories: Map<Long, Category>, val accounts: Map<Long, Accoun
     fun category(t: Txn): String = when {
         t.type == TxnType.TRANSFER -> transferLabel
         t.categoryId == null -> noCategory
-        else -> categories[t.categoryId]?.let { it.emoji + " " + it.name(s.arabic) } ?: noCategory
+        else -> categories[t.categoryId]?.let { it.icon + " " + it.name(s.arabic) } ?: noCategory
     }
     fun account(t: Txn): String {
         val from = accounts[t.accountId]?.name ?: "?"

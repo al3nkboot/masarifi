@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.bills
 
+import com.midroid.masarifi.ui.icon
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -170,7 +172,7 @@ fun BillRow(b: Bill, cat: Category?, s: AppSettings, today: LocalDate, onClick: 
     androidx.compose.material3.ListItem(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
-        leadingContent = { com.midroid.masarifi.ui.components.CategoryBadge(cat?.emoji ?: "🧾", color.takeIf { it != c.muted } ?: c.expense) },
+        leadingContent = { com.midroid.masarifi.ui.components.CategoryBadge(cat?.icon ?: (com.midroid.masarifi.ui.CategoryIcons.guess(b.name) ?: "🧾"), color.takeIf { it != c.muted } ?: c.expense) },
         headlineContent = { Text(b.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
         supportingContent = {
             Column {

@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.screens
 
+import com.midroid.masarifi.ui.icon
+
 import com.midroid.masarifi.ui.theme.Spacing
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -125,7 +127,7 @@ fun slices(txns: List<Txn>, cats: List<Category>, type: Int, s: AppSettings, noC
         .sortedByDescending { it.second }
         .mapIndexed { i, (id, amt) ->
             val c = id?.let { byCat[it] }
-            CatSlice(id, c?.let { it.emoji + " " + it.name(s.arabic) } ?: noCat, amt, ChartPalette[i % ChartPalette.size])
+            CatSlice(id, c?.let { it.icon + " " + it.name(s.arabic) } ?: noCat, amt, ChartPalette[i % ChartPalette.size])
         }
 }
 
@@ -203,7 +205,7 @@ private fun TrendTab(all: List<Txn>, cats: List<Category>, ym: YearMonth, s: App
     val compare = remember(cur, prev, cats, s) {
         val ids = (cur.map { it.categoryId } + prev.map { it.categoryId }).toSet()
         ids.map { id ->
-            Triple(id?.let { byCat[it] }?.let { it.emoji + " " + it.name(s.arabic) } ?: noCat, cur.filter { it.categoryId == id }.sumOf { it.amount }, prev.filter { it.categoryId == id }.sumOf { it.amount })
+            Triple(id?.let { byCat[it] }?.let { it.icon + " " + it.name(s.arabic) } ?: noCat, cur.filter { it.categoryId == id }.sumOf { it.amount }, prev.filter { it.categoryId == id }.sumOf { it.amount })
         }.sortedByDescending { maxOf(it.second, it.third) }
     }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
@@ -306,7 +308,7 @@ private fun BudgetTab(vm: AppViewModel, all: List<Txn>, cats: List<Category>, ym
             val b = bmap[cat.id] ?: 0L
             Column(Modifier.fillMaxWidth().clickable { editing = cat.id to cat.name(s.arabic) }.padding(horizontal = 8.dp, vertical = 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(cat.emoji + " " + cat.name(s.arabic), Modifier.weight(1f))
+                    Text(cat.icon + " " + cat.name(s.arabic), Modifier.weight(1f))
                     if (b > 0) Text("${Fmt.money(spent, s, false)} / ${Fmt.money(b, s)}", fontSize = 13.sp)
                     else Text(Fmt.money(spent, s), fontSize = 13.sp, color = c.muted)
                 }

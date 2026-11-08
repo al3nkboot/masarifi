@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.screens
 
+import com.midroid.masarifi.ui.icon
+
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -161,7 +163,7 @@ fun SmsSettingsScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHo
             if (rules.isEmpty()) Text(stringResource(R.string.learned_rules_empty), fontSize = 12.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp))
             rules.forEach { r ->
                 val cat = cats.firstOrNull { it.id == r.categoryId }
-                SettingRow(null, r.merchantKey, cat?.let { it.emoji + " " + it.name(s.arabic) } ?: "—") {
+                SettingRow(null, r.merchantKey, cat?.let { it.icon + " " + it.name(s.arabic) } ?: "—") {
                     IconButton(onClick = { vm.deleteMerchantRule(r) }) { Icon(Icons.Filled.Close, stringResource(R.string.delete), tint = c.muted) }
                 }
                 HorizontalDivider(color = c.divider)

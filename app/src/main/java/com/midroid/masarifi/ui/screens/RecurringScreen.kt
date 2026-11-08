@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.screens
 
+import com.midroid.masarifi.ui.icon
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -64,7 +66,7 @@ fun RecurringScreen(vm: AppViewModel, onBack: () -> Unit) {
                 val cat = cats.firstOrNull { it.id == r.categoryId }
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(r.note.ifBlank { cat?.let { it.emoji + " " + it.name(s.arabic) } ?: stringResource(R.string.transfer) }, fontSize = 16.sp)
+                        Text(r.note.ifBlank { cat?.let { it.icon + " " + it.name(s.arabic) } ?: stringResource(R.string.transfer) }, fontSize = 16.sp)
                         Text(
                             repeatLabel(r.frequency) + " • " + (accs.firstOrNull { it.id == r.accountId }?.name ?: "") + " • " +
                                 stringResource(R.string.next_on, Fmt.dateLabel(r.nextDate, s.arabic)),
