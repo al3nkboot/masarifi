@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.screens
 
+import androidx.compose.material3.SegmentedButton
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -188,18 +190,31 @@ fun AddEditScreen(vm: AppViewModel, route: Route.Edit, onBack: () -> Unit, onEdi
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState())) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(TxnType.INCOME to R.string.income, TxnType.EXPENSE to R.string.expense, TxnType.TRANSFER to R.string.transfer).forEach { (t, label) ->
-                    val col = when (t) { TxnType.INCOME -> c.income; TxnType.EXPENSE -> c.expense; else -> c.transfer }
-                    Box(
-                        Modifier.weight(1f)
-                            .border(1.dp, if (type == t) col else c.divider, RoundedCornerShape(6.dp))
-                            .clickable { type = t; if (categories.none { it.id == categoryId && it.type == t }) categoryId = null }
-                            .padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center,
-                    ) { Text(stringResource(label), color = if (type == t) col else c.muted, fontWeight = FontWeight.Medium) }
+            androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                val opts = listOf(TxnType.EXPENSE to R.string.expense, TxnType.INCOME to R.string.income, TxnType.TRANSFER to R.string.transfer)
+                opts.forEachIndexed { i, (t, label) ->
+                    val col = when (t) { TxnType.INCOME -> c.income; TxnType.EXPENSE -> c.expense; else -> MaterialTheme.colorScheme.secondary }
+                    SegmentedButton(
+                        selected = type == t,
+                        onClick = { type = t; if (categories.none { it.id == categoryId && it.type == t }) categoryId = null },
+                        shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, opts.size),
+                        colors = androidx.compose.material3.SegmentedButtonDefaults.colors(activeContainerColor = col.copy(alpha = 0.18f), activeContentColor = col),
+                    ) { Text(stringResource(label), maxLines = 1) }
                 }
             }
+            // Large amount entry
+            TextField(
+                value = amountText, onValueChange = { amountText = it }, singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                textStyle = MaterialTheme.typography.displaySmall.copy(color = typeColor, fontFeatureSettings = "tnum", textAlign = androidx.compose.ui.text.style.TextAlign.Center),
+                placeholder = { Text("0.000", style = MaterialTheme.typography.displaySmall, color = c.muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+                supportingText = { Text(stringResource(R.string.amount) + " · " + s.currencyInfo.symbol(s.arabic), modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = typeColor, unfocusedIndicatorColor = c.divider,
+                ),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
+            )
 
             FieldRow(stringResource(R.string.date)) {
                 Text(Fmt.dateTimeLabel(dateTime, s.arabic), Modifier.clickable { picker = "date" }.padding(vertical = 4.dp))
@@ -210,9 +225,6 @@ fun AddEditScreen(vm: AppViewModel, route: Route.Edit, onBack: () -> Unit, onEdi
             } else {
                 FieldRow(stringResource(R.string.account)) { ValueText(accountName) { picker = "account" } }
                 FieldRow(stringResource(R.string.category)) { ValueText(cat?.let { it.emoji + " " + it.name(s.arabic) } ?: "") { picker = "category" } }
-            }
-            FieldRow(stringResource(R.string.amount)) {
-                PlainField(amountText, { amountText = it }, KeyboardType.Decimal, suffix = s.currencyInfo.symbol(s.arabic), color = typeColor)
             }
             FieldRow(stringResource(R.string.note)) { PlainField(note, { note = it }, KeyboardType.Text) }
             FieldRow(stringResource(R.string.description)) { PlainField(description, { description = it }, KeyboardType.Text, singleLine = false) }
