@@ -15,6 +15,15 @@ object Brand {
     val Blue = Color(0xFF4A90E2)
     val Orange = Color(0xFFF5A623)
     val Green = Color(0xFF3DBE7A)
+    val Red = Color(0xFFEF5350)
+    val Amber = Color(0xFFE6A23C)
+    val ErrorDark = Color(0xFFFFB4AB)
+    val ErrorLight = Color(0xFFBA1A1A)
+    val Chart = listOf(
+        Color(0xFFF25C54), Color(0xFFF5A623), Color(0xFFF8D347), Color(0xFF7ED321), Color(0xFF3DBE7A),
+        Color(0xFF4A90E2), Color(0xFF7B61FF), Color(0xFFBD10E0), Color(0xFFFF7AA2), Color(0xFF50E3C2),
+        Color(0xFF9B9B9B), Color(0xFFB8860B),
+    )
 }
 
 data class ExtraColors(
@@ -25,6 +34,10 @@ data class ExtraColors(
     val divider: Color,
     val card: Color,
     val chip: Color,
+    val positive: Color = Brand.Green,
+    val negative: Color = Brand.Red,
+    val warning: Color = Brand.Amber,
+    val chart: List<Color> = Brand.Chart,
 )
 
 val LocalExtraColors = staticCompositionLocalOf {
@@ -51,7 +64,12 @@ private val DarkScheme = darkColorScheme(
     surfaceContainerLowest = Color(0xFF18191B),
     outline = Color(0xFF4A4B50),
     outlineVariant = Color(0xFF34353A),
-    error = Brand.Coral,
+    error = Brand.ErrorDark,
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
+    secondaryContainer = Color(0xFF233A57),
+    onSecondaryContainer = Color(0xFFD3E4FF),
 )
 
 private val LightScheme = lightColorScheme(
@@ -67,7 +85,10 @@ private val LightScheme = lightColorScheme(
     surfaceContainerHigh = Color(0xFFF0F0F3),
     surfaceContainerHighest = Color(0xFFE6E6EA),
     surfaceContainerLow = Color(0xFFFFFFFF),
-    error = Brand.CoralDark,
+    error = Brand.ErrorLight,
+    errorContainer = Color(0xFFFFDAD6),
+    secondaryContainer = Color(0xFFD3E4FF),
+    onSecondaryContainer = Color(0xFF001C38),
 )
 
 @Composable
@@ -78,12 +99,12 @@ fun MasarifiTheme(theme: String, content: @Composable () -> Unit) {
         else -> true
     }
     val extra = if (dark) {
-        ExtraColors(Brand.Blue, Brand.Coral, Color(0xFFECECEE), Color(0xFF8E8F95), Color(0xFF303135), Color(0xFF26272B), Color(0xFF3A3B40))
+        ExtraColors(Brand.Blue, Brand.Coral, Color(0xFFECECEE), Color(0xFF8E8F95), Color(0xFF303135), Color(0xFF26272B), Color(0xFF3A3B40), positive = Color(0xFF4CAF50), negative = Brand.Red, warning = Brand.Amber)
     } else {
-        ExtraColors(Color(0xFF2F7BD6), Brand.CoralDark, Color(0xFF222222), Color(0xFF7A7A80), Color(0xFFE2E2E6), Color.White, Color(0xFFE6E6EA))
+        ExtraColors(Color(0xFF2F7BD6), Brand.CoralDark, Color(0xFF222222), Color(0xFF7A7A80), Color(0xFFE2E2E6), Color.White, Color(0xFFE6E6EA), positive = Color(0xFF2E7D32), negative = Color(0xFFC62828), warning = Color(0xFFB26A00))
     }
     CompositionLocalProvider(LocalExtraColors provides extra) {
-        MaterialTheme(colorScheme = if (dark) DarkScheme else LightScheme, content = content)
+        MaterialTheme(colorScheme = if (dark) DarkScheme else LightScheme, typography = AppTypography, shapes = AppShapes, content = content)
     }
 }
 

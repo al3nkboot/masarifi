@@ -69,7 +69,7 @@ import java.util.Locale
 
 private val stamp = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.US)
 private fun fmtTime(ms: Long) = ltr(Fmt.toDateTime(ms).format(stamp))
-private val Warn = Color(0xFFE6A23C)
+private val Warn = com.midroid.masarifi.ui.theme.Brand.Amber
 
 /** Short, comparable form of the file's sync id (shown on both devices). */
 fun shortId(id: String?) = id?.replace("-", "")?.take(8)?.uppercase(Locale.US)?.chunked(4)?.joinToString("-")

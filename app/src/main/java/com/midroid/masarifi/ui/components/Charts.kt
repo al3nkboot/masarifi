@@ -26,11 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.midroid.masarifi.ui.theme.AppTheme
 
-val ChartPalette = listOf(
-    Color(0xFFF25C54), Color(0xFFF5A623), Color(0xFFF8D347), Color(0xFF7ED321), Color(0xFF3DBE7A),
-    Color(0xFF4A90E2), Color(0xFF7B61FF), Color(0xFFBD10E0), Color(0xFFFF7AA2), Color(0xFF50E3C2),
-    Color(0xFF9B9B9B), Color(0xFFB8860B),
-)
+val ChartPalette = com.midroid.masarifi.ui.theme.Brand.Chart
 
 @Composable
 fun DonutChart(values: List<Long>, colors: List<Color>, modifier: Modifier = Modifier, size: Dp = 200.dp, center: @Composable () -> Unit = {}) {

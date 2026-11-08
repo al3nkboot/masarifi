@@ -176,7 +176,7 @@ fun SummaryScreen(vm: AppViewModel, navigate: (Route) -> Unit, onBack: () -> Uni
                     StatCard(stringResource(R.string.sum_count), sum.count.toString(), MaterialTheme.colorScheme.onBackground)
                     StatCard(
                         stringResource(if (sum.net >= 0) R.string.sum_surplus else R.string.sum_deficit), money(kotlin.math.abs(sum.net)),
-                        if (sum.net >= 0) Color(0xFF4CAF50) else Color(0xFFEF5350),
+                        if (sum.net >= 0) c.positive else c.negative,
                     )
                 }
                 Text(stringResource(R.string.sum_excluded), fontSize = 11.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
@@ -196,7 +196,7 @@ fun SummaryScreen(vm: AppViewModel, navigate: (Route) -> Unit, onBack: () -> Uni
                 sum.months.forEach { m ->
                     TableRow(
                         listOf(Fmt.monthShort(m.month, s.arabic), money(m.income), money(m.expense), money(m.net), SummaryCalc.pctText(m.percentOfPeriod), m.changePercent?.let { (if (it > 0) "\u200E+" else "\u200E") + SummaryCalc.pctText(it) } ?: "—"),
-                        MON_W, lastColor = m.changePercent?.let { if (it > 0) c.expense else Color(0xFF4CAF50) },
+                        MON_W, lastColor = m.changePercent?.let { if (it > 0) c.expense else c.positive },
                     )
                 }
                 TrendBars(sum.months.map { Triple(Fmt.monthShort(it.month, s.arabic), it.income, it.expense) }, Modifier.padding(16.dp), highlightLast = false)
