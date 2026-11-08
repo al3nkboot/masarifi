@@ -132,8 +132,8 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
                     else -> emptyList()
                 }
             })
-        } else Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.tab_trans), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 12.dp))
+        } else Row(Modifier.fillMaxWidth().padding(horizontal = Spacing.xs, vertical = Spacing.xs), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.tab_trans), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = Spacing.md))
             Spacer(Modifier.weight(1f))
             IconButton(onClick = { navigate(Route.Search) }) { Icon(Icons.Filled.Search, stringResource(R.string.search)) }
         }
@@ -151,17 +151,16 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
             onLabelClick = { vm.month.value = YearMonth.now() },
             modifier = Modifier.align(Alignment.CenterHorizontally),
         )
-        val tabs = listOf(R.string.daily, R.string.calendar, R.string.monthly, R.string.total, R.string.note)
-        androidx.compose.material3.PrimaryScrollableTabRow(
+        val tabs = listOf(R.string.daily, R.string.tab_calendar_short, R.string.monthly, R.string.tab_total_short, R.string.tab_note_short)
+        androidx.compose.material3.PrimaryTabRow(
             selectedTabIndex = tab,
             containerColor = Color.Transparent,
-            edgePadding = Spacing.sm,
             divider = { HorizontalDivider(color = AppTheme.colors.divider) },
         ) {
             tabs.forEachIndexed { i, res ->
                 Tab(
                     selected = tab == i, onClick = { tab = i },
-                    text = { Text(stringResource(res), style = MaterialTheme.typography.titleSmall, maxLines = 1) },
+                    text = { Text(stringResource(res), style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Clip) },
                     selectedContentColor = MaterialTheme.colorScheme.primary,
                     unselectedContentColor = AppTheme.colors.muted,
                 )
@@ -253,7 +252,7 @@ fun CalendarView(vm: AppViewModel, ym: YearMonth, txns: List<Txn>, labels: Label
             Row(Modifier.fillMaxWidth()) {
                 days.forEach { d ->
                     Text(
-                        Fmt.weekdayNarrow(d, s.arabic), Modifier.weight(1f).padding(vertical = 4.dp), textAlign = TextAlign.Center, fontSize = 11.sp,
+                        Fmt.weekdayNarrow(d, s.arabic), Modifier.weight(1f).padding(vertical = Spacing.xs), textAlign = TextAlign.Center, fontSize = 11.sp,
                         color = when (d) { DayOfWeek.FRIDAY -> Brand.Coral; DayOfWeek.SATURDAY -> Brand.Blue; else -> c.muted },
                     )
                 }
@@ -281,8 +280,8 @@ fun CalendarView(vm: AppViewModel, ym: YearMonth, txns: List<Txn>, labels: Label
                                 color = if (date == today) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
                             )
                             Spacer(Modifier.weight(1f))
-                            if (inc > 0) Text(Fmt.money(inc, s, false), color = c.income, fontSize = 9.sp, maxLines = 1)
-                            if (exp > 0) Text(Fmt.money(exp, s, false), color = c.expense, fontSize = 9.sp, maxLines = 1)
+                            if (inc > 0) Text(Fmt.money(inc, s, false), color = c.income, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            if (exp > 0) Text(Fmt.money(exp, s, false), color = c.expense, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                         }
                     }
                 }
@@ -310,17 +309,17 @@ fun MonthlyList(yearTxns: List<Txn>, year: Int, s: AppSettings, onOpen: (YearMon
             val inc = list.filter { it.type == TxnType.INCOME }.sumOf { it.amount }
             val exp = list.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount }
             Row(
-                Modifier.fillMaxWidth().clickable { onOpen(m) }.padding(horizontal = 16.dp, vertical = 14.dp),
+                Modifier.fillMaxWidth().clickable { onOpen(m) }.padding(horizontal = Spacing.lg, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(Fmt.monthShort(m, s.arabic), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                    Text("1.${m.monthValue} ~ ${m.lengthOfMonth()}.${m.monthValue}", fontSize = 12.sp, color = c.muted)
+                    Text(Fmt.monthShort(m, s.arabic), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+                    Text("1.${m.monthValue} ~ ${m.lengthOfMonth()}.${m.monthValue}", style = MaterialTheme.typography.bodySmall, color = c.muted)
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(Fmt.money(inc, s), color = c.income, fontSize = 13.sp)
-                    Text(Fmt.money(exp, s), color = c.expense, fontSize = 13.sp)
-                    Text(Fmt.money(inc - exp, s), fontSize = 12.sp, color = c.muted)
+                    Text(Fmt.money(inc, s), color = c.income, style = MaterialTheme.typography.bodyMedium)
+                    Text(Fmt.money(exp, s), color = c.expense, style = MaterialTheme.typography.bodyMedium)
+                    Text(Fmt.money(inc - exp, s), style = MaterialTheme.typography.bodySmall, color = c.muted)
                 }
             }
             HorizontalDivider(color = c.divider)
@@ -341,23 +340,23 @@ fun TotalView(vm: AppViewModel, ym: YearMonth, all: List<Txn>, monthTxns: List<T
     val balances = vm.balances(accounts, all)
     val overall = budgets.firstOrNull { it.categoryId == 0L }?.amount ?: 0L
 
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = Spacing.md)) {
         item {
             InfoCard(stringResource(R.string.budget)) {
                 if (overall > 0) {
-                    Row { Text(stringResource(R.string.overall_budget), Modifier.weight(1f)); Text("${Fmt.money(exp, s)} / ${Fmt.money(overall, s)}", fontSize = 13.sp) }
+                    Row { Text(stringResource(R.string.overall_budget), Modifier.weight(1f)); Text("${Fmt.money(exp, s)} / ${Fmt.money(overall, s)}", style = MaterialTheme.typography.bodyMedium) }
                     Spacer(Modifier.height(6.dp))
                     ProgressBar(exp.toDouble() / overall)
-                    Spacer(Modifier.height(4.dp))
-                    Text(stringResource(R.string.remaining_x, Fmt.money(overall - exp, s)), fontSize = 12.sp, color = c.muted)
-                } else Text(stringResource(R.string.no_budget_hint), color = c.muted, fontSize = 13.sp)
+                    Spacer(Modifier.height(Spacing.xs))
+                    Text(stringResource(R.string.remaining_x, Fmt.money(overall - exp, s)), style = MaterialTheme.typography.bodySmall, color = c.muted)
+                } else Text(stringResource(R.string.no_budget_hint), color = c.muted, style = MaterialTheme.typography.bodyMedium)
             }
         }
         item {
             InfoCard(stringResource(R.string.accounts_summary)) {
                 val total = balances.filter { it.account.includeInTotal }.sumOf { it.balance }
                 Row { Text(stringResource(R.string.total_balance), Modifier.weight(1f)); Text(Fmt.money(total, s), fontWeight = FontWeight.SemiBold) }
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Spacing.xs))
                 Row { Text(stringResource(R.string.net_this_month), Modifier.weight(1f), color = c.muted); Text(Fmt.money(inc - exp, s), color = if (inc - exp >= 0) c.income else c.expense) }
             }
         }
@@ -367,7 +366,7 @@ fun TotalView(vm: AppViewModel, ym: YearMonth, all: List<Txn>, monthTxns: List<T
                 Row { Text(Fmt.monthTitle(ym, s.arabic), Modifier.weight(1f)); Text(Fmt.money(exp, s), color = c.expense) }
                 if (prevExp > 0) {
                     val p = ((exp - prevExp) * 100.0 / prevExp)
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(Spacing.xs))
                     Text(
                         if (p >= 0) stringResource(R.string.more_than_last, Fmt.percent(p)) else stringResource(R.string.less_than_last, Fmt.percent(-p)),
                         color = if (p > 0) c.expense else c.income, fontSize = 13.sp,
@@ -404,9 +403,9 @@ fun NoteView(txns: List<Txn>, labels: Labels, s: AppSettings, navigate: (Route) 
         txns.filter { it.type == type }.groupBy { it.note.trim() }.map { (k, v) -> Triple(k, v.size, v.sumOf { it.amount }) }.sortedByDescending { it.third }
     }
     Column {
-        Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.Center) {
+        Row(Modifier.fillMaxWidth().padding(Spacing.sm), horizontalArrangement = Arrangement.Center) {
             TypeToggle(stringResource(R.string.expense), expenseMode, c.expense) { expenseMode = true }
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Spacing.sm))
             TypeToggle(stringResource(R.string.income), !expenseMode, c.income) { expenseMode = false }
         }
         if (groups.isEmpty()) EmptyState(stringResource(R.string.empty_month))
@@ -416,11 +415,11 @@ fun NoteView(txns: List<Txn>, labels: Labels, s: AppSettings, navigate: (Route) 
                     Modifier.fillMaxWidth().clickable {
                         val r = Fmt.monthRange(ym)
                         navigate(Route.TxnList(title = note.ifBlank { emptyNote }, from = r.first, to = r.last + 1, note = note, type = type))
-                    }.padding(horizontal = 16.dp, vertical = 12.dp),
+                    }.padding(horizontal = Spacing.lg, vertical = Spacing.md),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(note.ifBlank { emptyNote }, Modifier.weight(1f), maxLines = 1)
-                    Text("$count", color = c.muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 12.dp))
+                    Text("$count", color = c.muted, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = Spacing.md))
                     Text(Fmt.money(sum, s), color = if (expenseMode) c.expense else c.income)
                 }
                 HorizontalDivider(color = c.divider)
@@ -437,7 +436,7 @@ fun TypeToggle(text: String, selected: Boolean, color: Color, onClick: () -> Uni
             .border(1.dp, if (selected) color else AppTheme.colors.divider, RoundedCornerShape(6.dp))
             .background(if (selected) color.copy(alpha = 0.12f) else Color.Transparent, RoundedCornerShape(6.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 8.dp),
+            .padding(horizontal = 18.dp, vertical = Spacing.sm),
         contentAlignment = Alignment.Center,
     ) {
         Text(text, color = if (selected) color else AppTheme.colors.muted, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)

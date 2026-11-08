@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.screens
 
+import com.midroid.masarifi.ui.theme.Spacing
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -65,7 +67,7 @@ fun MoreScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier, 
     }
 
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Text(stringResource(R.string.tab_more), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
+        Text(stringResource(R.string.tab_more), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(Spacing.lg))
 
         SectionTitle(stringResource(R.string.section_general))
         val cur = s.currencyInfo
@@ -115,7 +117,7 @@ fun MoreScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier, 
             },
         )
         HorizontalDivider(color = AppTheme.colors.divider)
-        androidx.compose.foundation.layout.Spacer(Modifier.padding(24.dp))
+        androidx.compose.foundation.layout.Spacer(Modifier.padding(Spacing.xl))
     }
 
     MmImportDialogs(vm)
@@ -151,7 +153,7 @@ fun ChoiceDialog(title: String, options: List<Pair<String, String>>, selected: S
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 options.forEach { (k, label) ->
-                    Row(Modifier.fillMaxWidth().clickable { onSelect(k); onDismiss() }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().clickable { onSelect(k); onDismiss() }.padding(vertical = Spacing.xs), verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = k == selected, onClick = { onSelect(k); onDismiss() })
                         Text(label)
                     }

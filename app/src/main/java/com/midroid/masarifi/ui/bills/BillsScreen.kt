@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.bills
 
+import com.midroid.masarifi.ui.theme.Spacing
+
 import com.midroid.masarifi.ui.icon
 
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -93,7 +95,7 @@ fun BillsScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) vm.importMi5g(uri) }
 
     Column(modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(start = Spacing.lg, end = Spacing.xs, top = Spacing.xs), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.tab_bills), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.bill_menu)) }
@@ -180,17 +182,19 @@ fun BillRow(b: Bill, cat: Category?, s: AppSettings, today: LocalDate, onClick: 
                     (cat?.name(s.arabic)?.let { "$it • " } ?: "") + recurrenceLabel(b) + " • " + dateLabel(b.dueDate, s.arabic),
                     style = MaterialTheme.typography.bodySmall, color = c.muted, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
-                Text(label, style = MaterialTheme.typography.labelMedium, color = color)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = com.midroid.masarifi.ui.theme.Spacing.xs)) {
+                    // «تم الدفع» sits on the start side, away from the end-aligned FAB.
+                    if (b.active) androidx.compose.material3.FilledTonalButton(
+                        onClick = onPay, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = com.midroid.masarifi.ui.theme.Spacing.md),
+                        modifier = Modifier.height(32.dp),
+                    ) { Text(stringResource(R.string.bill_paid_btn), style = MaterialTheme.typography.labelMedium, maxLines = 1) }
+                    Spacer(Modifier.width(com.midroid.masarifi.ui.theme.Spacing.sm))
+                    Text(label, style = MaterialTheme.typography.labelMedium, color = color, maxLines = 1)
+                }
             }
         },
         trailingContent = {
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(com.midroid.masarifi.ui.theme.Spacing.xs)) {
-                Text(Fmt.money(b.amount, s, false), style = com.midroid.masarifi.ui.theme.Amount, fontSize = 15.sp, color = c.expense, maxLines = 1)
-                if (b.active) androidx.compose.material3.FilledTonalButton(
-                    onClick = onPay, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                    modifier = Modifier.height(32.dp),
-                ) { Text(stringResource(R.string.bill_paid_btn), style = MaterialTheme.typography.labelMedium, maxLines = 1) }
-            }
+            Text(Fmt.money(b.amount, s, false), style = com.midroid.masarifi.ui.theme.Amount, fontSize = 15.sp, color = c.expense, maxLines = 1)
         },
     )
 }
@@ -208,15 +212,15 @@ private fun BillCalendar(bills: List<Bill>, payments: List<BillPayment>, s: AppS
     LazyColumn(Modifier.fillMaxSize(), state = com.midroid.masarifi.ui.components.rememberFabAwareListState()) {
         item {
             MonthSwitcher(Fmt.monthTitle(ym, s.arabic), { ym = ym.minusMonths(1) }, { ym = ym.plusMonths(1) }, Modifier.fillMaxWidth(), onLabelClick = { ym = YearMonth.from(today) })
-            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = Spacing.sm)) {
                 (0L until 7L).map { first.plus(it) }.forEach { d ->
-                    Text(Fmt.weekdayNarrow(d, s.arabic), Modifier.weight(1f), textAlign = TextAlign.Center, fontSize = 11.sp, color = c.muted, maxLines = 1)
+                    Text(Fmt.weekdayNarrow(d, s.arabic), Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, color = c.muted, maxLines = 1)
                 }
             }
             cells.chunked(7).forEach { week ->
-                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = Spacing.sm)) {
                     week.forEach { d ->
-                        Box(Modifier.weight(1f).aspectRatio(1f).padding(2.dp)) {
+                        Box(Modifier.weight(1f).aspectRatio(1f).padding(Spacing.xxs)) {
                             if (d != null) {
                                 val list = items[d].orEmpty()
                                 val unpaid = list.filter { !it.paid }
@@ -229,7 +233,7 @@ private fun BillCalendar(bills: List<Bill>, payments: List<BillPayment>, s: AppS
                                     Modifier.fillMaxSize().background(bg, RoundedCornerShape(8.dp)).clickable { sel = d },
                                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
                                 ) {
-                                    Text(d.dayOfMonth.toString(), fontSize = 13.sp)
+                                    Text(d.dayOfMonth.toString(), style = MaterialTheme.typography.bodyMedium)
                                     Row {
                                         if (unpaid.isNotEmpty()) Dot(if (d.isBefore(today)) c.negative else c.warning)
                                         if (list.any { it.paid }) Dot(c.positive)
@@ -240,10 +244,10 @@ private fun BillCalendar(bills: List<Bill>, payments: List<BillPayment>, s: AppS
                     }
                 }
             }
-            Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Dot(c.warning); Text(" " + stringResource(R.string.bill_legend_due) + "   ", fontSize = 11.sp, color = c.muted)
-                Dot(c.negative); Text(" " + stringResource(R.string.bill_overdue) + "   ", fontSize = 11.sp, color = c.muted)
-                Dot(c.positive); Text(" " + stringResource(R.string.bill_legend_paid), fontSize = 11.sp, color = c.muted)
+            Row(Modifier.padding(horizontal = Spacing.lg, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Dot(c.warning); Text(" " + stringResource(R.string.bill_legend_due) + "   ", style = MaterialTheme.typography.labelSmall, color = c.muted)
+                Dot(c.negative); Text(" " + stringResource(R.string.bill_overdue) + "   ", style = MaterialTheme.typography.labelSmall, color = c.muted)
+                Dot(c.positive); Text(" " + stringResource(R.string.bill_legend_paid), style = MaterialTheme.typography.labelSmall, color = c.muted)
             }
             HorizontalDivider(color = c.divider)
             SectionTitle(dateLabel(sel, s.arabic))
@@ -251,11 +255,11 @@ private fun BillCalendar(bills: List<Bill>, payments: List<BillPayment>, s: AppS
         val day = items[sel].orEmpty()
         if (day.isEmpty()) item { EmptyState(stringResource(R.string.bill_none_day)) }
         items(day, key = { "${it.bill.id}-${it.date}-${it.paid}" }) { o ->
-            Row(Modifier.fillMaxWidth().clickable { onOpen(o.bill) }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().clickable { onOpen(o.bill) }.padding(horizontal = Spacing.lg, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(o.bill.name, Modifier.weight(1f))
                 Text(Fmt.money(o.amount, s), color = if (o.paid) c.positive else c.expense)
-                Spacer(Modifier.width(8.dp))
-                if (o.paid) Text(stringResource(R.string.bill_legend_paid), fontSize = 12.sp, color = c.positive)
+                Spacer(Modifier.width(Spacing.sm))
+                if (o.paid) Text(stringResource(R.string.bill_legend_paid), style = MaterialTheme.typography.bodySmall, color = c.positive)
                 else if (o.date == o.bill.dueDate && o.bill.active) TextButton(onClick = { onPay(o.bill) }) { Text(stringResource(R.string.bill_paid_btn)) }
             }
             HorizontalDivider(color = c.divider)
@@ -288,18 +292,18 @@ private fun PaymentHistory(vm: AppViewModel, bills: List<Bill>, payments: List<B
 @Composable
 fun PaymentRow(p: BillPayment, name: String, s: AppSettings, onDelete: () -> Unit) {
     val c = AppTheme.colors
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("✅", fontSize = 16.sp)
+    Row(Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+        Text("✅", style = MaterialTheme.typography.bodyLarge)
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
-            Text(name, fontSize = 15.sp)
+            Text(name, style = MaterialTheme.typography.bodyLarge)
             Text(
                 stringResource(R.string.bill_paid_on, Fmt.dateLabel(p.paidAt, s.arabic)) + " • " + stringResource(R.string.bill_for_due, dateLabel(LocalDate.ofEpochDay(p.dueDate), s.arabic)) +
                     if (p.txnUuid == null) " • " + stringResource(R.string.bill_no_txn) else "",
                 fontSize = 11.sp, color = c.muted,
             )
         }
-        Text(Fmt.money(p.amount, s), color = c.expense, fontSize = 14.sp)
+        Text(Fmt.money(p.amount, s), color = c.expense, style = MaterialTheme.typography.bodyMedium)
         IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, stringResource(R.string.delete), tint = c.muted) }
     }
     HorizontalDivider(color = c.divider)

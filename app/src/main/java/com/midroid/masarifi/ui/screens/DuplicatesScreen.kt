@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.screens
 
+import com.midroid.masarifi.ui.theme.Spacing
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -80,11 +82,11 @@ fun DuplicatesScreen(vm: AppViewModel, navigate: (Route) -> Unit, onBack: () -> 
             }
             items(groups, key = { it.key }) { g ->
                 Card(Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = c.card)) {
-                    Column(Modifier.padding(vertical = 8.dp)) {
+                    Column(Modifier.padding(vertical = Spacing.sm)) {
                         Text(
                             stringResource(if (g.reason == DupReason.SMS_MATCH) R.string.dup_reason_sms else R.string.dup_reason_exact),
                             style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs),
                         )
                         g.txns.forEach { t ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -96,8 +98,8 @@ fun DuplicatesScreen(vm: AppViewModel, navigate: (Route) -> Unit, onBack: () -> 
                                 }) { Icon(Icons.Filled.Delete, stringResource(R.string.delete), tint = c.muted) }
                             }
                         }
-                        Spacer(Modifier.height(4.dp))
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Spacer(Modifier.height(Spacing.xs))
+                        Row(Modifier.fillMaxWidth().padding(horizontal = Spacing.md), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                             Button(onClick = { vm.mergeGroup(g.ids, merged) }) { Text(stringResource(R.string.dup_merge)) }
                             OutlinedButton(onClick = { vm.keepBoth(g.ids, kept) }) { Text(stringResource(R.string.dup_keep_both)) }
                         }

@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.screens
 
+import com.midroid.masarifi.ui.theme.Spacing
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -99,9 +101,9 @@ fun SyncScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHostState
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState())) {
             // ---- sync now + status
-            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.sm)) {
                 Button(onClick = { vm.syncNow(done) }, enabled = st.configured && ui == null, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Filled.Refresh, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.sync_now))
+                    Icon(Icons.Filled.Refresh, null, Modifier.size(18.dp)); Spacer(Modifier.width(Spacing.sm)); Text(stringResource(R.string.sync_now))
                 }
             }
             val lastText = when {
@@ -112,9 +114,9 @@ fun SyncScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHostState
             SettingRow(Icons.Filled.Info, stringResource(R.string.sync_last), lastText)
             SettingRow(Icons.Filled.Phone, stringResource(R.string.sync_device_name), st.deviceName, onClick = { dialog = "name" })
             if (st.devices.isNotEmpty()) {
-                Text(stringResource(R.string.sync_other_devices), fontSize = 13.sp, color = AppTheme.colors.muted, modifier = Modifier.padding(start = 56.dp, end = 16.dp, top = 4.dp))
+                Text(stringResource(R.string.sync_other_devices), style = MaterialTheme.typography.bodyMedium, color = AppTheme.colors.muted, modifier = Modifier.padding(start = 56.dp, end = Spacing.lg, top = Spacing.xs))
                 st.devices.values.sortedByDescending { it.lastSyncAt }.forEach { d ->
-                    Text("• ${d.name} — " + stringResource(R.string.sync_device_seen, fmtTime(d.lastSyncAt)), fontSize = 13.sp, modifier = Modifier.padding(start = 56.dp, end = 16.dp, top = 2.dp))
+                    Text("• ${d.name} — " + stringResource(R.string.sync_device_seen, fmtTime(d.lastSyncAt)), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 56.dp, end = Spacing.lg, top = Spacing.xxs))
                 }
             }
 
@@ -127,7 +129,7 @@ fun SyncScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHostState
                 } else null,
             )
             if (st.fileId != null) {
-                Text(stringResource(R.string.sync_file_id, ltr(shortId(st.fileId)!!)), fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 56.dp, end = 16.dp))
+                Text(stringResource(R.string.sync_file_id, ltr(shortId(st.fileId)!!)), fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 56.dp, end = Spacing.lg))
             }
             if (st.configured && !st.persistable) Hint(stringResource(R.string.sync_no_persist), warn = true)
             Hint(stringResource(R.string.sync_warn_same_file), warn = true)
@@ -142,18 +144,18 @@ fun SyncScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHostState
             SectionTitle(stringResource(R.string.sync_auto))
             SwitchRow(AppIcons.Repeat, stringResource(R.string.sync_auto), stringResource(R.string.sync_auto_sub, st.intervalMin.toString()), st.auto) { v -> vm.setSyncAuto(v) }
             if (st.auto) SettingRow(AppIcons.Calendar, stringResource(R.string.sync_interval), stringResource(R.string.sync_interval_value, st.intervalMin.toString()), onClick = { dialog = "interval" })
-            Text(stringResource(R.string.sync_not_realtime), fontSize = 12.sp, color = AppTheme.colors.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            Text(stringResource(R.string.sync_not_realtime), style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.muted, modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.xs))
 
             // ---- how-to
             SectionTitle(stringResource(R.string.sync_how_title))
-            Text(stringResource(R.string.sync_how_body), fontSize = 13.sp, lineHeight = 20.sp, modifier = Modifier.padding(horizontal = 16.dp))
-            Text(stringResource(R.string.sync_shared_hint), fontSize = 12.sp, color = AppTheme.colors.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
+            Text(stringResource(R.string.sync_how_body), style = MaterialTheme.typography.bodyMedium, lineHeight = 20.sp, modifier = Modifier.padding(horizontal = Spacing.lg))
+            Text(stringResource(R.string.sync_shared_hint), style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.muted, modifier = Modifier.padding(horizontal = Spacing.lg, vertical = 6.dp))
 
             // ---- log
             SectionTitle(stringResource(R.string.sync_log))
-            if (st.log.isEmpty()) Text(stringResource(R.string.sync_log_empty), color = AppTheme.colors.muted, modifier = Modifier.padding(horizontal = 16.dp))
+            if (st.log.isEmpty()) Text(stringResource(R.string.sync_log_empty), color = AppTheme.colors.muted, modifier = Modifier.padding(horizontal = Spacing.lg))
             st.log.take(15).forEach { LogRow(it) }
-            Text(stringResource(R.string.sync_separate_from_backup), fontSize = 12.sp, color = AppTheme.colors.muted, modifier = Modifier.padding(16.dp))
+            Text(stringResource(R.string.sync_separate_from_backup), style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.muted, modifier = Modifier.padding(Spacing.lg))
         }
     }
 
@@ -213,14 +215,14 @@ private fun errorText(code: String?): String = when (code) {
 @Composable
 private fun Hint(text: String, warn: Boolean = false) {
     Row(
-        Modifier.padding(horizontal = 16.dp, vertical = 6.dp).fillMaxWidth()
+        Modifier.padding(horizontal = Spacing.lg, vertical = 6.dp).fillMaxWidth()
             .background(if (warn) Warn.copy(alpha = 0.12f) else Color.Transparent, RoundedCornerShape(10.dp))
             .border(1.dp, if (warn) Warn.copy(alpha = 0.6f) else Color.Transparent, RoundedCornerShape(10.dp))
             .padding(10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         if (warn) Icon(Icons.Filled.Warning, null, tint = Warn, modifier = Modifier.size(18.dp))
-        Text(text, fontSize = 12.sp, lineHeight = 18.sp)
+        Text(text, style = MaterialTheme.typography.bodySmall, lineHeight = 18.sp)
     }
 }
 
@@ -233,10 +235,10 @@ private fun LogRow(e: SyncLogEntry) {
         "setup" -> R.string.sync_trigger_setup
         else -> R.string.sync_trigger_auto
     }
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.Top) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = 6.dp), verticalAlignment = Alignment.Top) {
         Text(if (e.ok) "✓" else "✗", color = if (e.ok) AppTheme.colors.income else MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold, modifier = Modifier.width(22.dp))
         Column {
-            Text(fmtTime(e.at) + " • " + stringResource(trig), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text(fmtTime(e.at) + " • " + stringResource(trig), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             Text(
                 if (e.ok) stringResource(R.string.sync_log_line, e.pulled.toString(), e.pushed.toString(), e.merged.toString(), e.conflicts.toString())
                 else errorText(e.error),

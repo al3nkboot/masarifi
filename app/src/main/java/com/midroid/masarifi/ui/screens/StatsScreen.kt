@@ -80,7 +80,7 @@ fun StatsScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
     var tab by rememberSaveable { mutableIntStateOf(0) }
 
     Column(modifier.fillMaxSize()) {
-        Text(stringResource(R.string.tab_stats), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+        Text(stringResource(R.string.tab_stats), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.md))
         // compact entry point: «الملخص المالي»
         androidx.compose.material3.Card(
             onClick = { navigate(Route.Summary) },
@@ -160,11 +160,11 @@ private fun PieTab(all: List<Txn>, cats: List<Category>, ym: YearMonth, s: AppSe
             }
         }
         item {
-            Box(Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxWidth().padding(vertical = Spacing.md), contentAlignment = Alignment.Center) {
                 DonutChart(data.map { it.amount }, data.map { it.color }, size = 210.dp) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(stringResource(if (expenseMode) R.string.expenses else R.string.income), color = c.muted, fontSize = 12.sp)
-                        Text(Fmt.money(total, s), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(stringResource(if (expenseMode) R.string.expenses else R.string.income), color = c.muted, style = MaterialTheme.typography.bodySmall)
+                        Text(Fmt.money(total, s), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
                     }
                 }
             }
@@ -208,16 +208,16 @@ private fun TrendTab(all: List<Txn>, cats: List<Category>, ym: YearMonth, s: App
             Triple(id?.let { byCat[it] }?.let { it.icon + " " + it.name(s.arabic) } ?: noCat, cur.filter { it.categoryId == id }.sumOf { it.amount }, prev.filter { it.categoryId == id }.sumOf { it.amount })
         }.sortedByDescending { maxOf(it.second, it.third) }
     }
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = Spacing.md)) {
         item {
             InfoCard(stringResource(R.string.monthly_trend)) {
                 TrendBars(series.map { Triple(Fmt.monthShort(it.first, s.arabic).take(if (s.arabic) 6 else 3), it.second, it.third) })
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Spacing.sm))
                 ChartLegend(listOf(stringResource(R.string.income) to c.income, stringResource(R.string.expenses) to c.expense))
                 val avg = series.dropLast(1).map { it.third }.filter { it > 0 }.let { if (it.isEmpty()) 0L else it.sum() / it.size }
                 if (avg > 0) {
                     Spacer(Modifier.height(6.dp))
-                    Text(stringResource(R.string.avg_monthly_expense, Fmt.money(avg, s)), fontSize = 12.sp, color = c.muted)
+                    Text(stringResource(R.string.avg_monthly_expense, Fmt.money(avg, s)), style = MaterialTheme.typography.bodySmall, color = c.muted)
                 }
             }
         }
@@ -231,23 +231,23 @@ private fun TrendTab(all: List<Txn>, cats: List<Category>, ym: YearMonth, s: App
         }
         if (compare.isNotEmpty()) {
             item {
-                Row(Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
-                    Text(stringResource(R.string.category), Modifier.weight(1f), color = c.muted, fontSize = 12.sp)
-                    Text(stringResource(R.string.last_month), Modifier.width(90.dp), color = c.muted, fontSize = 12.sp, textAlign = TextAlign.End)
-                    Text(stringResource(R.string.this_month), Modifier.width(90.dp), color = c.muted, fontSize = 12.sp, textAlign = TextAlign.End)
+                Row(Modifier.padding(horizontal = Spacing.sm, vertical = 6.dp)) {
+                    Text(stringResource(R.string.category), Modifier.weight(1f), color = c.muted, style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.last_month), Modifier.width(90.dp), color = c.muted, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.End)
+                    Text(stringResource(R.string.this_month), Modifier.width(90.dp), color = c.muted, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.End)
                     Spacer(Modifier.width(52.dp))
                 }
             }
         }
         items(compare) { (label, curA, prevA) ->
-            Row(Modifier.padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(label, Modifier.weight(1f), maxLines = 1, fontSize = 14.sp)
-                Text(Fmt.money(prevA, s, false), Modifier.width(90.dp), textAlign = TextAlign.End, fontSize = 13.sp, color = c.muted)
-                Text(Fmt.money(curA, s, false), Modifier.width(90.dp), textAlign = TextAlign.End, fontSize = 13.sp)
+            Row(Modifier.padding(horizontal = Spacing.sm, vertical = Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+                Text(label, Modifier.weight(1f), maxLines = 1, style = MaterialTheme.typography.bodyMedium)
+                Text(Fmt.money(prevA, s, false), Modifier.width(90.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyMedium, color = c.muted)
+                Text(Fmt.money(curA, s, false), Modifier.width(90.dp), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyMedium)
                 Box(Modifier.width(52.dp), contentAlignment = Alignment.CenterEnd) {
                     Insights.percentChange(curA, prevA)?.let { p ->
-                        Text((if (p > 0) "▲" else if (p < 0) "▼" else "") + "${kotlin.math.abs(p)}%", fontSize = 11.sp, color = if (p > 0) c.expense else c.income)
-                    } ?: Text(if (curA > 0) "new" else "", fontSize = 11.sp, color = c.muted)
+                        Text((if (p > 0) "▲" else if (p < 0) "▼" else "") + "${kotlin.math.abs(p)}%", style = MaterialTheme.typography.labelSmall, color = if (p > 0) c.expense else c.income)
+                    } ?: Text(if (curA > 0) "new" else "", style = MaterialTheme.typography.labelSmall, color = c.muted)
                 }
             }
             HorizontalDivider(color = c.divider)
@@ -259,7 +259,7 @@ private fun TrendTab(all: List<Txn>, cats: List<Category>, ym: YearMonth, s: App
 @Composable
 private fun ChangeText(p: Int) {
     val c = AppTheme.colors
-    Spacer(Modifier.height(4.dp))
+    Spacer(Modifier.height(Spacing.xs))
     Text(
         if (p >= 0) stringResource(R.string.more_than_last, "$p%") else stringResource(R.string.less_than_last, "${-p}%"),
         color = if (p > 0) c.expense else c.income, fontSize = 13.sp,
@@ -277,7 +277,7 @@ private fun BudgetTab(vm: AppViewModel, all: List<Txn>, cats: List<Category>, ym
     val isCurrent = ym == YearMonth.now()
     val bills by vm.bills.collectAsStateWithLifecycle()
     val upcoming = remember(bills, ym) { com.midroid.masarifi.bills.BillLogic.upcomingInMonth(bills, vm.today(), ym) }
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = Spacing.md)) {
         item {
             val spent = exp.sumOf { it.amount }
             val b = bmap[0L] ?: 0L
@@ -286,7 +286,7 @@ private fun BudgetTab(vm: AppViewModel, all: List<Txn>, cats: List<Category>, ym
             }
             if (upcoming.isNotEmpty()) InfoCard("🧾 " + stringResource(R.string.bill_budget_card)) {
                 val due = upcoming.sumOf { it.amount }
-                Text(stringResource(R.string.bill_budget_line, Fmt.money(due, s), upcoming.size), fontSize = 14.sp)
+                Text(stringResource(R.string.bill_budget_line, Fmt.money(due, s), upcoming.size), style = MaterialTheme.typography.bodyMedium)
                 val projected = spent + due
                 Text(
                     stringResource(R.string.bill_budget_projected, Fmt.money(projected, s)) + if (b > 0) " / ${Fmt.money(b, s)}" else "",
@@ -295,27 +295,27 @@ private fun BudgetTab(vm: AppViewModel, all: List<Txn>, cats: List<Category>, ym
                 if (b > 0) { Spacer(Modifier.height(6.dp)); ProgressBar(projected.toDouble() / b) }
                 Spacer(Modifier.height(6.dp))
                 upcoming.take(5).forEach { o ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-                        Text(o.bill.name + " • " + com.midroid.masarifi.ui.bills.dateLabel(o.date, s.arabic), Modifier.weight(1f), fontSize = 12.sp, color = c.muted, maxLines = 1)
-                        Text(Fmt.money(o.amount, s), fontSize = 12.sp)
+                    Row(Modifier.fillMaxWidth().padding(vertical = Spacing.xxs)) {
+                        Text(o.bill.name + " • " + com.midroid.masarifi.ui.bills.dateLabel(o.date, s.arabic), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = c.muted, maxLines = 1)
+                        Text(Fmt.money(o.amount, s), style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
-            Text(stringResource(R.string.budget_hint), fontSize = 12.sp, color = c.muted, modifier = Modifier.padding(8.dp))
+            Text(stringResource(R.string.budget_hint), style = MaterialTheme.typography.bodySmall, color = c.muted, modifier = Modifier.padding(Spacing.sm))
         }
         items(cats.filter { it.type == TxnType.EXPENSE }) { cat ->
             val spent = exp.filter { it.categoryId == cat.id }.sumOf { it.amount }
             val b = bmap[cat.id] ?: 0L
-            Column(Modifier.fillMaxWidth().clickable { editing = cat.id to cat.name(s.arabic) }.padding(horizontal = 8.dp, vertical = 10.dp)) {
+            Column(Modifier.fillMaxWidth().clickable { editing = cat.id to cat.name(s.arabic) }.padding(horizontal = Spacing.sm, vertical = 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(cat.icon + " " + cat.name(s.arabic), Modifier.weight(1f))
-                    if (b > 0) Text("${Fmt.money(spent, s, false)} / ${Fmt.money(b, s)}", fontSize = 13.sp)
-                    else Text(Fmt.money(spent, s), fontSize = 13.sp, color = c.muted)
+                    if (b > 0) Text("${Fmt.money(spent, s, false)} / ${Fmt.money(b, s)}", style = MaterialTheme.typography.bodyMedium)
+                    else Text(Fmt.money(spent, s), style = MaterialTheme.typography.bodyMedium, color = c.muted)
                 }
                 if (b > 0) {
                     Spacer(Modifier.height(6.dp))
                     ProgressBar(spent.toDouble() / b)
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(Spacing.xxs))
                     val left = b - spent
                     Text(
                         if (left >= 0) stringResource(R.string.remaining_x, Fmt.money(left, s)) else stringResource(R.string.over_by_x, Fmt.money(-left, s)),
@@ -337,7 +337,7 @@ private fun BudgetLine(spent: Long, budget: Long, s: AppSettings, isCurrent: Boo
     val c = AppTheme.colors
     if (budget <= 0) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.no_budget_hint), Modifier.weight(1f), color = c.muted, fontSize = 13.sp)
+            Text(stringResource(R.string.no_budget_hint), Modifier.weight(1f), color = c.muted, style = MaterialTheme.typography.bodyMedium)
             TextButton(onClick = onEdit) { Text(stringResource(R.string.set)) }
         }
         return
@@ -347,7 +347,7 @@ private fun BudgetLine(spent: Long, budget: Long, s: AppSettings, isCurrent: Boo
         TextButton(onClick = onEdit) { Text(stringResource(R.string.edit)) }
     }
     ProgressBar(spent.toDouble() / budget)
-    Spacer(Modifier.height(4.dp))
+    Spacer(Modifier.height(Spacing.xs))
     val left = budget - spent
     Text(
         if (left >= 0) stringResource(R.string.remaining_x, Fmt.money(left, s)) else stringResource(R.string.over_by_x, Fmt.money(-left, s)),
@@ -355,7 +355,7 @@ private fun BudgetLine(spent: Long, budget: Long, s: AppSettings, isCurrent: Boo
     )
     if (isCurrent && left > 0) {
         val daysLeft = ym.lengthOfMonth() - LocalDate.now().dayOfMonth + 1
-        Text(stringResource(R.string.per_day_x, Fmt.money(left / daysLeft, s)), fontSize = 12.sp, color = c.muted)
+        Text(stringResource(R.string.per_day_x, Fmt.money(left / daysLeft, s)), style = MaterialTheme.typography.bodySmall, color = c.muted)
     }
 }
 
@@ -367,7 +367,7 @@ private fun TipsTab(vm: AppViewModel, all: List<Txn>, cats: List<Category>, ym: 
     val tips = remember(all, cats, ym, s, budgets) { computeTips(all, cats, ym, s, budgets.firstOrNull { it.categoryId == 0L }?.amount ?: 0L, noCat) }
     val spikes = remember(all, ym) { unusualTxns(all, ym) }
     val byCat = cats.associateBy { it.id }
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = Spacing.md)) {
         if (tips.isEmpty() && spikes.isEmpty()) item { EmptyState(stringResource(R.string.no_tips)) }
         items(tips) { t ->
             Row(
@@ -378,13 +378,13 @@ private fun TipsTab(vm: AppViewModel, all: List<Txn>, cats: List<Category>, ym: 
             }
         }
         if (spikes.isNotEmpty()) {
-            item { Text(stringResource(R.string.unusual_spending), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 16.dp, bottom = 6.dp)) }
+            item { Text(stringResource(R.string.unusual_spending), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = Spacing.lg, bottom = 6.dp)) }
             items(spikes) { t ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).background(c.card, RoundedCornerShape(10.dp)).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("⚠️", fontSize = 18.sp); Spacer(Modifier.width(10.dp))
+                Row(Modifier.fillMaxWidth().padding(vertical = Spacing.xs).background(c.card, RoundedCornerShape(10.dp)).padding(Spacing.md), verticalAlignment = Alignment.CenterVertically) {
+                    Text("⚠️", style = MaterialTheme.typography.titleMedium); Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(t.note.ifBlank { t.categoryId?.let { byCat[it]?.name(s.arabic) } ?: noCat }, fontSize = 14.sp)
-                        Text(Fmt.dateLabel(t.dateTime, s.arabic) + " • " + (t.categoryId?.let { byCat[it]?.name(s.arabic) } ?: noCat), fontSize = 12.sp, color = c.muted)
+                        Text(t.note.ifBlank { t.categoryId?.let { byCat[it]?.name(s.arabic) } ?: noCat }, style = MaterialTheme.typography.bodyMedium)
+                        Text(Fmt.dateLabel(t.dateTime, s.arabic) + " • " + (t.categoryId?.let { byCat[it]?.name(s.arabic) } ?: noCat), style = MaterialTheme.typography.bodySmall, color = c.muted)
                     }
                     Text(Fmt.money(t.amount, s), color = c.expense)
                 }

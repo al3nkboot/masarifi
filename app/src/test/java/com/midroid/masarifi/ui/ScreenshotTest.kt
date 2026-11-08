@@ -76,7 +76,7 @@ class ScreenshotTest {
         }
         rule.waitUntil(5_000) { rule.onAllNodesWithText("LuLu").fetchSemanticsNodes().isNotEmpty() }
         shot("01_trans_daily")
-        rule.onNodeWithText("التقويم").performClick(); shot("02_trans_calendar")
+        rule.onNodeWithText("تقويم").performClick(); shot("02_trans_calendar")
         rule.onNodeWithText("التحليل").performClick(); shot("03_stats_pie")
         rule.onNodeWithText("الميزانية").performClick(); shot("04_stats_budget")
         rule.onNodeWithText("نصائح").performClick(); shot("05_stats_tips")

@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.screens
 
+import com.midroid.masarifi.ui.theme.Spacing
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -85,7 +87,7 @@ fun SearchScreen(vm: AppViewModel, filter: Route.TxnList?, navigate: (Route) -> 
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             OutlinedTextField(
-                query, { query = it }, Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                query, { query = it }, Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.xs),
                 placeholder = { Text(stringResource(R.string.search_hint)) }, singleLine = true,
                 leadingIcon = { Icon(Icons.Filled.Search, null) },
             )

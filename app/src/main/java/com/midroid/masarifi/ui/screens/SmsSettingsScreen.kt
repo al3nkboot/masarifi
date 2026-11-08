@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.screens
 
+import com.midroid.masarifi.ui.theme.Spacing
+
 import com.midroid.masarifi.ui.icon
 
 import android.Manifest
@@ -96,7 +98,7 @@ fun SmsSettingsScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHo
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState())) {
-            Text(stringResource(R.string.sms_intro), fontSize = 13.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            Text(stringResource(R.string.sms_intro), style = MaterialTheme.typography.bodyMedium, color = c.muted, modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm))
             SwitchRow(AppIcons.Sms, stringResource(R.string.sms_enable), stringResource(R.string.sms_enable_sub), s.smsEnabled) { v ->
                 if (v) {
                     if (SmsImporter.hasPermission(ctx) && SmsImporter.hasPermission(ctx, Manifest.permission.RECEIVE_SMS)) vm.updateSettings { it.copy(smsEnabled = true) }
@@ -116,25 +118,25 @@ fun SmsSettingsScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHo
             SwitchRow(null, stringResource(R.string.sms_notify), stringResource(R.string.sms_notify_sub), s.smsNotify) { v -> vm.updateSettings { it.copy(smsNotify = v) } }
             SwitchRow(null, stringResource(R.string.sms_unknown), stringResource(R.string.sms_unknown_sub), s.smsAcceptUnknown) { v -> vm.updateSettings { it.copy(smsAcceptUnknown = v) } }
 
-            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
                 Button(
                     enabled = s.smsEnabled && !scanning,
                     onClick = { vm.scanInbox { r -> String.format(java.util.Locale.US, scanFmt, r.scanned, r.imported) } },
                 ) {
-                    if (scanning) { CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White); Spacer(Modifier.width(8.dp)) }
+                    if (scanning) { CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White); Spacer(Modifier.width(Spacing.sm)) }
                     Text(stringResource(R.string.scan_inbox))
                 }
-                Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.imported_count, imported), fontSize = 13.sp, color = c.muted)
+                Spacer(Modifier.width(Spacing.md))
+                Text(stringResource(R.string.imported_count, imported), style = MaterialTheme.typography.bodyMedium, color = c.muted)
             }
-            Text(stringResource(R.string.scan_inbox_sub), fontSize = 12.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp))
+            Text(stringResource(R.string.scan_inbox_sub), style = MaterialTheme.typography.bodySmall, color = c.muted, modifier = Modifier.padding(horizontal = Spacing.lg))
             val rescanFmt = stringResource(R.string.rescan_result)
             OutlinedButton(
                 enabled = s.smsEnabled && !scanning,
                 onClick = { vm.rescanInbox { r -> String.format(java.util.Locale.US, rescanFmt, r.scanned.toString(), r.imported.toString(), r.linked.toString()) } },
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp),
+                modifier = Modifier.padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.md),
             ) { Text(stringResource(R.string.rescan_sms)) }
-            Text(stringResource(R.string.rescan_sms_sub), fontSize = 12.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            Text(stringResource(R.string.rescan_sms_sub), style = MaterialTheme.typography.bodySmall, color = c.muted, modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.xs))
 
             SettingRow(null, stringResource(R.string.repair_title), stringResource(R.string.repair_sub), onClick = onRepair)
             HorizontalDivider(color = c.divider)
@@ -146,13 +148,13 @@ fun SmsSettingsScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHo
             SectionTitle(stringResource(R.string.sms_senders))
             Text(
                 DefaultSmsConfig.banks.joinToString("\n") { b -> "• " + (if (s.arabic) b.nameAr else b.nameEn) + ": " + b.senderIds.joinToString(", ") },
-                fontSize = 12.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp),
+                fontSize = 12.sp, color = c.muted, modifier = Modifier.padding(horizontal = Spacing.lg),
             )
             OutlinedTextField(
-                extra, { extra = it }, Modifier.fillMaxWidth().padding(16.dp),
+                extra, { extra = it }, Modifier.fillMaxWidth().padding(Spacing.lg),
                 label = { Text(stringResource(R.string.extra_senders)) }, supportingText = { Text(stringResource(R.string.extra_senders_hint)) },
             )
-            OutlinedButton(onClick = { vm.updateSettings { it.copy(extraSenders = extra) } }, modifier = Modifier.padding(horizontal = 16.dp)) {
+            OutlinedButton(onClick = { vm.updateSettings { it.copy(extraSenders = extra) } }, modifier = Modifier.padding(horizontal = Spacing.lg)) {
                 Text(stringResource(R.string.save))
             }
 
@@ -160,7 +162,7 @@ fun SmsSettingsScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHo
             ParserTester(vm)
 
             SectionTitle(stringResource(R.string.learned_rules))
-            if (rules.isEmpty()) Text(stringResource(R.string.learned_rules_empty), fontSize = 12.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp))
+            if (rules.isEmpty()) Text(stringResource(R.string.learned_rules_empty), style = MaterialTheme.typography.bodySmall, color = c.muted, modifier = Modifier.padding(horizontal = Spacing.lg))
             rules.forEach { r ->
                 val cat = cats.firstOrNull { it.id == r.categoryId }
                 SettingRow(null, r.merchantKey, cat?.let { it.icon + " " + it.name(s.arabic) } ?: "—") {
@@ -168,8 +170,8 @@ fun SmsSettingsScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHo
                 }
                 HorizontalDivider(color = c.divider)
             }
-            Spacer(Modifier.height(16.dp))
-            Text(stringResource(R.string.sms_play_note), fontSize = 11.sp, color = c.muted, modifier = Modifier.padding(16.dp))
+            Spacer(Modifier.height(Spacing.lg))
+            Text(stringResource(R.string.sms_play_note), style = MaterialTheme.typography.labelSmall, color = c.muted, modifier = Modifier.padding(Spacing.lg))
         }
     }
 }
@@ -180,7 +182,7 @@ private fun WalletTopupsSection(vm: AppViewModel, arabic: Boolean, list: List<Wa
     val accounts by vm.accounts.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<Pair<Int, WalletTopup>?>(null) }
     SectionTitle(stringResource(R.string.wallet_topups))
-    Text(stringResource(R.string.wallet_topups_sub), fontSize = 12.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp))
+    Text(stringResource(R.string.wallet_topups_sub), style = MaterialTheme.typography.bodySmall, color = c.muted, modifier = Modifier.padding(horizontal = Spacing.lg))
     list.forEachIndexed { i, t ->
         SettingRow(
             null, t.name(arabic).ifBlank { t.patterns.firstOrNull() ?: "—" },
@@ -191,9 +193,9 @@ private fun WalletTopupsSection(vm: AppViewModel, arabic: Boolean, list: List<Wa
         }
         HorizontalDivider(color = c.divider)
     }
-    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Row(Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm)) {
         OutlinedButton(onClick = { editing = -1 to WalletTopup("w" + System.currentTimeMillis(), "", "", emptyList()) }) { Text(stringResource(R.string.wallet_topup_add)) }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Spacing.sm))
         TextButton(onClick = { vm.setWalletTopups(null) }) { Text(stringResource(R.string.wallet_topup_reset)) }
     }
     editing?.let { (index, t) ->
@@ -224,12 +226,12 @@ private fun TopupDialog(
                     patterns, { patterns = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.wallet_topup_patterns)) },
                     supportingText = { Text(stringResource(R.string.wallet_topup_patterns_hint)) },
                 )
-                Text(stringResource(R.string.wallet_topup_target), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                Text(stringResource(R.string.wallet_topup_target), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = Spacing.sm))
                 val options = (if (t.targetBankId != null) listOf<String?>(null) else emptyList()) + accounts.map { it.uuid }
                 options.forEach { u ->
                     Row(Modifier.fillMaxWidth().clickable { target = u }, verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = target == u || (target == null && u == null), onClick = { target = u })
-                        Text(if (u == null) stringResource(R.string.wallet_topup_target_auto, autoTarget) else accounts.first { it.uuid == u }.name, fontSize = 14.sp)
+                        Text(if (u == null) stringResource(R.string.wallet_topup_target_auto, autoTarget) else accounts.first { it.uuid == u }.name, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
@@ -259,16 +261,16 @@ private fun ParserTester(vm: AppViewModel) {
     var sender by rememberSaveable { mutableStateOf("BankMuscat") }
     var body by rememberSaveable { mutableStateOf("") }
     val result = remember(sender, body) { if (body.isBlank()) null else runCatching { vm.repo.parser().parse(sender, body) }.getOrNull() }
-    Column(Modifier.padding(horizontal = 16.dp)) {
+    Column(Modifier.padding(horizontal = Spacing.lg)) {
         OutlinedTextField(sender, { sender = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.sender)) }, singleLine = true)
         Spacer(Modifier.height(6.dp))
         OutlinedTextField(body, { body = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.sms_text)) }, minLines = 3)
         Spacer(Modifier.height(6.dp))
         if (body.isNotBlank()) {
-            Column(Modifier.fillMaxWidth().background(c.card, RoundedCornerShape(8.dp)).padding(12.dp)) {
+            Column(Modifier.fillMaxWidth().background(c.card, RoundedCornerShape(8.dp)).padding(Spacing.md)) {
                 if (result == null) {
-                    Text(stringResource(R.string.parser_no_match), color = c.muted, fontSize = 13.sp)
-                    Text(stringResource(R.string.parser_ignored_hint), color = c.muted, fontSize = 12.sp)
+                    Text(stringResource(R.string.parser_no_match), color = c.muted, style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.parser_ignored_hint), color = c.muted, style = MaterialTheme.typography.bodySmall)
                 }
                 else {
                     val amountText = ltr("${result.currency} ${result.amount.toPlainString()}")
@@ -284,13 +286,13 @@ private fun ParserTester(vm: AppViewModel) {
                             color = if (result.type == SmsTxnType.DEBIT) c.expense else c.income,
                         )
                     }
-                    Text("${stringResource(R.string.merchant)}: ${result.merchant?.let(::ltr) ?: "—"}", fontSize = 13.sp)
-                    if (result.categoryHint == com.midroid.masarifi.sms.CategoryHints.P2P) Text(stringResource(R.string.parser_category_p2p), fontSize = 13.sp)
-                    Text("${stringResource(R.string.card)}: ${result.cardLast4?.let { ltr("••$it") } ?: "—"}", fontSize = 13.sp)
-                    Text("${stringResource(R.string.date)}: ${result.dateTime?.let { d -> ltr(if (d.toLocalTime() == java.time.LocalTime.NOON) d.toLocalDate().toString() else d.toString().replace('T', ' ')) } ?: "—"}", fontSize = 13.sp)
-                    Text("${stringResource(R.string.parser_balance)}: ${result.balance?.let { ltr(it.toPlainString()) } ?: "—"}", fontSize = 13.sp)
-                    result.ref?.let { Text("${stringResource(R.string.parser_ref)}: ${ltr(it)}", fontSize = 13.sp) }
-                    Text("${stringResource(R.string.bank)}: ${result.bankName ?: "—"}  •  rule: ${result.ruleId}", fontSize = 12.sp, color = c.muted)
+                    Text("${stringResource(R.string.merchant)}: ${result.merchant?.let(::ltr) ?: "—"}", style = MaterialTheme.typography.bodyMedium)
+                    if (result.categoryHint == com.midroid.masarifi.sms.CategoryHints.P2P) Text(stringResource(R.string.parser_category_p2p), style = MaterialTheme.typography.bodyMedium)
+                    Text("${stringResource(R.string.card)}: ${result.cardLast4?.let { ltr("••$it") } ?: "—"}", style = MaterialTheme.typography.bodyMedium)
+                    Text("${stringResource(R.string.date)}: ${result.dateTime?.let { d -> ltr(if (d.toLocalTime() == java.time.LocalTime.NOON) d.toLocalDate().toString() else d.toString().replace('T', ' ')) } ?: "—"}", style = MaterialTheme.typography.bodyMedium)
+                    Text("${stringResource(R.string.parser_balance)}: ${result.balance?.let { ltr(it.toPlainString()) } ?: "—"}", style = MaterialTheme.typography.bodyMedium)
+                    result.ref?.let { Text("${stringResource(R.string.parser_ref)}: ${ltr(it)}", style = MaterialTheme.typography.bodyMedium) }
+                    Text("${stringResource(R.string.bank)}: ${result.bankName ?: "—"}  •  rule: ${result.ruleId}", style = MaterialTheme.typography.bodySmall, color = c.muted)
                 }
             }
         }
@@ -306,8 +308,8 @@ private fun CardMappingsSection(vm: AppViewModel, arabic: Boolean) {
     val anyBank = stringResource(R.string.card_map_any_bank)
     fun bankName(id: String?) = DefaultSmsConfig.banks.firstOrNull { it.id == id }?.let { if (arabic) it.nameAr else it.nameEn } ?: anyBank
     SectionTitle(stringResource(R.string.card_maps))
-    Text(stringResource(R.string.card_maps_sub), fontSize = 12.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp))
-    if (maps.isEmpty()) Text(stringResource(R.string.card_maps_empty), fontSize = 12.sp, color = c.muted, modifier = Modifier.padding(16.dp))
+    Text(stringResource(R.string.card_maps_sub), style = MaterialTheme.typography.bodySmall, color = c.muted, modifier = Modifier.padding(horizontal = Spacing.lg))
+    if (maps.isEmpty()) Text(stringResource(R.string.card_maps_empty), style = MaterialTheme.typography.bodySmall, color = c.muted, modifier = Modifier.padding(Spacing.lg))
     maps.forEach { m ->
         val acc = accounts.firstOrNull { it.id == m.accountId }?.name ?: "—"
         SettingRow(null, bankName(m.bankId) + "  " + ltr("••" + m.last4) + (if (m.label.isNotBlank()) " · " + m.label else ""), "→ $acc", onClick = { editing = m }) {
@@ -315,7 +317,7 @@ private fun CardMappingsSection(vm: AppViewModel, arabic: Boolean) {
         }
         HorizontalDivider(color = c.divider)
     }
-    OutlinedButton(onClick = { editing = com.midroid.masarifi.data.CardMapping(last4 = "") }, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+    OutlinedButton(onClick = { editing = com.midroid.masarifi.data.CardMapping(last4 = "") }, modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm)) {
         Text(stringResource(R.string.card_map_add))
     }
     editing?.let { m ->
@@ -346,16 +348,16 @@ private fun CardMappingDialog(
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                 )
                 OutlinedTextField(label, { label = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.card_map_label)) }, singleLine = true)
-                Text(stringResource(R.string.card_map_bank), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                Text(stringResource(R.string.card_map_bank), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = Spacing.sm))
                 (listOf<String?>(null) + DefaultSmsConfig.banks.map { it.id }).forEach { id ->
                     Row(Modifier.fillMaxWidth().clickable { bank = id }, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = bank == id, onClick = { bank = id }); Text(bankName(id), fontSize = 14.sp)
+                        RadioButton(selected = bank == id, onClick = { bank = id }); Text(bankName(id), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
-                Text(stringResource(R.string.card_map_account), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                Text(stringResource(R.string.card_map_account), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = Spacing.sm))
                 accounts.forEach { a ->
                     Row(Modifier.fillMaxWidth().clickable { account = a.id }, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = account == a.id, onClick = { account = a.id }); Text(a.name, fontSize = 14.sp)
+                        RadioButton(selected = account == a.id, onClick = { account = a.id }); Text(a.name, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }

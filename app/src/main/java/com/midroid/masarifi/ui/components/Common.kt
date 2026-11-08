@@ -147,7 +147,7 @@ fun CategoryBadge(emoji: String, tint: Color) {
     Box(
         Modifier.size(40.dp).background(tint.copy(alpha = 0.16f), androidx.compose.foundation.shape.CircleShape),
         contentAlignment = Alignment.Center,
-    ) { Text(emoji, fontSize = 18.sp) }
+    ) { Text(emoji, style = MaterialTheme.typography.titleMedium) }
 }
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -191,7 +191,7 @@ fun TxnRow(
                     t.note.ifBlank { catName }, style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
                 )
-                if (t.isAuto || t.smsLinked) { Spacer(Modifier.width(Spacing.xs + 2.dp)); Chip("SMS") }
+                if (t.isAuto || t.smsLinked) { Spacer(Modifier.width(Spacing.xs + Spacing.xxs)); Chip("SMS") }
                 if (t.smsLinked) {
                     Spacer(Modifier.width(Spacing.xs))
                     Icon(AppIcons.Link, stringResource(R.string.dup_linked_badge), Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
@@ -216,7 +216,7 @@ fun TxnRow(
 @Composable
 fun Chip(text: String, bg: Color = AppTheme.colors.chip, fg: Color = MaterialTheme.colorScheme.onSurface) {
     Box(Modifier.background(bg, RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) {
-        Text(text, fontSize = 10.sp, color = fg, fontWeight = FontWeight.Medium)
+        Text(text, style = MaterialTheme.typography.labelSmall, color = fg, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -224,26 +224,24 @@ fun Chip(text: String, bg: Color = AppTheme.colors.chip, fg: Color = MaterialThe
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     Text(
         text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
-        modifier = modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 6.dp),
+        modifier = modifier.padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.lg, bottom = Spacing.xs),
     )
 }
 
 @Composable
 fun SettingRow(icon: ImageVector?, title: String, subtitle: String? = null, onClick: (() -> Unit)? = null, trailing: @Composable (() -> Unit)? = null) {
-    Row(
-        Modifier.fillMaxWidth().let { if (onClick != null) it.clickable(onClick = onClick) else it }.padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (icon != null) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.width(16.dp))
-        }
-        Column(Modifier.weight(1f)) {
-            Text(title, fontSize = 16.sp)
-            if (subtitle != null) Text(subtitle, fontSize = 13.sp, color = AppTheme.colors.muted)
-        }
-        trailing?.invoke()
-    }
+    androidx.compose.material3.ListItem(
+        modifier = Modifier.fillMaxWidth().let { if (onClick != null) it.clickable(onClick = onClick) else it },
+        colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
+        leadingContent = icon?.let { ic -> {
+            Box(Modifier.size(40.dp).background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f), androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
+                Icon(ic, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            }
+        } },
+        headlineContent = { Text(title, style = MaterialTheme.typography.bodyLarge) },
+        supportingContent = subtitle?.let { st -> { Text(st, style = MaterialTheme.typography.bodyMedium, color = AppTheme.colors.muted) } },
+        trailingContent = trailing,
+    )
 }
 
 @Composable

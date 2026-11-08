@@ -484,4 +484,7 @@
     <string name="bill_budget_projected">Spent + bills: %1$s</string>
     <string name="today_label">Today</string>
     <string name="yesterday_label">Yesterday</string>
+    <string name="tab_calendar_short">Calendar</string>
+    <string name="tab_total_short">Total</string>
+    <string name="tab_note_short">Notes</string>
 </resources>

@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.screens
 
+import com.midroid.masarifi.ui.theme.Spacing
+
 import com.midroid.masarifi.ui.icon
 
 import androidx.compose.foundation.background
@@ -80,22 +82,22 @@ fun CategoriesScreen(vm: AppViewModel, onBack: () -> Unit) {
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.Center) {
+            Row(Modifier.fillMaxWidth().padding(Spacing.sm), horizontalArrangement = Arrangement.Center) {
                 TypeToggle(stringResource(R.string.expense), expenseMode, c.expense) { expenseMode = true }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Spacing.sm))
                 TypeToggle(stringResource(R.string.income), !expenseMode, c.income) { expenseMode = false }
             }
             LazyColumn {
                 items(cats.filter { it.type == type }, key = { it.id }) { cat ->
                     Row(
-                        Modifier.fillMaxWidth().clickable { editing = cat }.padding(horizontal = 16.dp, vertical = 12.dp),
+                        Modifier.fillMaxWidth().clickable { editing = cat }.padding(horizontal = Spacing.lg, vertical = Spacing.md),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(cat.icon, fontSize = 22.sp)
+                        Text(cat.icon, style = MaterialTheme.typography.titleLarge)
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(cat.name(s.arabic), fontSize = 16.sp)
-                            Text(cat.name(!s.arabic), fontSize = 12.sp, color = c.muted)
+                            Text(cat.name(s.arabic), style = MaterialTheme.typography.bodyLarge)
+                            Text(cat.name(!s.arabic), style = MaterialTheme.typography.bodySmall, color = c.muted)
                         }
                     }
                     HorizontalDivider(color = c.divider)
@@ -122,14 +124,14 @@ private fun CategoryDialog(cat: Category, onDismiss: () -> Unit, onSave: (Catego
                 Spacer(Modifier.height(6.dp))
                 OutlinedTextField(en, { en = it }, label = { Text(stringResource(R.string.name_en)) }, singleLine = true)
                 Spacer(Modifier.height(10.dp))
-                Text(stringResource(R.string.icon), fontSize = 13.sp, color = AppTheme.colors.muted)
+                Text(stringResource(R.string.icon), style = MaterialTheme.typography.bodyMedium, color = AppTheme.colors.muted)
                 FlowRow {
                     Defaults.emojiChoices.forEach { e ->
                         Box(
                             Modifier.size(40.dp).background(if (e == emoji) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else Color.Transparent, RoundedCornerShape(8.dp))
                                 .clickable { emoji = e },
                             contentAlignment = Alignment.Center,
-                        ) { Text(e, fontSize = 20.sp) }
+                        ) { Text(e, style = MaterialTheme.typography.titleLarge) }
                     }
                 }
             }

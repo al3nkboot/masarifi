@@ -28,7 +28,7 @@ class LaunchSmokeTest {
         // Arabic UI by default
         rule.waitUntil(5_000) { rule.onAllNodesWithText("المعاملات").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("يومي").assertIsDisplayed()
-        rule.onNodeWithText("التقويم").performClick()
+        rule.onNodeWithText("تقويم").performClick()
         rule.onNodeWithText("شهري").performClick()
         rule.onAllNodesWithText("الإجمالي")[0].assertExists()
 

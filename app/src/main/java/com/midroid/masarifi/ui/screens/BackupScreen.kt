@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.screens
 
+import com.midroid.masarifi.ui.theme.Spacing
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
@@ -79,7 +81,7 @@ fun BackupScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHostSta
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState())) {
-            Text(stringResource(R.string.backup_drive_hint), fontSize = 13.sp, color = AppTheme.colors.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            Text(stringResource(R.string.backup_drive_hint), style = MaterialTheme.typography.bodyMedium, color = AppTheme.colors.muted, modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm))
 
             SettingRow(AppIcons.Upload, stringResource(R.string.backup_now), stringResource(R.string.backup_now_sub), onClick = {
                 if (!busy) createDoc.launch(BackupService.fileName())
@@ -110,7 +112,7 @@ fun BackupScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHostSta
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/octet-stream", "application/zip", "*/*"))
             })
             RelinkRow(vm, onlyWhenNeeded = true)
-            Text(stringResource(R.string.backup_keep_note), fontSize = 12.sp, color = AppTheme.colors.muted, modifier = Modifier.padding(16.dp))
+            Text(stringResource(R.string.backup_keep_note), style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.muted, modifier = Modifier.padding(Spacing.lg))
         }
     }
 

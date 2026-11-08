@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.bills
 
+import com.midroid.masarifi.ui.theme.Spacing
+
 import com.midroid.masarifi.ui.icon
 
 import androidx.compose.foundation.clickable
@@ -88,14 +90,14 @@ fun recurrenceLabel(t: RecurrenceType, n: Int): String = when (t) {
 fun <T> PickField(label: String, value: String, options: List<T>, text: @Composable (T) -> String, onPick: (T) -> Unit, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     var open by remember { mutableStateOf(false) }
     // plain row (not a text field): text fields inside dialogs keep Robolectric screenshot tests from idling
-    Box(modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Column(Modifier.fillMaxWidth().clickable { if (onClick != null) onClick() else open = true }.padding(vertical = 6.dp, horizontal = 4.dp)) {
-            Text(label, fontSize = 12.sp, color = AppTheme.colors.muted)
+    Box(modifier.fillMaxWidth().padding(vertical = Spacing.xs)) {
+        Column(Modifier.fillMaxWidth().clickable { if (onClick != null) onClick() else open = true }.padding(vertical = 6.dp, horizontal = Spacing.xs)) {
+            Text(label, style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.muted)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(value, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                Text(value, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                 Text("▾", color = AppTheme.colors.muted)
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Spacing.xs))
             androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outline)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
@@ -149,16 +151,16 @@ fun BillEditScreen(vm: AppViewModel, billId: Long?, onBack: () -> Unit) {
             )
         },
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.bill_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
+        Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = Spacing.lg)) {
+            OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.bill_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs))
             OutlinedTextField(amount, { amount = it }, label = { Text(stringResource(R.string.bill_amount)) }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), suffix = { Text(s.currencyInfo.symbol(s.arabic)) },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
+                modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs))
             PickField(stringResource(R.string.bill_category), cats.firstOrNull { it.id == catId }?.let { it.icon + " " + it.name(s.arabic) } ?: "—",
                 listOf<Category?>(null) + expCats, { c -> c?.let { it.icon + " " + it.name(s.arabic) } ?: "—" }, { catId = it?.id })
             PickField(stringResource(R.string.bill_account), accs.firstOrNull { it.id == accId }?.name ?: stringResource(R.string.bill_account_ask),
                 listOf<Account?>(null) + accs, { a -> a?.name ?: "—" }, { accId = it?.id })
-            Box(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            Box(Modifier.fillMaxWidth().padding(vertical = Spacing.xs)) {
                 OutlinedTextField(dateLabel(due, s.arabic), {}, readOnly = true, enabled = false, label = { Text(stringResource(R.string.bill_due_date)) }, modifier = Modifier.fillMaxWidth(),
                     colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurface, disabledLabelColor = AppTheme.colors.muted, disabledBorderColor = MaterialTheme.colorScheme.outline))
                 Box(Modifier.matchParentSize().clickable { picking = true })
@@ -166,12 +168,12 @@ fun BillEditScreen(vm: AppViewModel, billId: Long?, onBack: () -> Unit) {
             PickField(stringResource(R.string.bill_recurrence), recurrenceLabel(type, interval.toIntOrNull() ?: 1), RecurrenceType.entries.toList(), { recurrenceLabel(it, interval.toIntOrNull() ?: 1) }, { type = it })
             if (type == RecurrenceType.CUSTOM_DAYS || type == RecurrenceType.CUSTOM_MONTHS) {
                 OutlinedTextField(interval, { interval = it.filter(Char::isDigit).take(3) }, label = { Text(stringResource(R.string.bill_interval)) }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs))
             }
             OutlinedTextField(remind, { remind = it.filter(Char::isDigit).take(2) }, label = { Text(stringResource(R.string.bill_remind_days)) }, singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
-            OutlinedTextField(notes, { notes = it }, label = { Text(stringResource(R.string.bill_notes)) }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs))
+            OutlinedTextField(notes, { notes = it }, label = { Text(stringResource(R.string.bill_notes)) }, modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs))
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = Spacing.xs)) {
                 Text(stringResource(R.string.bill_active), Modifier.weight(1f)); Switch(active, { active = it })
             }
             Row {
@@ -188,17 +190,17 @@ fun BillEditScreen(vm: AppViewModel, billId: Long?, onBack: () -> Unit) {
                     modifier = Modifier.weight(1f),
                 ) { Text(stringResource(R.string.save)) }
                 if (existing != null && existing.active) {
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Spacing.sm))
                     Button(onClick = { paying = true }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.bill_paid_btn)) }
                 }
             }
             if (existing != null) {
                 val hist = allPayments.filter { it.billId == existing.id }
-                SectionTitle(stringResource(R.string.bill_history_title) + " (${hist.size})", Modifier.padding(top = 8.dp))
-                if (hist.isEmpty()) Text(stringResource(R.string.bill_no_history), color = AppTheme.colors.muted, fontSize = 13.sp)
+                SectionTitle(stringResource(R.string.bill_history_title) + " (${hist.size})", Modifier.padding(top = Spacing.sm))
+                if (hist.isEmpty()) Text(stringResource(R.string.bill_no_history), color = AppTheme.colors.muted, style = MaterialTheme.typography.bodyMedium)
                 hist.forEach { p -> PaymentRow(p, existing.name, s) { deletingPay = p } }
             }
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(Spacing.xxl))
         }
     }
     if (picking) {
@@ -241,7 +243,7 @@ fun PayBillDialog(vm: AppViewModel, b: Bill, onDismiss: () -> Unit) {
         title = { Text(stringResource(R.string.bill_pay_title, b.name)) },
         text = {
             Column {
-                Text(stringResource(R.string.bill_for_due, dateLabel(b.dueDate, s.arabic)), fontSize = 13.sp, color = AppTheme.colors.muted)
+                Text(stringResource(R.string.bill_for_due, dateLabel(b.dueDate, s.arabic)), style = MaterialTheme.typography.bodyMedium, color = AppTheme.colors.muted)
                 // amount as a tappable row (edited in the shared amount dialog) so this dialog holds no text field
                 PickField(stringResource(R.string.bill_amount), Fmt.money(parsed ?: 0, s), emptyList<Unit>(), { "" }, {}, onClick = { editAmount = true })
                 if (linkTo == null) {
@@ -250,17 +252,17 @@ fun PayBillDialog(vm: AppViewModel, b: Bill, onDismiss: () -> Unit) {
                         cats.filter { it.type == TxnType.EXPENSE }, { it.icon + " " + it.name(s.arabic) }, { catId = it.id })
                 }
                 if (matches.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(stringResource(R.string.bill_sms_found), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(Spacing.sm))
+                    Text(stringResource(R.string.bill_sms_found), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                     matches.take(3).forEach { t ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { linkTo = t.id }) {
                             RadioButton(linkTo == t.id, { linkTo = t.id })
-                            Text(stringResource(R.string.bill_merge_with, (t.merchant ?: t.note).ifBlank { "SMS" }, Fmt.dateLabel(t.dateTime, s.arabic)), fontSize = 13.sp)
+                            Text(stringResource(R.string.bill_merge_with, (t.merchant ?: t.note).ifBlank { "SMS" }, Fmt.dateLabel(t.dateTime, s.arabic)), style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { linkTo = null }) {
                         RadioButton(linkTo == null, { linkTo = null })
-                        Text(stringResource(R.string.bill_record_new), fontSize = 13.sp)
+                        Text(stringResource(R.string.bill_record_new), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }

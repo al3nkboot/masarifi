@@ -1,5 +1,7 @@
 package com.midroid.masarifi.ui.screens
 
+import com.midroid.masarifi.ui.theme.Spacing
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -94,18 +96,18 @@ fun RepairScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHostSta
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            Text(stringResource(R.string.repair_intro), fontSize = 13.sp, color = c.muted, modifier = Modifier.padding(16.dp))
-            Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.repair_intro), style = MaterialTheme.typography.bodyMedium, color = c.muted, modifier = Modifier.padding(Spacing.lg))
+            Row(Modifier.padding(horizontal = Spacing.lg), verticalAlignment = Alignment.CenterVertically) {
                 OutlinedButton(enabled = !busy, onClick = { vm.scanRepair() }) { Text(stringResource(R.string.repair_scan)) }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Spacing.sm))
                 last?.let { b -> TextButton(onClick = { vm.undoRepair(b.id, undoneMsg) }) { Text(stringResource(R.string.repair_undo, b.changes)) } }
                 if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
             }
             val items = plan
-            if (items != null && items.isEmpty()) Text(stringResource(R.string.repair_none), modifier = Modifier.padding(16.dp))
+            if (items != null && items.isEmpty()) Text(stringResource(R.string.repair_none), modifier = Modifier.padding(Spacing.lg))
             if (!items.isNullOrEmpty()) {
                 val selected = items.filter { it.key !in unchecked }
-                Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.padding(horizontal = Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { unchecked = emptySet() }) { Text(stringResource(R.string.repair_select_all)) }
                     TextButton(onClick = { unchecked = items.map { it.key }.toSet() }) { Text(stringResource(R.string.repair_select_none)) }
                     Spacer(Modifier.weight(1f))
@@ -121,11 +123,11 @@ fun RepairScreen(vm: AppViewModel, onBack: () -> Unit, snackbar: SnackbarHostSta
                         items(group, key = { it.key }) { i ->
                             val on = i.key !in unchecked
                             Row(
-                                Modifier.fillMaxWidth().clickable { unchecked = if (on) unchecked + i.key else unchecked - i.key }.padding(horizontal = 8.dp, vertical = 4.dp),
+                                Modifier.fillMaxWidth().clickable { unchecked = if (on) unchecked + i.key else unchecked - i.key }.padding(horizontal = Spacing.sm, vertical = Spacing.xs),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Checkbox(checked = on, onCheckedChange = { unchecked = if (on) unchecked + i.key else unchecked - i.key })
-                                Text(describe(i), fontSize = 13.sp)
+                                Text(describe(i), style = MaterialTheme.typography.bodyMedium)
                             }
                             HorizontalDivider(color = c.divider)
                         }

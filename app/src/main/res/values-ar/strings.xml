@@ -484,4 +484,7 @@
     <string name="bill_budget_projected">المصروف + الفواتير: %1$s</string>
     <string name="today_label">اليوم</string>
     <string name="yesterday_label">أمس</string>
+    <string name="tab_calendar_short">تقويم</string>
+    <string name="tab_total_short">إجمالي</string>
+    <string name="tab_note_short">ملاحظات</string>
 </resources>
