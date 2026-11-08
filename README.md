@@ -14,11 +14,19 @@
 
 ### [⬇️ تحميل التطبيق (APK)](https://github.com/al3nkboot/masarifi/releases)
 
-الإصدار المستقر **2.0.0**، والإصدار التجريبي **2.1.0** يضيف قسم «الفواتير».
+الإصدار الحالي **2.4.0** — تصميم Material 3 أنظف.
 
-<img src="docs/images/home.png" width="23%" alt="المعاملات"> <img src="docs/images/analysis.png" width="23%" alt="التحليل"> <img src="docs/images/bills.png" width="23%" alt="الفواتير"> <img src="docs/images/sms.png" width="23%" alt="عمليات رسائل البنك">
+<img src="docs/images/v240/01_home_tab1_ar_dark.png" width="19%" alt="الرئيسية"> <img src="docs/images/v240/01_home_tab1_ar_light.png" width="19%" alt="الرئيسية (فاتح)"> <img src="docs/images/v240/06_bills_midscroll_ar_dark.png" width="19%" alt="الفواتير"> <img src="docs/images/v240/07_more_ar_dark.png" width="19%" alt="المزيد"> <img src="docs/images/v240/09_categories_ar_light.png" width="19%" alt="الفئات">
 
-<sub>المعاملات · التحليل · الفواتير (2.1) · عمليات مسجّلة من رسائل البنك. كل البيانات في الصور وهمية.</sub>
+<sub>الرئيسية (داكن/فاتح) · الفواتير · المزيد · الفئات. كل البيانات في الصور وهمية.</sub>
+
+### الجديد في 2.4.0 / What's new
+- تصميم Material 3 أنظف بنظام tokens موحّد للخطوط والمسافات والأشكال — Cleaner Material 3 with design tokens
+- خط IBM Plex Sans Arabic (رخصة OFL) بأرقام جدولية — IBM Plex Sans Arabic (OFL), tabular figures
+- 5 تبويبات ثابتة بأسماء قصيرة: يومي · تقويم · شهري · إجمالي · ملاحظات — Fixed 5 tabs with short labels
+- زر «تم الدفع» انتقل تحت عنوان الفاتورة — Bill "Paid" button moved under the title
+- أيقونات فئات ذكية حسب الاسم — Keyword-based category icons
+- زر FAB ينكمش عند التمرير — Collapsing FAB
 
 [English](#english)
 
