@@ -119,7 +119,7 @@
 
 كل البنوك في جدول واحد: `banks` في [`DefaultSmsConfig.kt`](app/src/main/java/com/midroid/masarifi/sms/DefaultSmsConfig.kt). إضافة بنك = إضافة عنصر `BankProfile` واحد بدون كود جديد:
 - `senderIds` و`bodyNames`: اسم المرسل والكلمات التي تعرّف البنك في نص الرسالة.
-- `rules`: قواعد `SmsRule` (regex) بالرموز `{AMT}` `{CUR}` `{MERCHANT}` `{CARD}` `{DATE}` `{ANY}`، وكل قاعدة `DEBIT` أو `CREDIT`.
+./gradlew assembleFullDebug assembleNosmsDebug   # app/build/outputs/apk/{full,nosms}/debug/
 - `debitKeywords` و`creditKeywords` (اختياري): كلمات خصم/إيداع إضافية خاصة بالبنك.
 
 اكتب القواعد من رسالة حقيقية مُخفاة فقط (من [قالب عيّنة رسالة بنك](.github/ISSUE_TEMPLATE/bank-sms.md))، وأضف لها اختبارًا في `BankTableTest.kt`.

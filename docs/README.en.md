@@ -6,7 +6,7 @@ Arabic RTL by default (English available), Omani Rial (ر.ع., 3 decimals) by de
 ## Build
 ```bash
 source /etc/profile.d/android.sh
-./gradlew --no-daemon assembleDebug        # → app/build/outputs/apk/debug/app-debug.apk
+./gradlew --no-daemon assembleFullDebug assembleNosmsDebug   # → app/build/outputs/apk/{full,nosms}/debug/ (nosms = no SMS permission)
 ./gradlew --no-daemon testDebugUnitTest    # parser/insights/money unit tests + Robolectric launch & screenshot tests
 ```
 Screenshots rendered by `ScreenshotTest` / `Screenshots12Test` / `Screenshots13Test` land in `app/build/screenshots*/` (synthetic data only).
