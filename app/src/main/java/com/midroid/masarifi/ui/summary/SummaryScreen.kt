@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePickerDialog
@@ -133,11 +134,18 @@ fun SummaryScreen(vm: AppViewModel, navigate: (Route) -> Unit, onBack: () -> Uni
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
-                title = { Text(title) },
+                title = { Text(title, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
                 actions = {
-                    TextButton(onClick = { share(false) }) { Icon(Icons.Filled.Share, null); Spacer(Modifier.width(4.dp)); Text(stringResource(R.string.sum_share_image)) }
-                    TextButton(onClick = { share(true) }) { Text("PDF") }
+                    var menu by remember { mutableStateOf(false) }
+                    IconButton(onClick = { share(false) }) { Icon(Icons.Filled.Share, stringResource(R.string.sum_share_image)) }
+                    androidx.compose.foundation.layout.Box {
+                        IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, null) }
+                        DropdownMenu(menu, { menu = false }) {
+                            DropdownMenuItem({ Text(stringResource(R.string.sum_share_image)) }, { menu = false; share(false) })
+                            DropdownMenuItem({ Text("PDF") }, { menu = false; share(true) })
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )

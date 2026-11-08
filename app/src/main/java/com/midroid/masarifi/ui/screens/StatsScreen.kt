@@ -1,5 +1,9 @@
 package com.midroid.masarifi.ui.screens
 
+import com.midroid.masarifi.ui.theme.Spacing
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -75,30 +79,31 @@ fun StatsScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
 
     Column(modifier.fillMaxSize()) {
         Text(stringResource(R.string.tab_stats), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
-        // prominent entry point: «الملخص المالي»
+        // compact entry point: «الملخص المالي»
         androidx.compose.material3.Card(
             onClick = { navigate(Route.Summary) },
-            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            shape = MaterialTheme.shapes.large,
+            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.xs),
         ) {
-            Column(Modifier.padding(14.dp)) {
-                Text("📊 " + stringResource(R.string.sum_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                Text(stringResource(R.string.sum_entry_sub), style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.muted)
-            }
+            androidx.compose.material3.ListItem(
+                colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
+                leadingContent = { com.midroid.masarifi.ui.components.CategoryBadge("📊", MaterialTheme.colorScheme.primary) },
+                headlineContent = { Text(stringResource(R.string.sum_title), style = MaterialTheme.typography.titleMedium, maxLines = 1) },
+                supportingContent = { Text(stringResource(R.string.sum_entry_sub), style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.muted, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+                trailingContent = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = AppTheme.colors.muted) },
+            )
         }
         MonthSwitcher(
             Fmt.monthTitle(ym, s.arabic), { vm.month.value = ym.minusMonths(1) }, { vm.month.value = ym.plusMonths(1) },
             Modifier.align(Alignment.CenterHorizontally), onLabelClick = { vm.month.value = YearMonth.now() },
         )
         val tabs = listOf(R.string.stats, R.string.trend, R.string.budget, R.string.tips)
-        SecondaryTabRow(
-            selectedTabIndex = tab, containerColor = Color.Transparent,
-            indicator = { TabRowDefaults.SecondaryIndicator(Modifier.tabIndicatorOffset(tab), color = MaterialTheme.colorScheme.primary) },
-        ) {
+        androidx.compose.material3.PrimaryTabRow(selectedTabIndex = tab, containerColor = Color.Transparent, divider = { HorizontalDivider(color = AppTheme.colors.divider) }) {
             tabs.forEachIndexed { i, res ->
                 Tab(
                     selected = tab == i, onClick = { tab = i }, text = { Text(stringResource(res), maxLines = 1) },
-                    selectedContentColor = MaterialTheme.colorScheme.onBackground, unselectedContentColor = AppTheme.colors.muted,
+                    selectedContentColor = MaterialTheme.colorScheme.primary, unselectedContentColor = AppTheme.colors.muted,
                 )
             }
         }
@@ -135,10 +140,21 @@ private fun PieTab(all: List<Txn>, cats: List<Category>, ym: YearMonth, s: AppSe
     val total = data.sumOf { it.amount }
     LazyColumn(Modifier.fillMaxSize()) {
         item {
-            Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.Center) {
-                TypeToggle("${stringResource(R.string.income)}  ${Fmt.money(txns.filter { it.type == TxnType.INCOME }.sumOf { it.amount }, s)}", !expenseMode, c.income) { expenseMode = false }
-                Spacer(Modifier.width(8.dp))
-                TypeToggle("${stringResource(R.string.expense)}  ${Fmt.money(txns.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount }, s)}", expenseMode, c.expense) { expenseMode = true }
+            val incSum = txns.filter { it.type == TxnType.INCOME }.sumOf { it.amount }
+            val expSum = txns.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount }
+            androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.sm)) {
+                listOf(true to Triple(R.string.expense, expSum, c.expense), false to Triple(R.string.income, incSum, c.income)).forEachIndexed { i, (exp, d) ->
+                    SegmentedButton(
+                        selected = expenseMode == exp, onClick = { expenseMode = exp },
+                        shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, 2),
+                        icon = {},
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(stringResource(d.first), style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                            Text(Fmt.money(d.second, s, false), style = com.midroid.masarifi.ui.theme.Amount, fontSize = 14.sp, color = d.third, maxLines = 1, softWrap = false)
+                        }
+                    }
+                }
             }
         }
         item {
@@ -154,23 +170,22 @@ private fun PieTab(all: List<Txn>, cats: List<Category>, ym: YearMonth, s: AppSe
         if (data.isEmpty()) item { EmptyState(stringResource(R.string.empty_month)) }
         items(data) { sl ->
             val pct = if (total > 0) sl.amount * 100.0 / total else 0.0
-            Row(
-                Modifier.fillMaxWidth().clickable {
+            androidx.compose.material3.ListItem(
+                modifier = Modifier.fillMaxWidth().clickable {
                     val r = Fmt.monthRange(ym)
                     navigate(Route.TxnList(sl.label, categoryId = sl.categoryId ?: -1L, from = r.first, to = r.last + 1, type = type))
-                }.padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(Modifier.widthIn(min = 54.dp).background(sl.color, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 3.dp), contentAlignment = Alignment.Center) {
-                    Text(Fmt.percent(pct).replace(".0%", "%"), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                }
-                Spacer(Modifier.width(12.dp))
-                Text(sl.label, Modifier.weight(1f), maxLines = 1)
-                Text(Fmt.money(sl.amount, s))
-            }
-            HorizontalDivider(color = c.divider)
+                },
+                colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
+                leadingContent = {
+                    Box(Modifier.widthIn(min = 52.dp).background(sl.color.copy(alpha = 0.2f), MaterialTheme.shapes.small).padding(horizontal = Spacing.sm, vertical = Spacing.xs), contentAlignment = Alignment.Center) {
+                        Text("\u200E" + Fmt.percent(pct).replace(".0%", "%"), color = sl.color, style = MaterialTheme.typography.labelMedium)
+                    }
+                },
+                headlineContent = { Text(sl.label, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+                trailingContent = { Text(Fmt.money(sl.amount, s, false), style = com.midroid.masarifi.ui.theme.Amount, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface) },
+            )
         }
-        item { Spacer(Modifier.height(24.dp)) }
+        item { Spacer(Modifier.height(Spacing.xl)) }
     }
 }
 
@@ -235,7 +250,7 @@ private fun TrendTab(all: List<Txn>, cats: List<Category>, ym: YearMonth, s: App
             }
             HorizontalDivider(color = c.divider)
         }
-        item { Spacer(Modifier.height(24.dp)) }
+        item { Spacer(Modifier.height(Spacing.xl)) }
     }
 }
 
@@ -308,7 +323,7 @@ private fun BudgetTab(vm: AppViewModel, all: List<Txn>, cats: List<Category>, ym
             }
             HorizontalDivider(color = c.divider)
         }
-        item { Spacer(Modifier.height(24.dp)) }
+        item { Spacer(Modifier.height(Spacing.xl)) }
     }
     editing?.let { (id, name) ->
         AmountInputDialog(stringResource(R.string.set_budget_for, name), bmap[id] ?: 0L, s, onDismiss = { editing = null }, onSave = { vm.setBudget(id, it) })
@@ -373,7 +388,7 @@ private fun TipsTab(vm: AppViewModel, all: List<Txn>, cats: List<Category>, ym: 
                 }
             }
         }
-        item { Spacer(Modifier.height(24.dp)) }
+        item { Spacer(Modifier.height(Spacing.xl)) }
     }
 }
 

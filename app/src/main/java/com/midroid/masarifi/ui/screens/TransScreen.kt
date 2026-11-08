@@ -380,12 +380,13 @@ fun TotalView(vm: AppViewModel, ym: YearMonth, all: List<Txn>, monthTxns: List<T
 @Composable
 fun InfoCard(title: String, content: @Composable () -> Unit) {
     Card(
-        Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.card),
+        Modifier.fillMaxWidth().padding(horizontal = Spacing.xs, vertical = Spacing.sm - Spacing.xxs),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
-        Column(Modifier.padding(14.dp)) {
+        Column(Modifier.padding(Spacing.lg)) {
             Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.sm))
             content()
         }
     }
