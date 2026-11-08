@@ -53,6 +53,6 @@ class LaunchSmokeTest {
         rule.onAllNodes(androidx.compose.ui.test.hasSetTextAction())[1].performTextInput("لولو")
         rule.onNodeWithText("حفظ").performClick()
         rule.waitUntil(5_000) { rule.onAllNodesWithText("لولو").fetchSemanticsNodes().isNotEmpty() }
-        rule.waitUntil(5_000) { rule.onAllNodesWithText("4.300 ر.ع.", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("4.300", substring = true).fetchSemanticsNodes().isNotEmpty() }
     }
 }

@@ -231,7 +231,7 @@ fun DayHeader(date: LocalDate, list: List<Txn>, s: AppSettings, onClick: (() -> 
     ) {
         Text(title, style = MaterialTheme.typography.titleSmall, color = c.muted, modifier = Modifier.weight(1f))
         Text(
-            (if (net > 0) "+" else "") + Fmt.money(net, s, false), style = com.midroid.masarifi.ui.theme.Amount,
+            "\u200E" + (if (net > 0) "+" else "") + Fmt.money(net, s, false), style = com.midroid.masarifi.ui.theme.Amount,
             fontSize = 13.sp, color = if (net >= 0) c.income else c.muted,
         )
     }
