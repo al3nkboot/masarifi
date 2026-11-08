@@ -28,8 +28,8 @@ android {
         applicationId = "com.midroid.masarifi"
         minSdk = 26
         targetSdk = 35
-        versionCode = 19
-        versionName = "2.5.0"
+        versionCode = 20
+        versionName = "2.5.1"
     }
 
     signingConfigs {
@@ -56,6 +56,13 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+    // "full" = bank-SMS import (READ_SMS/RECEIVE_SMS); "nosms" = same app/package without any SMS permission (manual entry only)
+    flavorDimensions += "sms"
+    productFlavors {
+        create("full") { dimension = "sms"; buildConfigField("boolean", "SMS_ENABLED", "true") }
+        create("nosms") { dimension = "sms"; buildConfigField("boolean", "SMS_ENABLED", "false") }
     }
     testOptions {
         unitTests.isReturnDefaultValues = true

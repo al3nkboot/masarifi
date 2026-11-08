@@ -42,7 +42,7 @@ class SettingsStore(context: Context, prefsName: String = "masarifi_settings") {
         currency = prefs.getString("currency", "OMR") ?: "OMR",
         language = prefs.getString("language", "ar") ?: "ar",
         theme = prefs.getString("theme", "dark") ?: "dark",
-        smsEnabled = prefs.getBoolean("smsEnabled", false),
+        smsEnabled = com.midroid.masarifi.BuildConfig.SMS_ENABLED && prefs.getBoolean("smsEnabled", false),
         smsNotify = prefs.getBoolean("smsNotify", true),
         smsAcceptUnknown = prefs.getBoolean("smsAcceptUnknown", false),
         extraSenders = prefs.getString("extraSenders", "") ?: "",
@@ -71,7 +71,7 @@ class SettingsStore(context: Context, prefsName: String = "masarifi_settings") {
             .putString("currency", n.currency)
             .putString("language", n.language)
             .putString("theme", n.theme)
-            .putBoolean("smsEnabled", n.smsEnabled)
+            .apply { if (com.midroid.masarifi.BuildConfig.SMS_ENABLED) putBoolean("smsEnabled", n.smsEnabled) }
             .putBoolean("smsNotify", n.smsNotify)
             .putBoolean("smsAcceptUnknown", n.smsAcceptUnknown)
             .putString("extraSenders", n.extraSenders)

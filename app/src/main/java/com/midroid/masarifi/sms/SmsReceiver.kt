@@ -36,7 +36,7 @@ class SmsReceiver : BroadcastReceiver() {
 }
 
 object SmsImporter {
-    fun hasPermission(context: Context, permission: String = Manifest.permission.READ_SMS) =
+    fun hasPermission(context: Context, permission: String = Manifest.permission.READ_SMS) = com.midroid.masarifi.BuildConfig.SMS_ENABLED &&
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
     suspend fun importOne(context: Context, sender: String, body: String, time: Long, notify: Boolean): Boolean =

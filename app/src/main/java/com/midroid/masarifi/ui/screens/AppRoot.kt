@@ -157,7 +157,7 @@ private fun HomeScaffold(vm: AppViewModel, navigate: (Route) -> Unit, snackbar: 
     ) { padding ->
         val missing by vm.cardSetupNeeded.collectAsStateWithLifecycle()
         androidx.compose.foundation.layout.Column(Modifier.padding(padding)) {
-            if (missing.isNotEmpty()) CardSetupBanner(missing.joinToString("، ") { it.name }, onOpen = { navigate(Route.SmsSettings) }, onDismiss = { vm.dismissCardBanner() })
+            if (com.midroid.masarifi.BuildConfig.SMS_ENABLED && missing.isNotEmpty()) CardSetupBanner(missing.joinToString("، ") { it.name }, onOpen = { navigate(Route.SmsSettings) }, onDismiss = { vm.dismissCardBanner() })
             val m = Modifier.weight(1f)
             when (tab) {
                 0 -> TransScreen(vm, navigate, m)

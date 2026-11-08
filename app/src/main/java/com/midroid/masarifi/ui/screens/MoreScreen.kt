@@ -83,7 +83,7 @@ fun MoreScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier, 
         val dupCount = vm.dupGroups.collectAsStateWithLifecycle().value.size
         SettingRow(AppIcons.Copy, stringResource(R.string.dup_review), stringResource(R.string.dup_review_sub) + if (dupCount > 0) " ($dupCount)" else "", onClick = { navigate(Route.Duplicates) })
         SettingRow(AppIcons.Calendar, stringResource(R.string.dup_window), stringResource(R.string.dup_window_value, s.dupWindowHours.toString()), onClick = { dialog = "dupwindow" })
-        SettingRow(AppIcons.Sms, stringResource(R.string.sms_import), stringResource(if (s.smsEnabled) R.string.enabled else R.string.disabled), onClick = { navigate(Route.SmsSettings) })
+        if (com.midroid.masarifi.BuildConfig.SMS_ENABLED) SettingRow(AppIcons.Sms, stringResource(R.string.sms_import), stringResource(if (s.smsEnabled) R.string.enabled else R.string.disabled), onClick = { navigate(Route.SmsSettings) })
 
         SectionTitle(stringResource(R.string.section_alerts))
         SwitchRow(Icons.Filled.Notifications, stringResource(R.string.budget_alerts), stringResource(R.string.budget_alerts_sub), s.budgetAlerts) { v -> vm.updateSettings { it.copy(budgetAlerts = v) } }

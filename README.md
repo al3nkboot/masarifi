@@ -14,7 +14,15 @@
 
 ### [⬇️ تحميل التطبيق (APK)](https://github.com/al3nkboot/masarifi/releases)
 
-الإصدار الحالي **2.5.0** — جديد: الضمانات.
+الإصدار الحالي **2.5.1** — بنسختين:
+
+| | النسخة الكاملة `masarifi-v2.5.1.apk` | بدون الرسائل `masarifi-v2.5.1-nosms.apk` |
+|---|---|---|
+| قراءة رسائل البنك وتسجيل المصاريف تلقائياً | ✅ | ❌ (إدخال يدوي) |
+| صلاحية الرسائل SMS | تطلبها | لا تطلبها أبداً |
+| باقي المزايا (الفواتير، الضمانات، النسخ الاحتياطي…) | ✅ | ✅ |
+
+**Two editions / نسختان:** *Full* reads bank SMS to log expenses automatically; *No-SMS* has no SMS permission at all (manual entry). Both share the same package and data, so installing one replaces the other and keeps your data. / النسختان بنفس الحزمة والبيانات: تثبيت واحدة يستبدل الأخرى وتبقى بياناتك.
 
 <img src="docs/images/v250/01_warranty_list_ar_dark.png" width="24%" alt="الضمانات"> <img src="docs/images/v250/03_warranty_detail_ar_light.png" width="24%" alt="تفاصيل الضمان"> <img src="docs/images/v250/02_warranty_edit_ar_dark.png" width="24%" alt="إضافة ضمان">
 
