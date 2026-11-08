@@ -14,7 +14,18 @@
 
 ### [⬇️ تحميل التطبيق (APK)](https://github.com/al3nkboot/masarifi/releases)
 
-الإصدار الحالي **2.4.0** — تصميم Material 3 أنظف.
+الإصدار الحالي **2.5.0** — جديد: الضمانات.
+
+<img src="docs/images/v250/01_warranty_list_ar_dark.png" width="24%" alt="الضمانات"> <img src="docs/images/v250/03_warranty_detail_ar_light.png" width="24%" alt="تفاصيل الضمان"> <img src="docs/images/v250/02_warranty_edit_ar_dark.png" width="24%" alt="إضافة ضمان">
+
+### الجديد في 2.5.0 / What's new
+- الضمانات للأجهزة المنزلية والإلكترونيات مع حساب تاريخ الانتهاء وحالة (ساري / ينتهي قريباً / منتهي) — Warranties for appliances & electronics with expiry status
+- صور الفاتورة من الكاميرا أو المعرض، مع عرض مكبّر — Invoice photos from camera or gallery, zoomable viewer
+- تنبيه قبل انتهاء الضمان بـ 30 و 7 أيام — Reminders 30 and 7 days before expiry
+- النسخ الاحتياطي يشمل الضمانات وصورها — Backup includes warranties and their photos
+- زر الإضافة في تبويب «يومي» صار في المنتصف حتى لا يغطي المبالغ — Centred Add button on the Daily tab
+
+### 2.4.0
 
 <img src="docs/images/v240/01_home_tab1_ar_dark.png" width="19%" alt="الرئيسية"> <img src="docs/images/v240/01_home_tab1_ar_light.png" width="19%" alt="الرئيسية (فاتح)"> <img src="docs/images/v240/06_bills_midscroll_ar_dark.png" width="19%" alt="الفواتير"> <img src="docs/images/v240/07_more_ar_dark.png" width="19%" alt="المزيد"> <img src="docs/images/v240/09_categories_ar_light.png" width="19%" alt="الفئات">
 
