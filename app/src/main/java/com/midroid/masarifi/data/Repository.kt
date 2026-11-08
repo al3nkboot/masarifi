@@ -45,6 +45,7 @@ class Repository(
     val cardMappingDao = db.cardMappingDao()
     val repairDao = db.repairDao()
     val billDao = db.billDao()
+    val warrantyDao = db.warrantyDao()
     /** Bills («الفواتير», 2.1.0). */
     val bills by lazy { com.midroid.masarifi.bills.BillRepository(this) }
 

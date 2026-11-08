@@ -35,6 +35,10 @@ data class BackupData(
     /** Bills + payment history (optional arrays, app 2.1.0); null for older files (restore then keeps the device's bills). */
     val bills: List<com.midroid.masarifi.bills.Bill>? = null,
     val billPayments: List<com.midroid.masarifi.bills.BillPayment>? = null,
+    /** Warranties (optional array, app 2.5.0); null for older files (restore then keeps the device's warranties). */
+    val warranties: List<com.midroid.masarifi.warranty.Warranty>? = null,
+    /** Invoice photos of [warranties]: file name → JPEG bytes (base64 in the file). */
+    val warrantyImages: Map<String, ByteArray>? = null,
 )
 
 class BackupFormatException(val code: String, msg: String) : Exception(msg)
@@ -50,6 +54,7 @@ class BackupFormatException(val code: String, msg: String) : Exception(msg)
  * v4 (app 1.7.1) adds "cardMappings" (SMS card/account digits → account); old files get the stable ids a device derives itself.
  * App 2.1.0 adds the optional arrays "bills" and "billPayments" (still schema 4: purely additive, so 2.0.0 can still read
  * the file and ignores them; files without them restore as before and keep the device's bills).
+ * App 2.5.0 adds the optional "warranties" array and "warrantyImages" (invoice photos, base64 JPEG), same additive rule.
  * Readers ignore unknown fields; older schema versions are upgraded in [decode] (missing fields get defaults).
  */
 object BackupCodec {
@@ -125,6 +130,8 @@ object BackupCodec {
         o.put("dupDismissed", JSONArray().apply { d.dupDismissed.forEach { put(JSONObject().put("pairKey", it.pairKey).put("createdAt", it.createdAt)) } })
         d.bills?.let { l -> o.put("bills", JSONArray().apply { l.forEach { put(com.midroid.masarifi.bills.BillsJson.bill(it)) } }) }
         d.billPayments?.let { l -> o.put("billPayments", JSONArray().apply { l.forEach { put(com.midroid.masarifi.bills.BillsJson.payment(it)) } }) }
+        d.warranties?.let { l -> o.put("warranties", JSONArray().apply { l.forEach { put(com.midroid.masarifi.warranty.WarrantyJson.encode(it)) } }) }
+        d.warrantyImages?.let { m -> o.put("warrantyImages", JSONObject().apply { m.forEach { (k, v) -> put(k, android.util.Base64.encodeToString(v, android.util.Base64.NO_WRAP)) } }) }
         return o.toString()
     }
 
@@ -211,6 +218,8 @@ object BackupCodec {
             } else null,
             bills = com.midroid.masarifi.bills.BillsJson.bills(o.optJSONArray("bills")),
             billPayments = com.midroid.masarifi.bills.BillsJson.payments(o.optJSONArray("billPayments")) ?: if (o.has("bills")) emptyList() else null,
+            warranties = o.optJSONArray("warranties")?.let { a -> (0 until a.length()).map { com.midroid.masarifi.warranty.WarrantyJson.decode(a.getJSONObject(it)) } },
+            warrantyImages = o.optJSONObject("warrantyImages")?.let { m -> m.keys().asSequence().associateWith { k -> android.util.Base64.decode(m.getString(k), android.util.Base64.DEFAULT) } },
         ).let { d ->
             // stable ids derived from names can collide (two rows with one name): later rows get a fresh id
             fun <T> uniq(l: List<T>, u: (T) -> String, set: (T, String) -> T): List<T> { val seen = HashSet<String>(); return l.map { if (seen.add(u(it))) it else set(it, newUuid()) } }

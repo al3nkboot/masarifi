@@ -31,6 +31,13 @@ class BillReminderWorker(context: Context, params: WorkerParameters) : Coroutine
             }
             Notifier.show(ctx, Notifier.CH_BILLS, (5000 + r.bill.id % 100_000).toInt(), res.getString(R.string.bill_notif_title), text, openBills = true)
         }
+        // warranties («الضمانات», 2.5.0): ~30 and 7 days before expiry, once per threshold
+        val ws = app.repository.warrantyDao.all()
+        for ((w, t) in com.midroid.masarifi.warranty.WarrantyLogic.reminders(ws, today) { w, t -> app.settings.flag("warranty_${w.uuid}_$t") }) {
+            app.settings.setFlag("warranty_${w.uuid}_$t")
+            val days = com.midroid.masarifi.warranty.WarrantyLogic.daysLeft(w, today).toInt()
+            Notifier.show(ctx, Notifier.CH_BILLS, (7_000_000 + w.id % 100_000).toInt(), res.getString(R.string.warranty_notif_title), res.getString(R.string.warranty_notif_text, w.name, days.toString()))
+        }
         BillsWidget.refresh(ctx)
         return Result.success()
     }

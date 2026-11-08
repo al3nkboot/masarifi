@@ -53,6 +53,7 @@ class BackupStore(context: Context) {
 class BackupService(
     private val repo: Repository,
     private val settings: SettingsStore,
+    private val images: com.midroid.masarifi.warranty.WarrantyImages? = null,
     private val appVersion: () -> String,
 ) {
     private val dao get() = repo.database.backupDao()
@@ -64,7 +65,10 @@ class BackupService(
             recurring = dao.recurring(), budgets = dao.budgets(), merchantRules = dao.merchantRules(), smsLog = dao.smsLog(),
             smsLinks = dao.smsLinks(), dupDismissed = dao.dupDismissed(), cardMappings = dao.cardMappings(),
             bills = repo.billDao.all(), billPayments = repo.billDao.payments(),
-        )
+        ).let { d ->
+            val w = repo.warrantyDao.all()
+            d.copy(warranties = w, warrantyImages = images?.let { st -> w.flatMap { it.imageList }.distinct().mapNotNull { n -> st.read(n)?.let { n to it } }.toMap() })
+        }
     }
 
     /** Replaces ALL data with the backup in a single transaction (rolled back entirely on error). */
@@ -107,6 +111,12 @@ class BackupService(
                     billDao.update(b.copy(accountId = acc?.id, categoryId = cat?.id))
                 }
             }
+        }
+        if (d.warranties != null) {
+            // images first (files), then rows; files no row references are pruned
+            d.warrantyImages?.forEach { (n, b) -> images?.write(n, b) }
+            repo.inTransaction { repo.warrantyDao.clear(); repo.warrantyDao.insertAll(d.warranties) }
+            images?.prune(d.warranties.flatMap { it.imageList }.toSet())
         }
         d.settings?.let { s -> settings.update { s } }
         repo.ensureDefaults()

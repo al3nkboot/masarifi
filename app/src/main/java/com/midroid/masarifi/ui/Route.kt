@@ -17,4 +17,7 @@ sealed interface Route {
     data object Repair : Route
     data object Summary : Route
     data class BillEdit(val billId: Long? = null) : Route
+    data object Warranties : Route
+    data class WarrantyEdit(val id: Long? = null) : Route
+    data class WarrantyDetail(val id: Long) : Route
 }

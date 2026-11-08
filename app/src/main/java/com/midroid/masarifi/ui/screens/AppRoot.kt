@@ -97,6 +97,9 @@ private fun RouteContent(
         Route.ImportExport -> ImportExportScreen(vm, back, snackbar)
         Route.Sync -> SyncScreen(vm, back, snackbar)
         is Route.BillEdit -> com.midroid.masarifi.ui.bills.BillEditScreen(vm, r.billId, back)
+        Route.Warranties -> com.midroid.masarifi.ui.warranty.WarrantyListScreen(vm, navigate, back)
+        is Route.WarrantyEdit -> com.midroid.masarifi.ui.warranty.WarrantyEditScreen(vm, r.id, back)
+        is Route.WarrantyDetail -> com.midroid.masarifi.ui.warranty.WarrantyDetailScreen(vm, r.id, navigate, back)
     }
 }
 
@@ -111,6 +114,8 @@ private fun HomeScaffold(vm: AppViewModel, navigate: (Route) -> Unit, snackbar: 
     androidx.compose.runtime.CompositionLocalProvider(com.midroid.masarifi.ui.components.LocalFabExpanded provides fabExpanded) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
+        // transactions: rows keep the name on the start side and the amount on the end side, so a centred FAB sits in the empty middle
+        floatingActionButtonPosition = if (tab == 0) androidx.compose.material3.FabPosition.Center else androidx.compose.material3.FabPosition.End,
         floatingActionButton = {
             if ((tab == 0 && !vm.selectionActive) || tab == 3) {
                 androidx.compose.material3.ExtendedFloatingActionButton(

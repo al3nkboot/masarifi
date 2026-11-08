@@ -22,6 +22,7 @@ class MasarifiApp : Application() {
         private set
     lateinit var backupStore: BackupStore
         private set
+    val warrantyImages by lazy { com.midroid.masarifi.warranty.WarrantyImages(this) }
     lateinit var backupService: BackupService
         private set
     lateinit var syncStore: com.midroid.masarifi.data.sync.SyncStore
@@ -35,14 +36,14 @@ class MasarifiApp : Application() {
         settings = SettingsStore(this)
         repository = Repository(AppDatabase.get(this), settings) { WorkScheduler.checkSoon(this) }
         backupStore = BackupStore(this)
-        backupService = BackupService(repository, settings) { BuildConfigInfo.versionName(this) }
+        backupService = BackupService(repository, settings, warrantyImages) { BuildConfigInfo.versionName(this) }
         syncStore = com.midroid.masarifi.data.sync.SyncStore(this)
         syncService = com.midroid.masarifi.data.sync.SyncService(repository, settings, syncStore) { BuildConfigInfo.versionName(this) }
         Notifier.createChannels(this)
         // Debounced automatic backup after data changes (only active when a backup folder is set and enabled).
         runCatching {
             AppDatabase.get(this).invalidationTracker.addObserver(object : InvalidationTracker.Observer(
-                arrayOf("transactions", "accounts", "categories", "budgets", "recurring", "merchant_rules", "sms_links", "sync_tombstones", "bills", "bill_payments"),
+                arrayOf("transactions", "accounts", "categories", "budgets", "recurring", "merchant_rules", "sms_links", "sync_tombstones", "bills", "bill_payments", "warranties"),
             ) {
                 override fun onInvalidated(tables: Set<String>) {
                     BackupWorker.onDataChanged(this@MasarifiApp)

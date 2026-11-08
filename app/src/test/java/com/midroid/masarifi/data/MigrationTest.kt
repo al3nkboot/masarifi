@@ -98,7 +98,7 @@ class MigrationTest {
             assertTrue(linkId > 0)
             db.dupDao().dismiss(listOf(DupDismissed(DupDismissed.key(1, 3))))
             assertEquals(listOf("1-3"), db.dupDao().dismissed())
-            assertEquals(7, db.openHelper.readableDatabase.version)
+            assertEquals(8, db.openHelper.readableDatabase.version)
         } finally {
             db.close()
         }
@@ -152,7 +152,7 @@ class MigrationTest {
             // new rows get uuids from the entity defaults
             val id = db.txnDao().insert(Txn(type = 1, amount = 1, accountId = 1, dateTime = 1))
             assertTrue(uuidRe.matches(db.txnDao().get(id)!!.uuid))
-            assertEquals(7, sql.version)
+            assertEquals(8, sql.version)
         } finally {
             db.close()
         }
@@ -182,7 +182,7 @@ class MigrationTest {
             db.smsBalanceDao().insert(SmsBalance(accountId = 1, dateTime = 20, balance = 205_000, smsHash = "h2"))
             assertEquals(5_000L, db.smsBalanceDao().latestBefore(1, 15)!!.balance)
             assertEquals(205_000L, db.smsBalanceDao().latest(1)!!.balance)
-            assertEquals(7, db.openHelper.readableDatabase.version)
+            assertEquals(8, db.openHelper.readableDatabase.version)
         } finally {
             db.close()
         }
@@ -211,7 +211,7 @@ class MigrationTest {
         }
         val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).addMigrations(*Migrations.ALL).allowMainThreadQueries().build()
         try {
-            assertEquals(7, db.openHelper.readableDatabase.version)
+            assertEquals(8, db.openHelper.readableDatabase.version)
             // existing data untouched
             assertEquals(listOf(4300L, 1500L, 7000L, 2000L), db.txnDao().all().sortedBy { it.id }.map { it.amount })
             assertEquals(48_250L, db.smsBalanceDao().latest(2)!!.balance)
@@ -247,7 +247,7 @@ class MigrationTest {
         }
         val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).addMigrations(*Migrations.ALL).allowMainThreadQueries().build()
         try {
-            assertEquals(7, db.openHelper.readableDatabase.version)
+            assertEquals(8, db.openHelper.readableDatabase.version)
             assertEquals(listOf(4300L, 1500L, 7000L), db.txnDao().all().map { it.amount })
             assertEquals("5501", db.cardMappingDao().all().single().last4)
             val id = db.repairDao().insert(RepairBatch(changes = 2, snapshot = "{}"))
@@ -281,7 +281,7 @@ class MigrationTest {
         assertTrue(before.values.sumOf { it.size } >= 12)
         val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).configure().allowMainThreadQueries().build()
         try {
-            assertEquals(7, db.openHelper.readableDatabase.version)
+            assertEquals(8, db.openHelper.readableDatabase.version)
             // nothing touched: compare raw rows of all 2.0.0 tables (updatedAt included → no trigger fired)
             db.close()
             val after = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY).use { dump(it) }
@@ -311,5 +311,49 @@ class MigrationTest {
         v6.forEach { (t, sql) -> assertEquals("table $t unchanged", sql, v7[t]) }
         assertEquals(v7["bills"]!!.replace("\${TABLE_NAME}", "bills"), Migrations.CREATE_BILLS)
         assertEquals(v7["bill_payments"]!!.replace("\${TABLE_NAME}", "bill_payments"), Migrations.CREATE_BILL_PAYMENTS)
+    }
+
+    @Test fun migrate7To8AddsWarrantiesAndKeepsEveryRow() = runBlocking {
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        val name = "migration-test-v7.db"
+        val file = ctx.getDatabasePath(name).apply { parentFile?.mkdirs(); delete() }
+        createFrom(file, 7)
+        val v7Tables = JSONObject(File(schemaDir, "7.json").readText()).getJSONObject("database").getJSONArray("entities").let { a -> (0 until a.length()).map { a.getJSONObject(it).getString("tableName") } }
+        fun dump(d: SQLiteDatabase): Map<String, List<String>> = v7Tables.associateWith { t ->
+            d.rawQuery("SELECT * FROM `$t` ORDER BY rowid", null).use { c ->
+                buildList { while (c.moveToNext()) add((0 until c.columnCount).joinToString("|") { c.getColumnName(it) + "=" + c.getString(it) }) }
+            }
+        }
+        val before = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { d ->
+            d.execSQL("INSERT INTO bills (name, amount, categoryId, accountId, recurrence, recurInterval, anchorDay, nextDue, reminderDays, notes, active, createdAt, uuid, updatedAt) VALUES ('Rent', 250000, 1, 1, 'MONTHLY', 1, 1, 20000, 3, '', 1, 1, 'b1', 7)")
+            d.execSQL("INSERT INTO bill_payments (billId, amount, dueDate, paidAt, txnUuid, ownTxn, uuid, updatedAt) VALUES (1, 250000, 19970, 5, NULL, 0, 'p1', 7)")
+            d.execSQL("INSERT INTO card_mappings (bankId, last4, accountId, label, source, createdAt) VALUES ('bm', '0099', 1, '', 0, 1)")
+            dump(d)
+        }
+        assertTrue(before.values.sumOf { it.size } >= 8)
+        val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).configure().allowMainThreadQueries().build()
+        try {
+            assertEquals(8, db.openHelper.readableDatabase.version)
+            assertTrue(db.warrantyDao().all().isEmpty())
+            db.close()
+            val after = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY).use { dump(it) }
+            assertEquals(before, after)
+            val db2 = Room.databaseBuilder(ctx, AppDatabase::class.java, name).configure().allowMainThreadQueries().build()
+            try {
+                db2.warrantyDao().insert(com.midroid.masarifi.warranty.Warranty(name = "Fridge", purchaseDate = 20_000, expiryDate = 20_730))
+                assertEquals("Fridge", db2.warrantyDao().all().single().name)
+                assertEquals(3, db2.txnDao().all().size)
+            } finally { db2.close() }
+        } finally { if (db.isOpen) db.close() }
+    }
+
+    @Test fun exportedV8SchemaIsV7PlusWarranties() {
+        fun tables(v: Int) = JSONObject(File(schemaDir, "$v.json").readText()).getJSONObject("database").getJSONArray("entities").let { a ->
+            (0 until a.length()).associate { a.getJSONObject(it).getString("tableName") to a.getJSONObject(it).getString("createSql") }
+        }
+        val v7 = tables(7); val v8 = tables(8)
+        assertEquals(v7.keys + setOf("warranties"), v8.keys)
+        v7.forEach { (t, sql) -> assertEquals("table $t unchanged", sql, v8[t]) }
+        assertEquals(v8["warranties"]!!.replace("\${TABLE_NAME}", "warranties"), Migrations.CREATE_WARRANTIES)
     }
 }

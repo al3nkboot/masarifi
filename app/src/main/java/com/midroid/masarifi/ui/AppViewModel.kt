@@ -95,6 +95,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     val month = MutableStateFlow(YearMonth.now())
 
+    // ---------------- warranties («الضمانات», 2.5.0) ----------------
+    val warranties: StateFlow<List<com.midroid.masarifi.warranty.Warranty>> = repo.warrantyDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val warrantyImages: com.midroid.masarifi.warranty.WarrantyImages get() = getApplication<android.app.Application>().app.warrantyImages
+    fun saveWarranty(w: com.midroid.masarifi.warranty.Warranty, removedImages: List<String> = emptyList()) = viewModelScope.launch(Dispatchers.IO) {
+        val x = w.copy(updatedAt = System.currentTimeMillis())
+        if (x.id == 0L) repo.warrantyDao.insert(x) else repo.warrantyDao.update(x)
+        warrantyImages.delete(removedImages - x.imageList.toSet())
+    }
+    fun deleteWarranty(w: com.midroid.masarifi.warranty.Warranty) = viewModelScope.launch(Dispatchers.IO) {
+        repo.warrantyDao.delete(w.id); warrantyImages.delete(w.imageList)
+    }
+    suspend fun importWarrantyImage(uri: Uri): String? = withContext(Dispatchers.IO) { warrantyImages.import(getApplication(), uri) }
+    fun discardWarrantyImages(names: List<String>) = viewModelScope.launch(Dispatchers.IO) { warrantyImages.delete(names) }
+
     // ---------------- bills («الفواتير», 2.1.0) ----------------
 
     /** Set by the widget / a bill notification: switch to the bills tab. */

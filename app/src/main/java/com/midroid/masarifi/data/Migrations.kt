@@ -123,5 +123,19 @@ object Migrations {
         }
     }
 
-    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+    const val CREATE_WARRANTIES = "CREATE TABLE IF NOT EXISTS `warranties` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, " +
+        "`category` INTEGER NOT NULL, `brand` TEXT NOT NULL, `store` TEXT NOT NULL, `purchaseDate` INTEGER NOT NULL, `durationValue` INTEGER NOT NULL, " +
+        "`durationUnit` INTEGER NOT NULL, `expiryDate` INTEGER NOT NULL, `price` INTEGER, `notes` TEXT NOT NULL, `images` TEXT NOT NULL, " +
+        "`createdAt` INTEGER NOT NULL, `uuid` TEXT NOT NULL DEFAULT '', `updatedAt` INTEGER NOT NULL DEFAULT 0)"
+
+    /** 2.4.0 (v7) → 2.5.0 (v8): additive only, new `warranties` table. No existing table or row is touched. */
+    val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(CREATE_WARRANTIES)
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_warranties_expiryDate` ON `warranties` (`expiryDate`)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_warranties_uuid` ON `warranties` (`uuid`)")
+        }
+    }
+
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
 }
