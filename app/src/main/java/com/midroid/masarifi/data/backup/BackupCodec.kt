@@ -85,7 +85,7 @@ object BackupCodec {
         o.put("categories", JSONArray().apply {
             d.categories.forEach { c ->
                 put(JSONObject().put("id", c.id).put("type", c.type).put("nameAr", c.nameAr).put("nameEn", c.nameEn).put("emoji", c.emoji)
-                    .putOpt("key", c.key).put("sortOrder", c.sortOrder).sync(c.uuid, c.updatedAt))
+                    .putOpt("key", c.key).put("sortOrder", c.sortOrder).putOpt("parentId", c.parentId).sync(c.uuid, c.updatedAt))
             }
         })
         o.put("transactions", JSONArray().apply {
@@ -187,7 +187,7 @@ object BackupCodec {
                     a.optBoolean("includeInTotal", true), a.optInt("sortOrder"), a.accUuid(), a.optLong("updatedAt"))
             },
             categories = o.list("categories") { c ->
-                Category(c.getLong("id"), c.getInt("type"), c.optString("nameAr"), c.optString("nameEn"), c.optString("emoji", "📦"), c.optStringOrNull("key"), c.optInt("sortOrder"), c.catUuid(), c.optLong("updatedAt"))
+                Category(c.getLong("id"), c.getInt("type"), c.optString("nameAr"), c.optString("nameEn"), c.optString("emoji", "📦"), c.optStringOrNull("key"), c.optInt("sortOrder"), c.catUuid(), c.optLong("updatedAt"), if (c.has("parentId") && !c.isNull("parentId")) c.getLong("parentId") else null)
             },
             transactions = o.list("transactions") { t ->
                 Txn(

@@ -113,7 +113,7 @@ data class Account(
     @ColumnInfo(defaultValue = "0") val updatedAt: Long = System.currentTimeMillis(),
 )
 
-@Entity(tableName = "categories", indices = [Index(value = ["uuid"], unique = true)])
+@Entity(tableName = "categories", indices = [Index(value = ["uuid"], unique = true), Index("parentId")])
 data class Category(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val type: Int,
@@ -127,6 +127,8 @@ data class Category(
     @ColumnInfo(defaultValue = "") val uuid: String = newUuid(),
     /** Last modification time (millis). Also bumped automatically by a DB trigger on every UPDATE (see [SyncSchema]). */
     @ColumnInfo(defaultValue = "0") val updatedAt: Long = System.currentTimeMillis(),
+    /** Parent category id for a subcategory; null = top-level. */
+    @ColumnInfo(defaultValue = "NULL") val parentId: Long? = null,
 ) {
     fun name(arabic: Boolean) = if (arabic) nameAr.ifBlank { nameEn } else nameEn.ifBlank { nameAr }
 }

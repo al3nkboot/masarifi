@@ -42,11 +42,11 @@ class MoneyManagerImporterTest {
         assertEquals(2, plan.income); assertEquals(9, plan.expense); assertEquals(2, plan.transfer); assertEquals(0, plan.duplicates)
         // "Cash" maps to the default Arabic cash account (نقد); others are created
         assertEquals(listOf("Bank Muscat", "Visa Card", "Savings"), plan.newAccounts)
-        // Food/Electronics/Trip/fuel/Gift/Salary/Bonus match defaults case-insensitively; only the typo "Grecory" is new
-        assertEquals(listOf(TxnType.EXPENSE to "Grecory"), plan.newCategories)
+        // Food/Electronics/Trip/fuel/Gift/Salary/Bonus match defaults; typo "Grecory" is new; Phone is a new subcategory under Electronics
+        assertEquals(setOf(TxnType.EXPENSE to "Grecory", TxnType.EXPENSE to "Electronics › Phone"), plan.newCategories.toSet())
 
         val r = importer.commit(parsed)
-        assertEquals(13, r.imported); assertEquals(3, r.accountsCreated); assertEquals(1, r.categoriesCreated); assertEquals(2, r.skipped.size)
+        assertEquals(13, r.imported); assertEquals(3, r.accountsCreated); assertEquals(2, r.categoriesCreated); assertEquals(2, r.skipped.size)
 
         val txns = repo.txnDao.all()
         assertEquals(13, txns.size)
@@ -62,8 +62,10 @@ class MoneyManagerImporterTest {
         assertEquals("food", cats[food.categoryId]!!.key)
         assertEquals(1500L, food.amount)
         val phone = txns.single { it.note == "سماعة" }
-        assertEquals("electronics", cats[phone.categoryId]!!.key)
-        assertTrue(phone.description.contains("Phone") && phone.description.contains("Online order"))
+        val phoneCat = cats[phone.categoryId]!!
+        assertEquals("Phone", phoneCat.nameEn)
+        assertEquals(cats.values.first { it.key == "electronics" }.id, phoneCat.parentId)
+        assertEquals("Online order", phone.description)
         assertTrue(txns.single { it.note == "Hotel" }.description.contains("USD 100"))
         assertEquals("salary", cats[txns.single { it.note == "راتب مارس" }.categoryId]!!.key)
 

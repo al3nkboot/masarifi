@@ -19,10 +19,13 @@ import com.midroid.masarifi.data.Defaults
 object CategoryLinks {
     private fun norm(s: String?) = s?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
 
-    fun identity(type: Long?, key: String?, nameAr: String?, nameEn: String?): String? =
-        if (key != null) "$type|k:$key" else (norm(nameAr) ?: norm(nameEn))?.let { "$type|n:$it" }
+    fun identity(type: Long?, key: String?, nameAr: String?, nameEn: String?, parentUuid: String? = null): String? =
+        if (key != null) "$type|k:$key"
+        else (norm(nameAr) ?: norm(nameEn))?.let { n ->
+            if (parentUuid != null) "$type|p:$parentUuid|n:$n" else "$type|n:$n"
+        }
 
-    private fun identityOf(c: SyncRecord) = identity(c.long("type"), c.str("key"), c.str("nameAr"), c.str("nameEn"))
+    private fun identityOf(c: SyncRecord) = identity(c.long("type"), c.str("key"), c.str("nameAr"), c.str("nameEn"), c.str("parent"))
 
     fun apply(out: MutableMap<String, SyncRecord>): Int {
         val liveCats = out.values.filter { it.kind == Kind.CATEGORY && !it.deleted }
@@ -32,6 +35,14 @@ object CategoryLinks {
             if (id == null || group.size < 2) return@forEach
             val canon = group.firstOrNull { c -> c.str("key")?.let { c.uuid == Defaults.categoryUuid(it) } == true } ?: group.minBy { it.uuid }
             group.filter { it !== canon }.forEach { alias[it.uuid] = canon.uuid; out[it.uuid] = it.tombstone(it.updatedAt) }
+        }
+        // Remap subcategory parent pointers when a parent was merged into another uuid.
+        if (alias.isNotEmpty()) {
+            for (c in out.values.toList()) {
+                if (c.kind != Kind.CATEGORY || c.deleted) continue
+                val p = c.str("parent") ?: continue
+                alias[p]?.let { out[c.uuid] = c.copy(fields = c.fields + ("parent" to it)) }
+            }
         }
         val byIdentity = HashMap<String, String>()
         out.values.filter { it.kind == Kind.CATEGORY && !it.deleted }.forEach { c -> identityOf(c)?.let { byIdentity.putIfAbsent(it, c.uuid) } }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -370,14 +371,32 @@ fun AddEditScreen(vm: AppViewModel, route: Route.Edit, onBack: () -> Unit, onEdi
         }
         "category" -> {
             val list = categories.filter { it.type == type }
+            val parents = list.filter { it.parentId == null }
+            val childrenOf = list.filter { it.parentId != null }.groupBy { it.parentId }
             PickerSheet(stringResource(R.string.category), onDismiss = { picker = null }, action = {
                 TextButton(onClick = { picker = null; onEditCategories() }) {
                     Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(4.dp)); Text(stringResource(R.string.edit))
                 }
             }) {
-                LazyVerticalGrid(GridCells.Fixed(3), Modifier.heightIn(max = 460.dp)) {
-                    items(list) { cg ->
-                        GridCell(cg.icon + "\n" + cg.name(s.arabic), selected = categoryId == cg.id) { categoryId = cg.id; picker = null }
+                LazyColumn(Modifier.heightIn(max = 460.dp)) {
+                    parents.forEach { parent ->
+                        val subs = childrenOf[parent.id].orEmpty()
+                        item(key = parent.id) {
+                            CategoryPickRow(
+                                label = parent.icon + "  " + parent.name(s.arabic),
+                                selected = categoryId == parent.id,
+                                indented = false,
+                            ) { categoryId = parent.id; picker = null }
+                        }
+                        subs.forEach { sub ->
+                            item(key = sub.id) {
+                                CategoryPickRow(
+                                    label = sub.icon + "  " + sub.name(s.arabic),
+                                    selected = categoryId == sub.id,
+                                    indented = true,
+                                ) { categoryId = sub.id; picker = null }
+                            }
+                        }
                     }
                 }
             }
@@ -448,6 +467,19 @@ fun PickerSheet(title: String, onDismiss: () -> Unit, action: (@Composable () ->
         Spacer(Modifier.height(8.dp))
         content()
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+
+@Composable
+private fun CategoryPickRow(label: String, selected: Boolean, indented: Boolean, onClick: () -> Unit) {
+    val bg = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else Color.Transparent
+    Row(
+        Modifier.fillMaxWidth().background(bg).clickable(onClick = onClick)
+            .padding(start = if (indented) 36.dp else 12.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge)
     }
 }
 

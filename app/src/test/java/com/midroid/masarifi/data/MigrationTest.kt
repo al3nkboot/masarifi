@@ -356,4 +356,36 @@ class MigrationTest {
         v7.forEach { (t, sql) -> assertEquals("table $t unchanged", sql, v8[t]) }
         assertEquals(v8["warranties"]!!.replace("\${TABLE_NAME}", "warranties"), Migrations.CREATE_WARRANTIES)
     }
+
+    @Test fun migrate8To9AddsParentIdAndKeepsRows() = runBlocking {
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        val name = "migration-test-v8.db"
+        val file = ctx.getDatabasePath(name).apply { parentFile?.mkdirs(); delete() }
+        createFrom(file, 8)
+        val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).configure().allowMainThreadQueries().build()
+        try {
+            assertEquals(9, db.openHelper.readableDatabase.version)
+            db.openHelper.readableDatabase.query("SELECT parentId FROM categories LIMIT 1").use { c ->
+                assertTrue(c.moveToFirst())
+                assertTrue(c.isNull(0))
+            }
+            val foodId = db.categoryDao().all().first { it.key == "food" || it.nameEn == "Food" }.id
+            val subId = db.categoryDao().insert(Category(type = TxnType.EXPENSE, nameAr = "وجبات", nameEn = "Meals", emoji = "🍕", parentId = foodId, sortOrder = 50))
+            assertEquals(foodId, db.categoryDao().all().single { it.id == subId }.parentId)
+            assertEquals(3, db.txnDao().all().size)
+        } finally { db.close() }
+    }
+
+    @Test fun exportedV9SchemaAddsParentIdOnCategories() {
+        fun catsSql(v: Int): String {
+            val ents = JSONObject(File(schemaDir, "$v.json").readText()).getJSONObject("database").getJSONArray("entities")
+            for (i in 0 until ents.length()) {
+                val e = ents.getJSONObject(i)
+                if (e.getString("tableName") == "categories") return e.getString("createSql")
+            }
+            error("no categories in $v")
+        }
+        assertTrue("v9 must declare parentId", catsSql(9).contains("parentId"))
+        assertTrue("v8 must stay without parentId", !catsSql(8).contains("parentId"))
+    }
 }

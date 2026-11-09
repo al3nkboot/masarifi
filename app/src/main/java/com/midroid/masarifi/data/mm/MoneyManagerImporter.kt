@@ -3,6 +3,7 @@ package com.midroid.masarifi.data.mm
 import com.midroid.masarifi.data.Account
 import com.midroid.masarifi.data.AccountGroup
 import com.midroid.masarifi.data.Category
+import com.midroid.masarifi.data.CategoryName
 import com.midroid.masarifi.data.Repository
 import com.midroid.masarifi.data.Txn
 import com.midroid.masarifi.data.TxnType
@@ -21,7 +22,7 @@ data class MmPlan(
     val from: LocalDateTime?,
     val to: LocalDateTime?,
     val newAccounts: List<String>,
-    /** Pairs of (type, name). */
+    /** Pairs of (type, display name). Subcategories use "Parent › Sub". */
     val newCategories: List<Pair<Int, String>>,
 ) {
     val toImport get() = income + expense + transfer
@@ -47,9 +48,11 @@ class MoneyManagerImporter(private val repo: Repository, private val zone: ZoneI
             ?: if (k in cashAliases) accounts.firstOrNull { key(it.name) in cashAliases } else null
     }
 
-    private fun findCategory(cats: List<Category>, type: Int, name: String): Category? {
+    private fun findCategory(cats: List<Category>, type: Int, name: String, parentId: Long?): Category? {
         val k = key(name)
-        return cats.firstOrNull { it.type == type && (key(it.nameEn) == k || key(it.nameAr) == k) }
+        return cats.firstOrNull {
+            it.type == type && it.parentId == parentId && (key(it.nameEn) == k || key(it.nameAr) == k)
+        }
     }
 
     private fun txnType(k: MmKind) = when (k) { MmKind.INCOME -> TxnType.INCOME; MmKind.EXPENSE -> TxnType.EXPENSE; MmKind.TRANSFER -> TxnType.TRANSFER }
@@ -65,20 +68,43 @@ class MoneyManagerImporter(private val repo: Repository, private val zone: ZoneI
         }
     }
 
+    /** Display label for the import preview (subcategories show as "Parent › Sub"). */
+    private fun displayName(parent: String?, name: String) =
+        if (parent.isNullOrBlank()) name else "$parent › $name"
+
     suspend fun plan(parse: MmParseResult): MmPlan {
         val existing = repo.txnDao.hashesWithPrefix("mm:").toHashSet()
         val fresh = parse.txns.filter { it.hash !in existing }
         val accounts = repo.accountDao.all()
-        val cats = repo.categoryDao.all()
+        val cats = repo.categoryDao.all().toMutableList()
         val newAccounts = LinkedHashMap<String, String>()
-        val newCats = LinkedHashMap<Pair<Int, String>, Pair<Int, String>>()
+        val newCats = LinkedHashMap<String, Pair<Int, String>>()
+        // Synthetic negative ids so plan() can nest subcategories without writing.
+        var nextFake = -1L
+        val fakeByKey = HashMap<String, Long>()
+        fun ensure(type: Int, rawName: String, parentId: Long?, parentLabel: String?): Long? {
+            if (rawName.isBlank() || type == TxnType.TRANSFER) return null
+            val parts = CategoryName.split(rawName)
+            val name = parts.name.ifBlank { rawName.trim() }
+            findCategory(cats, type, name, parentId)?.let { return it.id }
+            val fk = "$type|${parentId ?: "root"}|${key(name)}"
+            fakeByKey[fk]?.let { return it }
+            val id = nextFake--
+            fakeByKey[fk] = id
+            cats += Category(id = id, type = type, nameAr = name, nameEn = name, emoji = parts.emoji ?: "📦", parentId = parentId, sortOrder = 50)
+            newCats.putIfAbsent(fk, type to displayName(parentLabel, name))
+            return id
+        }
         for (t in fresh) {
             for (a in listOfNotNull(t.account, t.toAccount)) {
                 if (findAccount(accounts, a) == null) newAccounts.putIfAbsent(key(a), a.trim())
             }
             if (t.kind != MmKind.TRANSFER && t.category.isNotBlank()) {
                 val type = txnType(t.kind)
-                if (findCategory(cats, type, t.category) == null) newCats.putIfAbsent(type to key(t.category), type to t.category.trim())
+                val parentParts = CategoryName.split(t.category)
+                val parentLabel = parentParts.name.ifBlank { t.category.trim() }
+                val parentId = ensure(type, t.category, null, null)
+                if (t.subcategory.isNotBlank()) ensure(type, t.subcategory, parentId, parentLabel)
             }
         }
         return MmPlan(
@@ -97,7 +123,6 @@ class MoneyManagerImporter(private val repo: Repository, private val zone: ZoneI
     /** Converts one parsed row into a [Txn] (ids resolved by the caller). */
     fun toTxn(t: MmTxn, accountId: Long, toAccountId: Long?, categoryId: Long?): Txn {
         val desc = buildList {
-            if (t.subcategory.isNotBlank()) add(t.subcategory)
             if (t.description.isNotBlank()) add(t.description)
             if (t.originalCurrency != null) add("${t.originalCurrency} ${t.originalAmount ?: ""}".trim())
         }.joinToString(" • ")
@@ -122,20 +147,34 @@ class MoneyManagerImporter(private val repo: Repository, private val zone: ZoneI
                 accounts += a.copy(id = id); accCreated++
                 return id
             }
-            suspend fun categoryId(type: Int, name: String): Long? {
-                if (name.isBlank() || type == TxnType.TRANSFER) return null
-                findCategory(cats, type, name)?.let { return it.id }
-                val c = Category(type = type, nameAr = name.trim(), nameEn = name.trim(), emoji = "📦", sortOrder = 50 + cats.size)
+            suspend fun ensureCategory(type: Int, rawName: String, parentId: Long?): Long? {
+                if (rawName.isBlank() || type == TxnType.TRANSFER) return null
+                val parts = CategoryName.split(rawName)
+                val name = parts.name.ifBlank { rawName.trim() }
+                findCategory(cats, type, name, parentId)?.let { return it.id }
+                val emoji = parts.emoji ?: "📦"
+                val c = Category(
+                    type = type, nameAr = name, nameEn = name, emoji = emoji,
+                    sortOrder = 50 + cats.size, parentId = parentId,
+                )
                 val id = repo.insertAutoCategory(c)
                 cats += c.copy(id = id); catCreated++
                 return id
+            }
+            suspend fun categoryId(type: Int, category: String, subcategory: String): Long? {
+                val parentId = ensureCategory(type, category, null) ?: return null
+                if (subcategory.isBlank()) return parentId
+                return ensureCategory(type, subcategory, parentId) ?: parentId
             }
             var inc = 0; var exp = 0; var tr = 0; var dup = 0
             val batch = ArrayList<Txn>()
             for (t in parse.txns) {
                 if (!existing.add(t.hash)) { dup++; continue }
                 val type = txnType(t.kind)
-                batch += toTxn(t, accountId(t.account), t.toAccount?.let { accountId(it) }, categoryId(type, t.category))
+                batch += toTxn(
+                    t, accountId(t.account), t.toAccount?.let { accountId(it) },
+                    categoryId(type, t.category, t.subcategory),
+                )
                 when (t.kind) { MmKind.INCOME -> inc++; MmKind.EXPENSE -> exp++; MmKind.TRANSFER -> tr++ }
             }
             batch.chunked(500).forEach { repo.txnDao.insertAll(it) }
