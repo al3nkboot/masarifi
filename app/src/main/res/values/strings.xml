@@ -9,6 +9,8 @@
     <string name="add">Add</string>
     <string name="add_account">Add account</string>
     <string name="add_category">Add category</string>
+    <string name="add_subcategory">Add subcategory</string>
+    <string name="subcategory_of">Under %1$s</string>
     <string name="amount">Amount</string>
     <string name="app_name">Masarifi</string>
     <string name="assets">Assets</string>

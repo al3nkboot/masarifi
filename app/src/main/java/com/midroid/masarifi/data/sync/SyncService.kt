@@ -119,7 +119,7 @@ class SyncService(
 
         cats.forEach { c ->
             add(SyncRecord.live(c.uuid, Kind.CATEGORY, c.updatedAt, "type" to c.type, "nameAr" to c.nameAr, "nameEn" to c.nameEn,
-                "emoji" to c.emoji, "key" to c.key, "sortOrder" to c.sortOrder))
+                "emoji" to c.emoji, "key" to c.key, "sortOrder" to c.sortOrder, "parent" to c.parentId?.let { catU[it] }))
         }
         accs.forEach { a ->
             add(SyncRecord.live(a.uuid, Kind.ACCOUNT, a.updatedAt, "name" to a.name, "groupType" to a.groupType, "initialBalance" to a.initialBalance,
@@ -187,7 +187,10 @@ class SyncService(
         for (kind in Kind.APPLY_ORDER.reversed()) byKind[kind].orEmpty().filter { it.deleted }.forEach { applyDelete(it) }
         val pendingDup = ArrayList<Pair<Long, String>>()
         for (kind in Kind.APPLY_ORDER) {
-            byKind[kind].orEmpty().filter { !it.deleted }.forEach { r ->
+            val live = byKind[kind].orEmpty().filter { !it.deleted }
+            // Parents before children so parentId resolves in the same pass.
+            val ordered = if (kind == Kind.CATEGORY) live.sortedBy { if (it.str("parent").isNullOrBlank()) 0 else 1 } else live
+            ordered.forEach { r ->
                 val ok = try { applyLive(r, pendingDup) } catch (e: SQLiteConstraintException) { false }
                 if (!ok) skipped++
             }
@@ -229,6 +232,10 @@ class SyncService(
             Kind.BILL -> db.billDao().byUuid(r.uuid)?.let { db.billDao().deletePaymentsFor(it.id); db.billDao().delete(it.id) }
             Kind.BILL_PAY -> db.billDao().deletePaymentByUuid(r.uuid)
             Kind.CATEGORY -> dao.category(r.uuid)?.let { c ->
+                // Drop subcategories with the parent (local ids under this parent).
+                repo.categoryDao.all().filter { it.parentId == c.id }.forEach { ch ->
+                    dao.clearTxnCategory(ch.id); dao.clearRecurringCategory(ch.id); db.billDao().clearCategory(ch.id); repo.budgetDao.delete(ch.id); dao.deleteCategory(ch.uuid)
+                }
                 dao.clearTxnCategory(c.id); dao.clearRecurringCategory(c.id); db.billDao().clearCategory(c.id); repo.budgetDao.delete(c.id); dao.deleteCategory(r.uuid)
             }
             Kind.BUDGET -> categoryIdFor(r.uuid, "b:")?.let { repo.budgetDao.delete(it) }
@@ -256,7 +263,8 @@ class SyncService(
         when (r.kind) {
             Kind.CATEGORY -> {
                 val ex = dao.category(r.uuid)
-                val c = Category(ex?.id ?: 0, int("type"), r.str("nameAr") ?: "", r.str("nameEn") ?: "", r.str("emoji") ?: "📦", r.str("key"), int("sortOrder"), r.uuid, r.updatedAt)
+                val parentId = r.str("parent")?.let { dao.category(it)?.id }
+                val c = Category(ex?.id ?: 0, int("type"), r.str("nameAr") ?: "", r.str("nameEn") ?: "", r.str("emoji") ?: "📦", r.str("key"), int("sortOrder"), r.uuid, r.updatedAt, parentId)
                 if (ex != null) dao.updateCategory(c) else dao.insertCategory(c)
             }
             Kind.ACCOUNT -> {

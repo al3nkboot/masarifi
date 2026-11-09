@@ -69,6 +69,21 @@ class Repository(
             accountDao.insert(Account(name = if (ar) "نقد" else "Cash", groupType = AccountGroup.CASH, uuid = Defaults.CASH_ACCOUNT_UUID, updatedAt = 0))
         }
         if (!settings.flag(SEEDED_FLAG)) { seedCardMappings(); settings.setFlag(SEEDED_FLAG) }
+        normalizeCategoryEmojis()
+    }
+
+    /**
+     * One-shot/idempotent: Money Manager users often put the emoji in the category name ("💸مال").
+     * Move a leading emoji into [Category.emoji] and keep a clean name so the subtitle is not a duplicate.
+     */
+    suspend fun normalizeCategoryEmojis(): Int {
+        var n = 0
+        for (c in categoryDao.all()) {
+            val cleaned = CategoryName.cleanup(c.nameAr, c.nameEn, c.emoji) ?: continue
+            categoryDao.update(c.copy(nameAr = cleaned.first, nameEn = cleaned.second, emoji = cleaned.third))
+            n++
+        }
+        return n
     }
 
     /**
@@ -113,7 +128,9 @@ class Repository(
     }
 
     suspend fun insertAutoCategory(c: Category): Long {
-        val stable = c.copy(uuid = Defaults.namedUuid("cat-auto-${c.type}-", c.nameAr.ifBlank { c.nameEn }))
+        val name = c.nameAr.ifBlank { c.nameEn }
+        val parentKey = c.parentId?.let { pid -> categoryDao.all().firstOrNull { it.id == pid }?.uuid }.orEmpty()
+        val stable = c.copy(uuid = Defaults.namedUuid("cat-auto-${c.type}-$parentKey-", name))
         return if (db.syncDao().category(stable.uuid) == null) categoryDao.insert(stable) else categoryDao.insert(c)
     }
 
@@ -341,6 +358,8 @@ class Repository(
     suspend fun saveCategory(c: Category) = if (c.id == 0L) categoryDao.insert(c) else { categoryDao.update(c); c.id }
 
     suspend fun deleteCategory(c: Category) {
+        // Subcategories go with the parent (same as Money Manager).
+        for (child in categoryDao.all().filter { it.parentId == c.id }) deleteCategory(child)
         txnDao.clearCategory(c.id)
         billDao.clearCategory(c.id)
         budgetDao.delete(c.id)

@@ -9,6 +9,8 @@
     <string name="add">إضافة</string>
     <string name="add_account">إضافة حساب</string>
     <string name="add_category">إضافة فئة</string>
+    <string name="add_subcategory">إضافة فئة فرعية</string>
+    <string name="subcategory_of">تحت %1$s</string>
     <string name="amount">المبلغ</string>
     <string name="app_name">مصاريفي</string>
     <string name="assets">الأصول</string>

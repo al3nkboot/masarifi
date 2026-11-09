@@ -48,7 +48,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.midroid.masarifi.R
 import com.midroid.masarifi.data.Category
@@ -67,6 +66,9 @@ fun CategoriesScreen(vm: AppViewModel, onBack: () -> Unit) {
     var editing by remember { mutableStateOf<Category?>(null) }
     val type = if (expenseMode) TxnType.EXPENSE else TxnType.INCOME
     val c = AppTheme.colors
+    val ofType = cats.filter { it.type == type }
+    val parents = ofType.filter { it.parentId == null }
+    val childrenOf = ofType.filter { it.parentId != null }.groupBy { it.parentId }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -88,38 +90,112 @@ fun CategoriesScreen(vm: AppViewModel, onBack: () -> Unit) {
                 TypeToggle(stringResource(R.string.income), !expenseMode, c.income) { expenseMode = false }
             }
             LazyColumn {
-                items(cats.filter { it.type == type }, key = { it.id }) { cat ->
-                    Row(
-                        Modifier.fillMaxWidth().clickable { editing = cat }.padding(horizontal = Spacing.lg, vertical = Spacing.md),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(cat.icon, style = MaterialTheme.typography.titleLarge)
-                        Spacer(Modifier.width(14.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(cat.name(s.arabic), style = MaterialTheme.typography.bodyLarge)
-                            Text(cat.name(!s.arabic), style = MaterialTheme.typography.bodySmall, color = c.muted)
-                        }
+                parents.forEach { parent ->
+                    item(key = parent.id) {
+                        CategoryRow(
+                            cat = parent,
+                            arabic = s.arabic,
+                            indented = false,
+                            onClick = { editing = parent },
+                            onAddSub = {
+                                editing = Category(
+                                    type = type, nameAr = "", nameEn = "", emoji = parent.emoji.ifBlank { "📦" },
+                                    sortOrder = 50, parentId = parent.id,
+                                )
+                            },
+                        )
+                        HorizontalDivider(color = c.divider)
                     }
-                    HorizontalDivider(color = c.divider)
+                    items(childrenOf[parent.id].orEmpty(), key = { it.id }) { sub ->
+                        CategoryRow(
+                            cat = sub,
+                            arabic = s.arabic,
+                            indented = true,
+                            onClick = { editing = sub },
+                            onAddSub = null,
+                        )
+                        HorizontalDivider(color = c.divider)
+                    }
                 }
             }
         }
     }
-    editing?.let { cat -> CategoryDialog(cat, onDismiss = { editing = null }, onSave = { vm.saveCategory(it) }, onDelete = { vm.deleteCategory(it) }) }
+    editing?.let { cat ->
+        val parentName = cat.parentId?.let { pid -> cats.firstOrNull { it.id == pid }?.name(s.arabic) }
+        CategoryDialog(
+            cat = cat,
+            parentName = parentName,
+            onDismiss = { editing = null },
+            onSave = { vm.saveCategory(it) },
+            onDelete = { vm.deleteCategory(it) },
+        )
+    }
+}
+
+@Composable
+private fun CategoryRow(
+    cat: Category,
+    arabic: Boolean,
+    indented: Boolean,
+    onClick: () -> Unit,
+    onAddSub: (() -> Unit)?,
+) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick)
+            .padding(start = if (indented) 36.dp else Spacing.lg, end = Spacing.sm, top = Spacing.md, bottom = Spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(cat.icon, style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(cat.name(arabic), style = MaterialTheme.typography.bodyLarge)
+            Text(cat.name(!arabic), style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.muted)
+        }
+        if (onAddSub != null) {
+            IconButton(onClick = onAddSub) {
+                Icon(Icons.Filled.Add, stringResource(R.string.add_subcategory))
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CategoryDialog(cat: Category, onDismiss: () -> Unit, onSave: (Category) -> Unit, onDelete: (Category) -> Unit) {
+private fun CategoryDialog(
+    cat: Category,
+    parentName: String?,
+    onDismiss: () -> Unit,
+    onSave: (Category) -> Unit,
+    onDelete: (Category) -> Unit,
+) {
     var ar by remember { mutableStateOf(cat.nameAr) }
     var en by remember { mutableStateOf(cat.nameEn) }
     var emoji by remember { mutableStateOf(cat.emoji) }
     var confirm by remember { mutableStateOf(false) }
+    val isSub = cat.parentId != null
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(if (cat.id == 0L) R.string.add_category else R.string.edit_category)) },
+        title = {
+            Text(
+                stringResource(
+                    when {
+                        cat.id == 0L && isSub -> R.string.add_subcategory
+                        cat.id == 0L -> R.string.add_category
+                        else -> R.string.edit_category
+                    },
+                ),
+            )
+        },
         text = {
             Column {
+                if (parentName != null) {
+                    Text(
+                        stringResource(R.string.subcategory_of, parentName),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AppTheme.colors.muted,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
                 OutlinedTextField(ar, { ar = it }, label = { Text(stringResource(R.string.name_ar)) }, singleLine = true)
                 Spacer(Modifier.height(6.dp))
                 OutlinedTextField(en, { en = it }, label = { Text(stringResource(R.string.name_en)) }, singleLine = true)
@@ -149,5 +225,11 @@ private fun CategoryDialog(cat: Category, onDismiss: () -> Unit, onSave: (Catego
             }
         },
     )
-    if (confirm) ConfirmDialog(stringResource(R.string.delete), stringResource(R.string.confirm_delete_category), stringResource(R.string.delete), { onDelete(cat); onDismiss() }, { confirm = false })
+    if (confirm) ConfirmDialog(
+        stringResource(R.string.delete),
+        stringResource(if (isSub) R.string.confirm_delete_category else R.string.confirm_delete_category),
+        stringResource(R.string.delete),
+        { onDelete(cat); onDismiss() },
+        { confirm = false },
+    )
 }
