@@ -14,7 +14,7 @@
 
 ### [⬇️ تحميل التطبيق (APK)](https://github.com/al3nkboot/masarifi/releases)
 
-الإصدار الحالي **2.6.0** (فرع / لم يُنشر بعد) — بنسختين:
+الإصدار الحالي **2.6.0** — بنسختين:
 
 | | النسخة الكاملة `masarifi-v2.6.0.apk` | بدون الرسائل `masarifi-v2.6.0-nosms.apk` |
 |---|---|---|
@@ -27,7 +27,7 @@
 <img src="docs/images/v250/01_warranty_list_ar_dark.png" width="24%" alt="الضمانات"> <img src="docs/images/v250/03_warranty_detail_ar_light.png" width="24%" alt="تفاصيل الضمان"> <img src="docs/images/v250/02_warranty_edit_ar_dark.png" width="24%" alt="إضافة ضمان">
 
 ### الجديد في 2.6.0 / What's new
-- عملات كل دول الجامعة العربية (مع شيكل ILS) + بحث في قائمة العملة — Currencies for all Arab League countries (plus ILS) with search
+- عملات كل دول الجامعة العربية + قائمة عملة قابلة للتمرير — Currencies for all Arab League countries; scrollable currency list
 - التحقق من التحديثات وصفحة التطبيق في «المزيد» عبر GitHub Releases — Check for updates + app page link in More (GitHub Releases)
 - صلاحية الإنترنت فقط لهذا التحقق اليدوي — `INTERNET` only for that manual check
 

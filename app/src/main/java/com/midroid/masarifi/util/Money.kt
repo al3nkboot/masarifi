@@ -39,7 +39,6 @@ object Currencies {
         CurrencyInfo("SOS", "ش.ص", "SOS", 2, "شلن صومالي", "Somali Shilling"),
         CurrencyInfo("DJF", "ف.ج", "DJF", 0, "فرنك جيبوتي", "Djiboutian Franc"),
         CurrencyInfo("KMF", "ف.ق", "KMF", 0, "فرنك قمري", "Comorian Franc"),
-        CurrencyInfo("ILS", "₪", "₪", 2, "شيكل (ILS)", "Shekel (ILS)"),
         // International
         CurrencyInfo("USD", "$", "$", 2, "دولار أمريكي", "US Dollar"),
         CurrencyInfo("EUR", "€", "€", 2, "يورو", "Euro"),
@@ -58,7 +57,6 @@ object Currencies {
         "EGP" to 0.0079, "JOD" to 0.542, "IQD" to 0.00029, "SYP" to 0.00003, "LBP" to 0.000004,
         "YER" to 0.0015, "LYD" to 0.079, "TND" to 0.124, "DZD" to 0.0029, "MAD" to 0.039,
         "SDG" to 0.00064, "MRU" to 0.0096, "SOS" to 0.00067, "DJF" to 0.00216, "KMF" to 0.00082,
-        "ILS" to 0.105,
     )
 
     /** Converts milli-amount between currencies using static rates; null if unknown. */

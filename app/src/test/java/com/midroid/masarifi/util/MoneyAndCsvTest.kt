@@ -37,11 +37,11 @@ class MoneyAndCsvTest {
 
     @Test fun arabCurrenciesPresent() {
         val codes = Currencies.all.map { it.code }
-        assertEquals(25, codes.size)
+        assertEquals(24, codes.size)
         listOf(
             "OMR", "AED", "SAR", "KWD", "BHD", "QAR",
             "EGP", "JOD", "IQD", "SYP", "LBP", "YER", "LYD", "TND", "DZD", "MAD",
-            "SDG", "MRU", "SOS", "DJF", "KMF", "ILS",
+            "SDG", "MRU", "SOS", "DJF", "KMF",
             "USD", "EUR", "INR",
         ).forEach { assertTrue("missing $it", it in codes) }
         assertEquals("OMR", codes.first())
