@@ -1,10 +1,10 @@
 # سياسة الخصوصية — مصاريفي
 
-**آخر تحديث:** 22 أكتوبر 2026 · **التطبيق:** `com.midroid.masarifi` · **الإصدار:** 2.1.1
+**آخر تحديث:** 9 نوفمبر 2026 · **التطبيق:** `com.midroid.masarifi` · **الإصدار:** 2.6.0
 
 ## باختصار
 - كل بياناتك (المعاملات، الحسابات، الفئات، الميزانيات، الفواتير، الإعدادات) **محفوظة على جهازك فقط**.
-- **التطبيق لا يطلب صلاحية الإنترنت** (`INTERNET`)، وما عندنا أي خادم. ما نجمع ولا نستلم أي بيانات.
+- **ما عندنا أي خادم، ولا إعلانات ولا تتبّع.** صلاحية الإنترنت (`INTERNET`) تُستخدم فقط لما تضغط «التحقق من التحديثات» لاستعلام واجهة GitHub العامة عن آخر إصدار — ما تُرسل أي بيانات شخصية. فتح صفحة التطبيق أو PayPal أو X يتم عبر متصفح النظام.
 - **لا إعلانات، لا أدوات تحليل، لا متتبّعات**، ولا حسابات تسجيل دخول.
 - النسخ الاحتياطي التلقائي لنظام أندرويد (Google Cloud / adb) و«النقل من جهاز لجهاز» **معطّلان** لهذا التطبيق، فبياناتك ما تنرفع للسحابة إلا عبر النسخ الاحتياطي اللي تختاره أنت داخل التطبيق.
 
@@ -28,8 +28,9 @@
 ## الأذونات
 - **قراءة واستقبال الرسائل** (READ_SMS، RECEIVE_SMS): للتسجيل التلقائي من رسائل البنك.
 - **الإشعارات** (POST_NOTIFICATIONS): للتنبيهات وتذكيرات الفواتير.
-- أذونات تضيفها مكتبة WorkManager لتشغيل المهام الخلفية (النسخ التلقائي، المزامنة، الفحص اليومي): WAKE_LOCK، ACCESS_NETWORK_STATE، RECEIVE_BOOT_COMPLETED، FOREGROUND_SERVICE. ‏ACCESS_NETWORK_STATE لا يسمح بالاتصال بالإنترنت.
-- ما نطلب الوصول لجهات الاتصال أو الموقع أو الصور أو الإنترنت.
+- **الإنترنت** (`INTERNET`): فقط للتحقق اليدوي من التحديثات عبر GitHub Releases API عند طلبك.
+- أذونات تضيفها مكتبة WorkManager لتشغيل المهام الخلفية (النسخ التلقائي، المزامنة، الفحص اليومي): WAKE_LOCK، ACCESS_NETWORK_STATE، RECEIVE_BOOT_COMPLETED، FOREGROUND_SERVICE.
+- ما نطلب الوصول لجهات الاتصال أو الموقع أو الصور.
 
 ## حذف البيانات
 احذف البيانات من التطبيق، أو امسح بيانات التطبيق، أو ألغِ تثبيته — وبتنحذف كل البيانات من جهازك. ملفات النسخ الاحتياطي والمزامنة والتصدير اللي حفظتها في مكان آخر (مثل Google Drive) تحذفها بنفسك.
@@ -45,11 +46,11 @@
 
 # Privacy Policy — Masarifi («مصاريفي»)
 
-**Last updated:** 22 October 2026 · **App:** `com.midroid.masarifi` · **Version:** 2.1.1
+**Last updated:** 9 November 2026 · **App:** `com.midroid.masarifi` · **Version:** 2.6.0
 
 ## Summary
 - All your data (transactions, accounts, categories, budgets, bills, settings) is **stored only on your device**.
-- **The app does not request the Internet permission** (`INTERNET`) and we have no server. We collect and receive nothing.
+- **We have no server, ads, or trackers.** The Internet permission (`INTERNET`) is used only when you tap «Check for updates» to query the public GitHub Releases API — no personal data is sent. Opening the app page, PayPal, or X uses the system browser.
 - **No ads, no analytics, no trackers**, and no sign-in accounts.
 - Android's system backup (Google cloud / adb) and device-to-device transfer are **disabled** for this app, so your data only reaches the cloud through a backup you set up yourself in the app.
 
@@ -73,8 +74,9 @@
 ## Permissions
 - **Read and receive SMS** (READ_SMS, RECEIVE_SMS): automatic recording from bank SMS.
 - **Notifications** (POST_NOTIFICATIONS): alerts and bill reminders.
-- Permissions added by the WorkManager library for background jobs (auto backup, sync, daily check): WAKE_LOCK, ACCESS_NETWORK_STATE, RECEIVE_BOOT_COMPLETED, FOREGROUND_SERVICE. ACCESS_NETWORK_STATE does not allow Internet access.
-- No access to contacts, location, photos or the Internet.
+- **Internet** (`INTERNET`): only for the manual «Check for updates» call to the public GitHub Releases API when you ask for it.
+- Permissions added by the WorkManager library for background jobs (auto backup, sync, daily check): WAKE_LOCK, ACCESS_NETWORK_STATE, RECEIVE_BOOT_COMPLETED, FOREGROUND_SERVICE.
+- No access to contacts, location, or photos.
 
 ## Deleting data
 Delete data in the app, clear the app's data, or uninstall it — all data is removed from your device. Backup, sync and export files you saved elsewhere (e.g. Google Drive) must be deleted by you.

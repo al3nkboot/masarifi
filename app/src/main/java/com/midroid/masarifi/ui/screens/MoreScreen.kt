@@ -18,7 +18,9 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -27,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.midroid.masarifi.BuildConfig
 import com.midroid.masarifi.BuildConfigInfo
 import com.midroid.masarifi.R
 import com.midroid.masarifi.ui.AppViewModel
@@ -44,6 +48,10 @@ import com.midroid.masarifi.ui.components.SettingRow
 import com.midroid.masarifi.ui.components.SwitchRow
 import com.midroid.masarifi.ui.theme.AppTheme
 import com.midroid.masarifi.util.Currencies
+import com.midroid.masarifi.util.UpdateChecker
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
 @Composable
@@ -51,6 +59,9 @@ fun MoreScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier, 
     val s by vm.settings.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
     var dialog by remember { mutableStateOf<String?>(null) }
+    var updateResult by remember { mutableStateOf<UpdateChecker.CheckResult?>(null) }
+    var updateChecking by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val exportedFmt = stringResource(R.string.exported_n)
     val importedFmt = stringResource(R.string.imported_n)
     val failed = stringResource(R.string.operation_failed)
@@ -64,6 +75,12 @@ fun MoreScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier, 
 
     val mmLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) vm.mmPick(uri)
+    }
+
+    fun openUrl(url: String) {
+        runCatching {
+            ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+        }
     }
 
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -83,7 +100,7 @@ fun MoreScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier, 
         val dupCount = vm.dupGroups.collectAsStateWithLifecycle().value.size
         SettingRow(AppIcons.Copy, stringResource(R.string.dup_review), stringResource(R.string.dup_review_sub) + if (dupCount > 0) " ($dupCount)" else "", onClick = { navigate(Route.Duplicates) })
         SettingRow(AppIcons.Calendar, stringResource(R.string.dup_window), stringResource(R.string.dup_window_value, s.dupWindowHours.toString()), onClick = { dialog = "dupwindow" })
-        if (com.midroid.masarifi.BuildConfig.SMS_ENABLED) SettingRow(AppIcons.Sms, stringResource(R.string.sms_import), stringResource(if (s.smsEnabled) R.string.enabled else R.string.disabled), onClick = { navigate(Route.SmsSettings) })
+        if (BuildConfig.SMS_ENABLED) SettingRow(AppIcons.Sms, stringResource(R.string.sms_import), stringResource(if (s.smsEnabled) R.string.enabled else R.string.disabled), onClick = { navigate(Route.SmsSettings) })
 
         SectionTitle(stringResource(R.string.section_alerts))
         SwitchRow(Icons.Filled.Notifications, stringResource(R.string.budget_alerts), stringResource(R.string.budget_alerts_sub), s.budgetAlerts) { v -> vm.updateSettings { it.copy(budgetAlerts = v) } }
@@ -98,24 +115,40 @@ fun MoreScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier, 
         SectionTitle(stringResource(R.string.about))
         SettingRow(Icons.Filled.Info, stringResource(R.string.app_name), "${stringResource(R.string.version)} ${BuildConfigInfo.versionName(ctx)} • com.midroid.masarifi")
         SettingRow(
+            Icons.Filled.Refresh,
+            stringResource(R.string.check_updates),
+            stringResource(R.string.check_updates_sub),
+            onClick = {
+                updateChecking = true
+                updateResult = null
+                dialog = "update"
+                scope.launch {
+                    val current = BuildConfig.VERSION_NAME
+                    val result = withContext(Dispatchers.IO) {
+                        UpdateChecker.fetchAndCompare(current, BuildConfig.SMS_ENABLED)
+                    }
+                    updateResult = result
+                    updateChecking = false
+                }
+            },
+        )
+        SettingRow(
+            AppIcons.Link,
+            stringResource(R.string.app_page),
+            stringResource(R.string.app_page_sub),
+            onClick = { openUrl(UpdateChecker.RELEASES_PAGE) },
+        )
+        SettingRow(
             AppIcons.Money,
             stringResource(R.string.support_paypal),
             stringResource(R.string.support_paypal_sub),
-            onClick = {
-                runCatching {
-                    ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://paypal.me/Midroid5G")))
-                }
-            },
+            onClick = { openUrl("https://paypal.me/Midroid5G") },
         )
         SettingRow(
             Icons.Filled.Info,
             stringResource(R.string.developer_x),
             "x.com/midroid5G",
-            onClick = {
-                runCatching {
-                    ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://x.com/midroid5G")))
-                }
-            },
+            onClick = { openUrl("https://x.com/midroid5G") },
         )
         HorizontalDivider(color = AppTheme.colors.divider)
         androidx.compose.foundation.layout.Spacer(Modifier.padding(Spacing.xl))
@@ -125,7 +158,9 @@ fun MoreScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier, 
 
     when (dialog) {
         "currency" -> ChoiceDialog(
-            stringResource(R.string.currency), Currencies.all.map { it.code to "${it.symbol(s.arabic)}  ${if (s.arabic) it.nameAr else it.nameEn} (${it.code})" }, s.currency,
+            stringResource(R.string.currency),
+            Currencies.all.map { it.code to "${it.symbol(s.arabic)}  ${if (s.arabic) it.nameAr else it.nameEn} (${it.code})" },
+            s.currency,
             onDismiss = { dialog = null },
         ) { code -> vm.updateSettings { it.copy(currency = code) } }
         "language" -> ChoiceDialog(stringResource(R.string.language), listOf("ar" to "العربية", "en" to "English"), s.language, onDismiss = { dialog = null }) { lang ->
@@ -140,6 +175,12 @@ fun MoreScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier, 
             stringResource(R.string.theme), listOf("dark" to themeLabel("dark"), "light" to themeLabel("light"), "system" to themeLabel("system")), s.theme,
             onDismiss = { dialog = null },
         ) { t -> vm.updateSettings { it.copy(theme = t) } }
+        "update" -> UpdateCheckDialog(
+            checking = updateChecking,
+            result = updateResult,
+            onDismiss = { dialog = null; updateResult = null; updateChecking = false },
+            onOpen = ::openUrl,
+        )
     }
 }
 
@@ -162,6 +203,71 @@ fun ChoiceDialog(title: String, options: List<Pair<String, String>>, selected: S
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+@Composable
+fun UpdateCheckDialog(
+    checking: Boolean,
+    result: UpdateChecker.CheckResult?,
+    onDismiss: () -> Unit,
+    onOpen: (String) -> Unit,
+) {
+    val title = stringResource(R.string.check_updates)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            when {
+                checking || result == null -> {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(Spacing.lg)) {
+                        CircularProgressIndicator()
+                        Text(stringResource(R.string.update_checking), modifier = Modifier.padding(top = Spacing.md))
+                    }
+                }
+                result is UpdateChecker.CheckResult.UpToDate -> {
+                    Text(stringResource(R.string.update_up_to_date, result.current.ifBlank { result.latest }))
+                }
+                result is UpdateChecker.CheckResult.UpdateAvailable -> {
+                    Column {
+                        Text(stringResource(R.string.update_available, result.release.version, result.current))
+                        val notes = UpdateChecker.notesSnippet(result.release.body)
+                        if (notes.isNotBlank()) {
+                            Text(notes, style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.muted, modifier = Modifier.padding(top = Spacing.sm))
+                        }
+                    }
+                }
+                result is UpdateChecker.CheckResult.Error -> {
+                    Text(
+                        when (result.kind) {
+                            UpdateChecker.CheckResult.Error.Kind.NETWORK -> stringResource(R.string.update_err_network)
+                            UpdateChecker.CheckResult.Error.Kind.RATE_LIMIT -> stringResource(R.string.update_err_rate)
+                            else -> stringResource(R.string.update_err_other, result.detail ?: result.kind.name)
+                        },
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            when (val r = result) {
+                is UpdateChecker.CheckResult.UpdateAvailable -> {
+                    val url = r.assetUrl ?: r.release.htmlUrl
+                    TextButton(onClick = { onOpen(url); onDismiss() }) {
+                        Text(stringResource(if (r.assetUrl != null) R.string.update_download else R.string.update_open_page))
+                    }
+                }
+                else -> TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) }
+            }
+        },
+        dismissButton = {
+            if (result is UpdateChecker.CheckResult.UpdateAvailable) {
+                TextButton(onClick = { onOpen(result.release.htmlUrl); onDismiss() }) {
+                    Text(stringResource(R.string.update_open_page))
+                }
+            } else if (!checking) {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            }
+        },
     )
 }
 

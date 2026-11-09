@@ -14,9 +14,9 @@
 
 ### [⬇️ تحميل التطبيق (APK)](https://github.com/al3nkboot/masarifi/releases)
 
-الإصدار الحالي **2.5.1** — بنسختين:
+الإصدار الحالي **2.6.0** (فرع / لم يُنشر بعد) — بنسختين:
 
-| | النسخة الكاملة `masarifi-v2.5.1.apk` | بدون الرسائل `masarifi-v2.5.1-nosms.apk` |
+| | النسخة الكاملة `masarifi-v2.6.0.apk` | بدون الرسائل `masarifi-v2.6.0-nosms.apk` |
 |---|---|---|
 | قراءة رسائل البنك وتسجيل المصاريف تلقائياً | ✅ | ❌ (إدخال يدوي) |
 | صلاحية الرسائل SMS | تطلبها | لا تطلبها أبداً |
@@ -25,6 +25,11 @@
 **Two editions / نسختان:** *Full* reads bank SMS to log expenses automatically; *No-SMS* has no SMS permission at all (manual entry). Both share the same package and data, so installing one replaces the other and keeps your data. / النسختان بنفس الحزمة والبيانات: تثبيت واحدة يستبدل الأخرى وتبقى بياناتك.
 
 <img src="docs/images/v250/01_warranty_list_ar_dark.png" width="24%" alt="الضمانات"> <img src="docs/images/v250/03_warranty_detail_ar_light.png" width="24%" alt="تفاصيل الضمان"> <img src="docs/images/v250/02_warranty_edit_ar_dark.png" width="24%" alt="إضافة ضمان">
+
+### الجديد في 2.6.0 / What's new
+- عملات كل دول الجامعة العربية (مع شيكل ILS) + بحث في قائمة العملة — Currencies for all Arab League countries (plus ILS) with search
+- التحقق من التحديثات وصفحة التطبيق في «المزيد» عبر GitHub Releases — Check for updates + app page link in More (GitHub Releases)
+- صلاحية الإنترنت فقط لهذا التحقق اليدوي — `INTERNET` only for that manual check
 
 ### الجديد في 2.5.0 / What's new
 - الضمانات للأجهزة المنزلية والإلكترونيات مع حساب تاريخ الانتهاء وحالة (ساري / ينتهي قريباً / منتهي) — Warranties for appliances & electronics with expiry status
@@ -95,7 +100,7 @@
 
 ## الخصوصية
 
-- **لا يوجد خادم ولا إعلانات ولا تتبّع.** التطبيق لا يطلب صلاحية الإنترنت أصلًا (`INTERNET` غير موجودة في الـ manifest).
+- **لا يوجد خادم ولا إعلانات ولا تتبّع.** صلاحية الإنترنت تُستخدم فقط لما تطلب «التحقق من التحديثات» (استعلام GitHub العام).
 - بياناتك محفوظة في تلفونك فقط. النسخ الاحتياطي والمزامنة يكتبان ملفًا في **حسابك أنت** على Google Drive عن طريق منتقي الملفات في النظام، بدون تسجيل دخول داخل التطبيق.
 - الصلاحيات المطلوبة: قراءة واستقبال الرسائل (للتسجيل التلقائي)، والإشعارات (للتنبيهات والتذكيرات).
 - أرقام البطاقات التي تربطها في الإعدادات تُحفظ على الجهاز فقط.
@@ -159,7 +164,7 @@
 - Duplicate detection between manual entries and SMS, multi-select delete with undo, recurring transactions, and import from Money Manager.
 - Automatic daily backup to your own Google Drive (keeps the last 10 copies), plus two-device sync through one shared Drive file.
 - **2.1 beta:** recurring bills with reminders, a "Paid" button that records the expense, a bills calendar and a home-screen widget.
-- **Privacy:** there's no server and no ads. The app doesn't even request the `INTERNET` permission. Your data stays on your phone and in your own Drive. See the [privacy policy](docs/privacy-policy.md).
+- **Privacy:** there's no server and no ads. `INTERNET` is used only for the optional manual update check against GitHub. Your data stays on your phone and in your own Drive. See the [privacy policy](docs/privacy-policy.md).
 
 **[Download the APK from Releases](https://github.com/al3nkboot/masarifi/releases)** (Android 8.0+). Play Protect may warn you because the app reads SMS. Tap *More details → Install anyway*.
 If your bank (from any country) isn't supported, [open an issue](https://github.com/al3nkboot/masarifi/issues/new?template=bank-sms.md) with a **masked** sample SMS.

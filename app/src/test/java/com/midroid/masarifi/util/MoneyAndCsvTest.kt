@@ -3,6 +3,7 @@ package com.midroid.masarifi.util
 import com.midroid.masarifi.data.CsvBackup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MoneyAndCsvTest {
@@ -32,5 +33,23 @@ class MoneyAndCsvTest {
         assertEquals(3, rows.size)
         assertEquals("لولو, بوشر", rows[1][1])
         assertEquals("say \"hi\"", rows[2][1])
+    }
+
+    @Test fun arabCurrenciesPresent() {
+        val codes = Currencies.all.map { it.code }
+        assertEquals(25, codes.size)
+        listOf(
+            "OMR", "AED", "SAR", "KWD", "BHD", "QAR",
+            "EGP", "JOD", "IQD", "SYP", "LBP", "YER", "LYD", "TND", "DZD", "MAD",
+            "SDG", "MRU", "SOS", "DJF", "KMF", "ILS",
+            "USD", "EUR", "INR",
+        ).forEach { assertTrue("missing $it", it in codes) }
+        assertEquals("OMR", codes.first())
+        assertEquals(listOf("USD", "EUR", "INR"), codes.takeLast(3))
+        assertEquals(3, Currencies.of("JOD").decimals)
+        assertEquals(0, Currencies.of("DJF").decimals)
+        assertEquals(2, Currencies.of("EGP").decimals)
+        assertEquals("OMR", Currencies.of("ZZZ").code)
+        assertEquals("EGP", Currencies.of("egp").code)
     }
 }

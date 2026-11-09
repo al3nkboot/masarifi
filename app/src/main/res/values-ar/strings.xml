@@ -521,4 +521,18 @@
     <string name="warranty_confirm_delete">حذف هذا الضمان وصور فاتورته؟</string>
     <string name="warranty_notif_title">ضمان قارب على الانتهاء</string>
     <string name="warranty_notif_text">%1$s: ينتهي الضمان بعد %2$s يوم</string>
+    <string name="check_updates">التحقق من التحديثات</string>
+    <string name="check_updates_sub">مقارنة نسختك بآخر إصدار على GitHub</string>
+    <string name="app_page">صفحة التطبيق</string>
+    <string name="app_page_sub">فتح صفحة الإصدارات على GitHub</string>
+    <string name="update_checking">جارٍ التحقق…</string>
+    <string name="update_up_to_date">أنت على أحدث إصدار (%1$s).</string>
+    <string name="update_available">يتوفر إصدار جديد %1$s (نسختك %2$s).</string>
+    <string name="update_download">تحميل التحديث</string>
+    <string name="update_open_page">فتح صفحة الإصدار</string>
+    <string name="update_err_network">تعذّر الوصول إلى GitHub. تحقق من اتصال الإنترنت.</string>
+    <string name="update_err_rate">حد طلبات GitHub — أعد المحاولة بعد دقائق.</string>
+    <string name="update_err_other">تعذّر التحقق من التحديثات (%1$s).</string>
+    <string name="currency_search">بحث عن عملة</string>
+    <string name="currency_none">لا توجد عملة مطابقة</string>
 </resources>

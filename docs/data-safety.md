@@ -1,13 +1,13 @@
-# Google Play — Data safety form (draft answers) · Masarifi 2.1.1
+# Google Play — Data safety form (draft answers) · Masarifi 2.6.0
 
 > Draft for the owner to review in Play Console → App content → Data safety. Based on the 2.1.1 code and merged
-> manifest: no `INTERNET` permission, no networking code, no analytics/ads/crash SDKs (Room, WorkManager, Compose only).
+> manifest: `INTERNET` only for optional manual update-check against public GitHub Releases API; no analytics/ads/crash SDKs (Room, WorkManager, Compose + HttpURLConnection).
 
 ## Data collection and security
 | Question | Answer | Why |
 |---|---|---|
-| Does your app collect or share any of the required user data types? | **No** | Nothing can leave the device through the app itself (no `INTERNET` permission). The developer has no server and receives nothing. |
-| Is all user data encrypted in transit? | *(not asked when "No" above)* | No network traffic. |
+| Does your app collect or share any of the required user data types? | **No** | Update check only hits GitHub's public API (no user data). The developer has no server and receives nothing. Backup/sync files go only where the user picks via SAF. |
+| Is all user data encrypted in transit? | *(not asked when "No" above)* | Update-check uses HTTPS to GitHub; no user data is sent. |
 | Do you provide a way for users to request that their data be deleted? | *(not asked when "No")* — if asked: data is on-device; users delete it in-app / clear app data / uninstall | |
 
 ## Per data type (all "Not collected, not shared" by the developer)

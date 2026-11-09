@@ -521,4 +521,18 @@
     <string name="warranty_confirm_delete">Delete this warranty and its invoice photos?</string>
     <string name="warranty_notif_title">Warranty expiring</string>
     <string name="warranty_notif_text">%1$s: the warranty ends in %2$s days</string>
+    <string name="check_updates">Check for updates</string>
+    <string name="check_updates_sub">Compare with the latest GitHub release</string>
+    <string name="app_page">App page</string>
+    <string name="app_page_sub">Open releases on GitHub</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_up_to_date">You\'re on the latest version (%1$s).</string>
+    <string name="update_available">New version %1$s is available (you have %2$s).</string>
+    <string name="update_download">Download update</string>
+    <string name="update_open_page">Open release page</string>
+    <string name="update_err_network">Couldn\'t reach GitHub. Check your internet connection.</string>
+    <string name="update_err_rate">GitHub rate limit — try again in a few minutes.</string>
+    <string name="update_err_other">Couldn\'t check for updates (%1$s).</string>
+    <string name="currency_search">Search currency</string>
+    <string name="currency_none">No matching currency</string>
 </resources>
