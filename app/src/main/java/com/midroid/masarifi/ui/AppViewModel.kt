@@ -30,6 +30,7 @@ import com.midroid.masarifi.data.dup.DupGroup
 import com.midroid.masarifi.data.dup.DuplicateDetector
 import com.midroid.masarifi.sms.SmsImporter
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import com.midroid.masarifi.work.BackupWorker
@@ -87,7 +88,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val settings: StateFlow<AppSettings> = settingsStore.state
 
     val txns: StateFlow<List<Txn>> = repo.txnDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    val accounts: StateFlow<List<Account>> = repo.accountDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    /** Every account, including soft-deleted ones (needed so transaction labels keep the original name). */
+    val allAccounts: StateFlow<List<Account>> = repo.accountDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    /** Active accounts (not in the deleted bin). Hidden accounts stay in this list. */
+    val accounts: StateFlow<List<Account>> = allAccounts.map { list -> list.filter { it.deletedAt == null } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val deletedAccounts: StateFlow<List<Account>> = allAccounts.map { list -> list.filter { it.deletedAt != null } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val categories: StateFlow<List<Category>> = repo.categoryDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val budgets: StateFlow<List<Budget>> = repo.budgetDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val recurring: StateFlow<List<Recurring>> = repo.recurringDao.observeAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -207,7 +214,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun repeatOf(txn: Txn): Int = withContext(Dispatchers.IO) { repo.repeatOf(txn) }
     fun deleteTxn(txn: Txn) = viewModelScope.launch(Dispatchers.IO) { repo.deleteTxn(txn) }
     fun saveAccount(a: Account) = viewModelScope.launch(Dispatchers.IO) { repo.saveAccount(a) }
-    fun deleteAccount(a: Account) = viewModelScope.launch(Dispatchers.IO) { repo.deleteAccount(a) }
+    fun reorderAccounts(ids: List<Long>) = viewModelScope.launch(Dispatchers.IO) { repo.reorderAccounts(ids) }
+    fun moveAccount(a: Account, toId: Long) = viewModelScope.launch(Dispatchers.IO) { repo.removeAccount(a, com.midroid.masarifi.data.Repository.AccountRemoval.MOVE, toId) }
+    fun softDeleteAccount(a: Account) = viewModelScope.launch(Dispatchers.IO) { repo.removeAccount(a, com.midroid.masarifi.data.Repository.AccountRemoval.SOFT) }
+    fun wipeAccount(a: Account) = viewModelScope.launch(Dispatchers.IO) { repo.removeAccount(a, com.midroid.masarifi.data.Repository.AccountRemoval.WIPE) }
+    fun restoreAccount(a: Account) = viewModelScope.launch(Dispatchers.IO) { repo.restoreAccount(a) }
+    fun mergeAccounts(source: Account, target: Account) = viewModelScope.launch(Dispatchers.IO) { repo.mergeAccounts(source, target) }
     fun saveCategory(c: Category) = viewModelScope.launch(Dispatchers.IO) { repo.saveCategory(c) }
     fun deleteCategory(c: Category) = viewModelScope.launch(Dispatchers.IO) { repo.deleteCategory(c) }
     fun reorderCategories(orderedIds: List<Long>) = viewModelScope.launch(Dispatchers.IO) { repo.reorderCategories(orderedIds) }

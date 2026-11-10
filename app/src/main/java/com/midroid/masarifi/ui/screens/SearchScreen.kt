@@ -33,12 +33,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.midroid.masarifi.R
+import com.midroid.masarifi.data.CarryOver
 import com.midroid.masarifi.data.TxnType
 import com.midroid.masarifi.ui.AppViewModel
 import com.midroid.masarifi.ui.Route
 import com.midroid.masarifi.ui.components.EmptyState
 import com.midroid.masarifi.ui.components.SummaryRow
 import com.midroid.masarifi.ui.components.TxnRow
+import com.midroid.masarifi.ui.theme.AppTheme
 import com.midroid.masarifi.util.Money
 
 /** Search screen (filter == null) or a filtered transaction list (category / account / note drill-down). */
@@ -70,6 +72,11 @@ fun SearchScreen(vm: AppViewModel, filter: Route.TxnList?, navigate: (Route) -> 
         }
     }
 
+    val accounts by vm.allAccounts.collectAsStateWithLifecycle()
+    val account = filter?.accountId?.let { id -> accounts.firstOrNull { it.id == id } }
+    val running = remember(account, base) { account?.let { CarryOver.runningBalances(it, base) } }
+    val currentBalance = account?.let { running?.values?.lastOrNull() ?: it.initialBalance }
+
     val sel = com.midroid.masarifi.ui.components.rememberTxnSelection()
     androidx.compose.runtime.LaunchedEffect(all) { sel.retain(all.mapTo(HashSet()) { it.id }) }
     com.midroid.masarifi.ui.components.SelectionEffects(sel, vm)
@@ -91,11 +98,17 @@ fun SearchScreen(vm: AppViewModel, filter: Route.TxnList?, navigate: (Route) -> 
                 placeholder = { Text(stringResource(R.string.search_hint)) }, singleLine = true,
                 leadingIcon = { Icon(Icons.Filled.Search, null) },
             )
+            if (currentBalance != null) {
+                androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.xs), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text(stringResource(R.string.current_balance), Modifier.weight(1f), color = AppTheme.colors.muted)
+                    Text("\u200E" + com.midroid.masarifi.ui.Fmt.money(currentBalance, s, false), style = MaterialTheme.typography.titleMedium)
+                }
+            }
             SummaryRow(results.filter { it.type == TxnType.INCOME }.sumOf { it.amount }, results.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount }, s)
             if (results.isEmpty()) EmptyState(stringResource(R.string.no_results))
             LazyColumn(Modifier.fillMaxSize()) {
                 items(results, key = { it.id }) { t ->
-                    SelectableTxnRow(t, labels, s, navigate, sel, showDate = true)
+                    SelectableTxnRow(t, labels, s, navigate, sel, showDate = true, runningBalance = running?.get(t.id))
                     HorizontalDivider(color = com.midroid.masarifi.ui.theme.AppTheme.colors.divider)
                 }
             }

@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -53,6 +54,7 @@ import com.midroid.masarifi.data.Account
 import com.midroid.masarifi.data.AppSettings
 import com.midroid.masarifi.data.Category
 import com.midroid.masarifi.data.Txn
+import com.midroid.masarifi.data.CarryOver
 import com.midroid.masarifi.data.TxnType
 import com.midroid.masarifi.ui.AppViewModel
 import com.midroid.masarifi.ui.Fmt
@@ -90,7 +92,7 @@ class Labels(val categories: Map<Long, Category>, val accounts: Map<Long, Accoun
 @Composable
 fun rememberLabels(vm: AppViewModel): Labels {
     val cats by vm.categories.collectAsStateWithLifecycle()
-    val accs by vm.accounts.collectAsStateWithLifecycle()
+    val accs by vm.allAccounts.collectAsStateWithLifecycle()
     val s by vm.settings.collectAsStateWithLifecycle()
     val tl = stringResource(R.string.transfer)
     val nc = stringResource(R.string.no_category)
@@ -166,15 +168,17 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
                 )
             }
         }
-        val income = shown.filter { it.type == TxnType.INCOME }.sumOf { it.amount }
-        val expense = shown.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount }
-        SummaryRow(income, expense, s)
+        val period = if (isYearTab) {
+            val (inc, exp) = CarryOver.incomeExpense(yearTxns)
+            CarryOver.PeriodTotals(inc, exp, CarryOver.carryIn(YearMonth.of(ym.year, 1), all, s.carryOver))
+        } else CarryOver.totals(ym, all, s.carryOver)
+        SummaryRow(period.displayIncome, period.displayExpense, s)
 
         when (tab) {
-            0 -> DailyList(monthTxns, labels, s, navigate, sel)
-            1 -> CalendarView(vm, ym, monthTxns, labels, s, navigate, sel)
-            2 -> MonthlyList(yearTxns, ym.year, s) { m -> vm.month.value = m; tab = 0 }
-            3 -> TotalView(vm, ym, all, monthTxns, s)
+            0 -> DailyList(monthTxns, labels, s, navigate, sel, carry = period.carry, month = ym)
+            1 -> CalendarView(vm, ym, monthTxns, labels, s, navigate, sel, carry = period.carry)
+            2 -> MonthlyList(yearTxns, all, ym.year, s, s.carryOver) { m -> vm.month.value = m; tab = 0 }
+            3 -> TotalView(vm, ym, all, monthTxns, s, carry = period.carry)
             else -> NoteView(monthTxns, labels, s, navigate, ym)
         }
     }
@@ -182,14 +186,18 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun DailyList(txns: List<Txn>, labels: Labels, s: AppSettings, navigate: (Route) -> Unit, sel: TxnSelection? = null) {
-    if (txns.isEmpty()) { EmptyState(stringResource(R.string.empty_month)); return }
+fun DailyList(txns: List<Txn>, labels: Labels, s: AppSettings, navigate: (Route) -> Unit, sel: TxnSelection? = null, carry: Long = 0, month: YearMonth = YearMonth.now()) {
+    if (txns.isEmpty() && carry == 0L) { EmptyState(stringResource(R.string.empty_month)); return }
     val groups = remember(txns) { txns.groupBy { Fmt.toDate(it.dateTime) }.toSortedMap(compareByDescending { it }) }
+    val first = month.atDay(1)
     LazyColumn(Modifier.fillMaxSize(), state = com.midroid.masarifi.ui.components.rememberFabAwareListState(), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = Spacing.fabClearance)) {
-        groups.forEach { (date, list) ->
+        val dates = (groups.keys + if (carry != 0L) setOf(first) else emptySet()).sortedDescending()
+        dates.forEach { date ->
+            val list = groups[date].orEmpty()
             stickyHeader(key = "h$date") {
-                DayHeader(date, list, s, onClick = if (sel?.active == true) { { sel.toggleAll(list.map { it.id }) } } else null)
+                DayHeader(date, list, s, onClick = if (sel?.active == true) { { sel.toggleAll(list.map { it.id }) } } else null, carry = if (date == first) carry else 0L)
             }
+            if (date == first && carry != 0L) item(key = "carry") { CarryOverRow(carry, s) }
             items(list, key = { it.id }) { t -> SelectableTxnRow(t, labels, s, navigate, sel, showCurrency = false) }
         }
     }
@@ -197,7 +205,7 @@ fun DailyList(txns: List<Txn>, labels: Labels, s: AppSettings, navigate: (Route)
 
 /** Transaction row wired to multi-select: long-press starts selection, tap toggles while selecting. */
 @Composable
-fun SelectableTxnRow(t: Txn, labels: Labels, s: AppSettings, navigate: (Route) -> Unit, sel: TxnSelection?, showDate: Boolean = false, showCurrency: Boolean = true) {
+fun SelectableTxnRow(t: Txn, labels: Labels, s: AppSettings, navigate: (Route) -> Unit, sel: TxnSelection?, showDate: Boolean = false, showCurrency: Boolean = true, runningBalance: Long? = null) {
     TxnRow(
         t, labels.category(t), labels.account(t), s,
         onClick = { if (sel != null) sel.click(t.id) { navigate(Route.Edit(txnId = t.id)) } else navigate(Route.Edit(txnId = t.id)) },
@@ -205,14 +213,15 @@ fun SelectableTxnRow(t: Txn, labels: Labels, s: AppSettings, navigate: (Route) -
         selectionMode = sel?.active == true, selected = sel?.isSelected(t.id) == true,
         onLongClick = sel?.let { { it.start(t.id) } },
         showCurrency = showCurrency,
+        runningBalance = runningBalance,
     )
 }
 
 @Composable
-fun DayHeader(date: LocalDate, list: List<Txn>, s: AppSettings, onClick: (() -> Unit)? = null) {
+fun DayHeader(date: LocalDate, list: List<Txn>, s: AppSettings, onClick: (() -> Unit)? = null, carry: Long = 0L) {
     val c = AppTheme.colors
-    val inc = list.filter { it.type == TxnType.INCOME }.sumOf { it.amount }
-    val exp = list.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount }
+    val inc = list.filter { it.type == TxnType.INCOME }.sumOf { it.amount } + maxOf(carry, 0L)
+    val exp = list.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount } + maxOf(-carry, 0L)
     val net = inc - exp
     val today = LocalDate.now()
     val title = when (date) {
@@ -235,7 +244,7 @@ fun DayHeader(date: LocalDate, list: List<Txn>, s: AppSettings, onClick: (() -> 
 }
 
 @Composable
-fun CalendarView(vm: AppViewModel, ym: YearMonth, txns: List<Txn>, labels: Labels, s: AppSettings, navigate: (Route) -> Unit, selection: TxnSelection? = null) {
+fun CalendarView(vm: AppViewModel, ym: YearMonth, txns: List<Txn>, labels: Labels, s: AppSettings, navigate: (Route) -> Unit, selection: TxnSelection? = null, carry: Long = 0L) {
     val c = AppTheme.colors
     var selected by remember(ym) { mutableStateOf(vm.selectedDay?.takeIf { YearMonth.from(it) == ym }) }
     val byDay = remember(txns) { txns.groupBy { Fmt.toDate(it.dateTime) } }
@@ -264,8 +273,9 @@ fun CalendarView(vm: AppViewModel, ym: YearMonth, txns: List<Txn>, labels: Label
                     val idx = r * 7 + col - offset + 1
                     val date = if (idx in 1..ym.lengthOfMonth()) ym.atDay(idx) else null
                     val list = date?.let { byDay[it] }.orEmpty()
-                    val inc = list.filter { it.type == TxnType.INCOME }.sumOf { it.amount }
-                    val exp = list.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount }
+                    val dayCarry = if (date != null && date.dayOfMonth == 1) carry else 0L
+                    val inc = list.filter { it.type == TxnType.INCOME }.sumOf { it.amount } + maxOf(dayCarry, 0L)
+                    val exp = list.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount } + maxOf(-dayCarry, 0L)
                     Column(
                         Modifier.weight(1f).aspectRatio(0.8f)
                             .border(0.5.dp, c.divider)
@@ -290,8 +300,10 @@ fun CalendarView(vm: AppViewModel, ym: YearMonth, txns: List<Txn>, labels: Label
         val sel = selected
         if (sel != null) {
             val list = byDay[sel].orEmpty().sortedByDescending { it.dateTime }
-            item { DayHeader(sel, list, s, onClick = if (selection?.active == true) { { selection.toggleAll(list.map { it.id }) } } else null) }
-            if (list.isEmpty()) item { EmptyState(stringResource(R.string.no_transactions_day)) }
+            val dayCarry = if (sel.dayOfMonth == 1) carry else 0L
+            item { DayHeader(sel, list, s, onClick = if (selection?.active == true) { { selection.toggleAll(list.map { it.id }) } } else null, carry = dayCarry) }
+            if (dayCarry != 0L) item { CarryOverRow(dayCarry, s) }
+            if (list.isEmpty() && dayCarry == 0L) item { EmptyState(stringResource(R.string.no_transactions_day)) }
             items(list, key = { it.id }) { t -> SelectableTxnRow(t, labels, s, navigate, selection) }
         }
         item { Spacer(Modifier.height(Spacing.fabClearance)) }
@@ -299,15 +311,15 @@ fun CalendarView(vm: AppViewModel, ym: YearMonth, txns: List<Txn>, labels: Label
 }
 
 @Composable
-fun MonthlyList(yearTxns: List<Txn>, year: Int, s: AppSettings, onOpen: (YearMonth) -> Unit) {
+fun MonthlyList(yearTxns: List<Txn>, all: List<Txn>, year: Int, s: AppSettings, carryEnabled: Boolean, onOpen: (YearMonth) -> Unit) {
     val c = AppTheme.colors
     val byMonth = remember(yearTxns) { yearTxns.groupBy { YearMonth.from(Fmt.toDate(it.dateTime)) } }
     val months = (12 downTo 1).map { YearMonth.of(year, it) }.filter { it <= YearMonth.now() || byMonth.containsKey(it) }
     LazyColumn(Modifier.fillMaxSize()) {
         items(months) { m ->
-            val list = byMonth[m].orEmpty()
-            val inc = list.filter { it.type == TxnType.INCOME }.sumOf { it.amount }
-            val exp = list.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount }
+            val tot = CarryOver.totals(m, all, carryEnabled)
+            val inc = tot.displayIncome
+            val exp = tot.displayExpense
             Row(
                 Modifier.fillMaxWidth().clickable { onOpen(m) }.padding(horizontal = Spacing.lg, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -329,14 +341,14 @@ fun MonthlyList(yearTxns: List<Txn>, year: Int, s: AppSettings, onOpen: (YearMon
 }
 
 @Composable
-fun TotalView(vm: AppViewModel, ym: YearMonth, all: List<Txn>, monthTxns: List<Txn>, s: AppSettings) {
+fun TotalView(vm: AppViewModel, ym: YearMonth, all: List<Txn>, monthTxns: List<Txn>, s: AppSettings, carry: Long = 0L) {
     val c = AppTheme.colors
     val accounts by vm.accounts.collectAsStateWithLifecycle()
     val budgets by vm.budgets.collectAsStateWithLifecycle()
     val prevRange = Fmt.monthRange(ym.minusMonths(1))
     val prevExp = all.filter { it.dateTime in prevRange && it.type == TxnType.EXPENSE }.sumOf { it.amount }
-    val exp = monthTxns.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount }
-    val inc = monthTxns.filter { it.type == TxnType.INCOME }.sumOf { it.amount }
+    val exp = monthTxns.filter { it.type == TxnType.EXPENSE }.sumOf { it.amount } + maxOf(-carry, 0L)
+    val inc = monthTxns.filter { it.type == TxnType.INCOME }.sumOf { it.amount } + maxOf(carry, 0L)
     val balances = vm.balances(accounts, all)
     val overall = budgets.firstOrNull { it.categoryId == 0L }?.amount ?: 0L
 
@@ -441,4 +453,22 @@ fun TypeToggle(text: String, selected: Boolean, color: Color, onClick: () -> Uni
     ) {
         Text(text, color = if (selected) color else AppTheme.colors.muted, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
     }
+}
+
+@Composable
+fun CarryOverRow(amount: Long, s: AppSettings) {
+    val c = AppTheme.colors
+    val color = if (amount >= 0) c.income else c.expense
+    androidx.compose.material3.ListItem(
+        modifier = Modifier.fillMaxWidth().testTag("carry_over_row"),
+        colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
+        leadingContent = { com.midroid.masarifi.ui.components.CategoryBadge("↩", color) },
+        headlineContent = { Text(stringResource(R.string.carry_over_line), style = MaterialTheme.typography.bodyLarge) },
+        trailingContent = {
+            Text(
+                "\u200E" + (if (amount > 0) "+" else "") + Fmt.money(amount, s, false),
+                style = com.midroid.masarifi.ui.theme.Amount, color = color,
+            )
+        },
+    )
 }

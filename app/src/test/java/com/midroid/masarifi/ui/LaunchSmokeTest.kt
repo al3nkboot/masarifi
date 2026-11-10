@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.midroid.masarifi.MainActivity
@@ -41,7 +42,7 @@ class LaunchSmokeTest {
         rule.waitUntil(5_000) { rule.onAllNodesWithText("نقد").fetchSemanticsNodes().isNotEmpty() }
 
         rule.onNodeWithText("المزيد").performClick()
-        rule.onNodeWithText("الاستيراد الذكي من الرسائل").assertIsDisplayed()
+        rule.onNodeWithText("الاستيراد الذكي من الرسائل").performScrollTo().assertIsDisplayed()
 
         // Add an expense
         rule.onNodeWithText("المعاملات").performClick()

@@ -25,7 +25,7 @@ import java.io.File
 @Config(sdk = [35])
 class MigrationTest {
     /** Current schema version: every chain must end on it (was hard-coded 8 and went stale with 2.6.1's v9). */
-    private val LATEST = 9
+    private val LATEST = 10
     private val schemaDir = File("schemas/com.midroid.masarifi.data.AppDatabase")
 
     private fun createV1(file: File) = createFrom(file, 1)
@@ -270,7 +270,7 @@ class MigrationTest {
         val v6Tables = JSONObject(File(schemaDir, "6.json").readText()).getJSONObject("database").getJSONArray("entities").let { a -> (0 until a.length()).map { a.getJSONObject(it).getString("tableName") } }
         fun dump(d: android.database.sqlite.SQLiteDatabase): Map<String, List<String>> = v6Tables.associateWith { t ->
             d.rawQuery("SELECT * FROM `$t` ORDER BY rowid", null).use { c ->
-                buildList { while (c.moveToNext()) add((0 until c.columnCount).filter { c.getColumnName(it) != "parentId" /* added later by v9 */ }.joinToString("|") { c.getColumnName(it) + "=" + c.getString(it) }) }
+                buildList { while (c.moveToNext()) add((0 until c.columnCount).filter { c.getColumnName(it) !in setOf("parentId", "hidden", "deletedAt") /* added later by v9 / v10 */ }.joinToString("|") { c.getColumnName(it) + "=" + c.getString(it) }) }
             }
         }
         val before = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { d ->
@@ -323,7 +323,7 @@ class MigrationTest {
         val v7Tables = JSONObject(File(schemaDir, "7.json").readText()).getJSONObject("database").getJSONArray("entities").let { a -> (0 until a.length()).map { a.getJSONObject(it).getString("tableName") } }
         fun dump(d: SQLiteDatabase): Map<String, List<String>> = v7Tables.associateWith { t ->
             d.rawQuery("SELECT * FROM `$t` ORDER BY rowid", null).use { c ->
-                buildList { while (c.moveToNext()) add((0 until c.columnCount).filter { c.getColumnName(it) != "parentId" /* added later by v9 */ }.joinToString("|") { c.getColumnName(it) + "=" + c.getString(it) }) }
+                buildList { while (c.moveToNext()) add((0 until c.columnCount).filter { c.getColumnName(it) !in setOf("parentId", "hidden", "deletedAt") /* added later by v9 / v10 */ }.joinToString("|") { c.getColumnName(it) + "=" + c.getString(it) }) }
             }
         }
         val before = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { d ->
@@ -366,7 +366,7 @@ class MigrationTest {
         createFrom(file, 8)
         val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).configure().allowMainThreadQueries().build()
         try {
-            assertEquals(9, db.openHelper.readableDatabase.version)
+            assertEquals(LATEST, db.openHelper.readableDatabase.version)
             db.openHelper.readableDatabase.query("SELECT parentId FROM categories LIMIT 1").use { c ->
                 assertTrue(c.moveToFirst())
                 assertTrue(c.isNull(0))
@@ -389,5 +389,43 @@ class MigrationTest {
         }
         assertTrue("v9 must declare parentId", catsSql(9).contains("parentId"))
         assertTrue("v8 must stay without parentId", !catsSql(8).contains("parentId"))
+    }
+
+    @Test fun migrate9To10AddsHiddenAndDeletedAtAndKeepsRows() = runBlocking {
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        val name = "migration-test-v9.db"
+        val file = ctx.getDatabasePath(name).apply { parentFile?.mkdirs(); delete() }
+        createFrom(file, 9)
+        val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).configure().allowMainThreadQueries().build()
+        try {
+            assertEquals(10, db.openHelper.readableDatabase.version)
+            db.openHelper.readableDatabase.query("SELECT hidden, deletedAt FROM accounts LIMIT 1").use { c ->
+                assertTrue(c.moveToFirst())
+                assertEquals(0, c.getInt(0))
+                assertTrue(c.isNull(1))
+            }
+            val acc = db.accountDao().all().first()
+            assertFalse(acc.hidden)
+            assertNull(acc.deletedAt)
+            db.accountDao().update(acc.copy(hidden = true, deletedAt = 42))
+            val after = db.accountDao().all().single { it.id == acc.id }
+            assertTrue(after.hidden)
+            assertEquals(42L, after.deletedAt)
+            assertEquals(3, db.txnDao().all().size)
+        } finally { db.close() }
+    }
+
+    @Test fun exportedV10SchemaAddsHiddenAndDeletedAtOnAccounts() {
+        fun accSql(v: Int): String {
+            val ents = JSONObject(File(schemaDir, "$v.json").readText()).getJSONObject("database").getJSONArray("entities")
+            for (i in 0 until ents.length()) {
+                val e = ents.getJSONObject(i)
+                if (e.getString("tableName") == "accounts") return e.getString("createSql")
+            }
+            error("no accounts in $v")
+        }
+        assertTrue("v10 must declare hidden", accSql(10).contains("hidden"))
+        assertTrue("v10 must declare deletedAt", accSql(10).contains("deletedAt"))
+        assertTrue("v9 must stay without hidden", !accSql(9).contains("hidden"))
     }
 }

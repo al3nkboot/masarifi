@@ -163,6 +163,7 @@ fun TxnRow(
     selected: Boolean = false,
     onLongClick: (() -> Unit)? = null,
     showCurrency: Boolean = true,
+    runningBalance: Long? = null,
 ) {
     val c = AppTheme.colors
     val first = categoryLabel.substringBefore(' ')
@@ -209,7 +210,18 @@ fun TxnRow(
                 )
             }
         },
-        trailingContent = { AmountText(t, s, withSymbol = showCurrency) },
+        trailingContent = {
+            Column(horizontalAlignment = Alignment.End) {
+                AmountText(t, s, withSymbol = showCurrency)
+                if (runningBalance != null) {
+                    Text(
+                        "\u200E" + Fmt.money(runningBalance, s, false),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AppTheme.colors.muted,
+                    )
+                }
+            }
+        },
     )
 }
 

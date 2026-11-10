@@ -74,12 +74,14 @@ object BackupCodec {
                 put("extraSenders", s.extraSenders); put("budgetAlerts", s.budgetAlerts); put("spikeAlerts", s.spikeAlerts)
                 put("weekStartsSaturday", s.weekStartsSaturday)
                 put("dupWindowHours", s.dupWindowHours)
+                if (s.carryOver) put("carryOver", true)
             })
         }
         o.put("accounts", JSONArray().apply {
             d.accounts.forEach { a ->
                 put(JSONObject().put("id", a.id).put("name", a.name).put("groupType", a.groupType).put("initialBalance", a.initialBalance)
-                    .putOpt("cardLast4", a.cardLast4).put("includeInTotal", a.includeInTotal).put("sortOrder", a.sortOrder).sync(a.uuid, a.updatedAt))
+                    .putOpt("cardLast4", a.cardLast4).put("includeInTotal", a.includeInTotal).put("sortOrder", a.sortOrder)
+                    .apply { if (a.hidden) put("hidden", true) }.putOpt("deletedAt", a.deletedAt).sync(a.uuid, a.updatedAt))
             }
         })
         o.put("categories", JSONArray().apply {
@@ -175,6 +177,7 @@ object BackupCodec {
                 budgetAlerts = s.optBoolean("budgetAlerts", def.budgetAlerts), spikeAlerts = s.optBoolean("spikeAlerts", def.spikeAlerts),
                 weekStartsSaturday = s.optBoolean("weekStartsSaturday", def.weekStartsSaturday),
                 dupWindowHours = s.optInt("dupWindowHours", def.dupWindowHours),
+                carryOver = s.optBoolean("carryOver", def.carryOver),
             )
         }
         return BackupData(
@@ -184,7 +187,8 @@ object BackupCodec {
             settings = settings,
             accounts = o.list("accounts") { a ->
                 Account(a.getLong("id"), a.getString("name"), a.optInt("groupType"), a.optLong("initialBalance"), a.optStringOrNull("cardLast4"),
-                    a.optBoolean("includeInTotal", true), a.optInt("sortOrder"), a.accUuid(), a.optLong("updatedAt"))
+                    a.optBoolean("includeInTotal", true), a.optInt("sortOrder"), a.accUuid(), a.optLong("updatedAt"),
+                    a.optBoolean("hidden", false), a.optLongOrNull("deletedAt"))
             },
             categories = o.list("categories") { c ->
                 Category(c.getLong("id"), c.getInt("type"), c.optString("nameAr"), c.optString("nameEn"), c.optString("emoji", "📦"), c.optStringOrNull("key"), c.optInt("sortOrder"), c.catUuid(), c.optLong("updatedAt"), if (c.has("parentId") && !c.isNull("parentId")) c.getLong("parentId") else null)

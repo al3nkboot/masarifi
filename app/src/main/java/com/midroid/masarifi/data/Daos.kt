@@ -35,6 +35,15 @@ interface TxnDao {
     @Query("DELETE FROM transactions WHERE accountId = :accountId OR toAccountId = :accountId")
     suspend fun deleteForAccount(accountId: Long)
 
+    @Query("SELECT id FROM transactions WHERE accountId = :accountId OR toAccountId = :accountId")
+    suspend fun idsForAccount(accountId: Long): List<Long>
+
+    @Query("UPDATE transactions SET accountId = :toId WHERE accountId = :fromId")
+    suspend fun reassignAccount(fromId: Long, toId: Long)
+
+    @Query("UPDATE transactions SET toAccountId = :toId WHERE toAccountId = :fromId")
+    suspend fun reassignToAccount(fromId: Long, toId: Long)
+
     @Query("UPDATE transactions SET categoryId = NULL WHERE categoryId = :categoryId")
     suspend fun clearCategory(categoryId: Long)
 
@@ -99,6 +108,9 @@ interface AccountDao {
 
     @Delete
     suspend fun delete(a: Account)
+
+    @Query("UPDATE accounts SET sortOrder = :sortOrder WHERE id = :id")
+    suspend fun setSortOrder(id: Long, sortOrder: Int)
 }
 
 @Dao
@@ -180,6 +192,15 @@ interface RecurringDao {
 
     @Query("DELETE FROM recurring WHERE id = :id")
     suspend fun delete(id: Long)
+
+    @Query("UPDATE recurring SET accountId = :toId WHERE accountId = :fromId")
+    suspend fun reassignAccount(fromId: Long, toId: Long)
+
+    @Query("UPDATE recurring SET toAccountId = :toId WHERE toAccountId = :fromId")
+    suspend fun reassignToAccount(fromId: Long, toId: Long)
+
+    @Query("DELETE FROM recurring WHERE accountId = :accountId OR toAccountId = :accountId")
+    suspend fun deleteForAccount(accountId: Long)
 }
 
 @Dao
@@ -249,6 +270,12 @@ interface DupDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun dismiss(d: List<DupDismissed>)
+
+    @Query("UPDATE sms_links SET accountId = :toId WHERE accountId = :fromId")
+    suspend fun reassignAccount(fromId: Long, toId: Long)
+
+    @Query("DELETE FROM sms_links WHERE txnId IN (:txnIds)")
+    suspend fun deleteLinksForTxns(txnIds: List<Long>)
 }
 
 @Dao
@@ -268,6 +295,9 @@ interface SmsBalanceDao {
 
     @Query("DELETE FROM sms_balances WHERE accountId = :accountId")
     suspend fun deleteForAccount(accountId: Long)
+
+    @Query("UPDATE sms_balances SET accountId = :toId WHERE accountId = :fromId")
+    suspend fun reassignAccount(fromId: Long, toId: Long)
 
     @Query("DELETE FROM sms_balances")
     suspend fun clear()
@@ -293,6 +323,12 @@ interface CardMappingDao {
 
     @Query("DELETE FROM card_mappings WHERE id = :id")
     suspend fun delete(id: Long)
+
+    @Query("UPDATE card_mappings SET accountId = :toId WHERE accountId = :fromId")
+    suspend fun reassignAccount(fromId: Long, toId: Long)
+
+    @Query("DELETE FROM card_mappings WHERE accountId = :accountId")
+    suspend fun deleteForAccount(accountId: Long)
 
     /** SMS-recorded transactions with their sender (seed source for [Repository.seedCardMappings]). */
     @Query("SELECT l.sender AS sender, t.accountId AS accountId, t.description AS body FROM transactions t JOIN sms_log l ON l.txnId = t.id WHERE t.isAuto = 1 ORDER BY t.dateTime")

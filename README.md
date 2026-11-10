@@ -14,9 +14,9 @@
 
 ### [⬇️ تحميل التطبيق (APK)](https://github.com/al3nkboot/masarifi/releases)
 
-الإصدار الحالي **2.6.2** — بنسختين:
+الإصدار الحالي **2.6.3** — بنسختين:
 
-| | النسخة الكاملة `masarifi-v2.6.2.apk` | بدون الرسائل `masarifi-v2.6.2-nosms.apk` |
+| | النسخة الكاملة `masarifi-v2.6.3.apk` | بدون الرسائل `masarifi-v2.6.3-nosms.apk` |
 |---|---|---|
 | قراءة رسائل البنك وتسجيل المصاريف تلقائياً | ✅ | ❌ (إدخال يدوي) |
 | صلاحية الرسائل SMS | تطلبها | لا تطلبها أبداً |
@@ -26,7 +26,12 @@
 
 <img src="docs/images/v250/01_warranty_list_ar_dark.png" width="24%" alt="الضمانات"> <img src="docs/images/v250/03_warranty_detail_ar_light.png" width="24%" alt="تفاصيل الضمان"> <img src="docs/images/v250/02_warranty_edit_ar_dark.png" width="24%" alt="إضافة ضمان">
 
-### الجديد في 2.6.2 / What's new
+### الجديد في 2.6.3 / What's new
+- ترحيل الرصيد (اختياري، متوقف افتراضياً): المتبقي أو العجز من الشهر السابق يظهر في تبويب المعاملات دون إنشاء عملية — Optional balance carry-over (off by default) shows last month's signed remainder on the Transactions tab; it is not stored as a transaction and is left out of Stats
+- حذف حساب دون حذف معاملاته: نقلها إلى حساب آخر، أو إلى سلة قابلة للاستعادة، والحذف النهائي يحتاج تأكيداً ثانياً — Delete an account without wiping its transactions (move them, or soft-delete to a restorable bin; wiping needs a second confirm)
+- دمج حسابين مع الإبقاء على الرصيد الافتتاحي للحساب الهدف — Merge accounts, keeping the target's opening balance
+- وضع تعديل للحسابات مع سحب للترتيب، وإخفاء حساب، وتفاصيل الحساب مع رصيد جارٍ — Accounts edit mode with drag-to-reorder, hide account, and a running balance on the account detail
+
 - صفحة «الفئات» بأسلوب Money Manager: زر حذف أحمر، الإيموجي والاسم مع عدد الفئات الفرعية وأسمائها، قلم للتعديل، ومقبض ≡ للسحب وتغيير الترتيب — Money Manager-style categories: red delete, emoji + name + subcategory count, pencil, drag handle to reorder
 - الضغط على فئة يعرض فئاتها الفرعية مع «إضافة فئة فرعية»، ويمكن ترتيبها بالسحب أيضاً — Tap a category to open its subcategories (add / edit / delete / drag)
 - حذف فئة فرعية ينقل معاملاتها إلى الفئة الرئيسية بدلاً من تركها بلا فئة — Deleting a subcategory keeps its transactions on the parent

@@ -546,4 +546,35 @@
     <string name="edit_category_cd">Edit %1$s</string>
     <string name="move_up">Move up</string>
     <string name="move_down">Move down</string>
+
+    <string name="carry_over">Balance carry-over</string>
+    <string name="carry_over_sub">Add the leftover or deficit from the previous month to this month totals on the Transactions tab</string>
+    <string name="carry_over_line">Carried over from last month</string>
+    <string name="edit_mode">Edit</string>
+    <string name="hide_account">Hide account</string>
+    <string name="show_hidden_accounts">Show hidden accounts</string>
+    <string name="account_hidden">Hidden</string>
+    <string name="deleted_accounts">Deleted accounts</string>
+    <string name="empty_deleted_accounts">No accounts in the bin</string>
+    <string name="restore_account">Restore</string>
+    <string name="permanently_delete">Delete permanently</string>
+    <string name="delete_account_title">Delete account</string>
+    <string name="delete_account_options">What should happen to the transactions of «%1$s»?</string>
+    <string name="txn_count">%1$d transactions</string>
+    <string name="move_txns_to">Move transactions to another account</string>
+    <string name="move_to_deleted_bin">Move to the deleted-accounts bin</string>
+    <string name="delete_txns_too">Delete the transactions as well</string>
+    <string name="confirm_wipe_account">This will permanently delete the account and all its transactions. This cannot be undone. Are you sure?</string>
+    <string name="confirm_move_account">Move %1$d transactions to «%2$s» and delete «%3$s»?</string>
+    <string name="confirm_soft_delete">Move «%1$s» to the deleted-accounts bin? Its transactions are kept, and you can restore the account later.</string>
+    <string name="no_other_accounts">There is no other account to move the transactions to</string>
+    <string name="merge_accounts">Merge accounts</string>
+    <string name="merge_with">Merge into…</string>
+    <string name="confirm_merge">Move every transaction from «%1$s» into «%2$s» and delete «%1$s». The opening balance of «%2$s» stays the same.</string>
+    <string name="current_balance">Current balance</string>
+    <string name="running_balance">Balance</string>
+    <string name="delete_account_cd">Delete %1$s</string>
+    <string name="edit_account_cd">Edit %1$s</string>
+    <string name="hide_account_cd">Hide or show %1$s</string>
+    <string name="pick_account">Choose an account</string>
 </resources>

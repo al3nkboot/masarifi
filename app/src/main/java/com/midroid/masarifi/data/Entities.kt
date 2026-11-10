@@ -111,7 +111,13 @@ data class Account(
     @ColumnInfo(defaultValue = "") val uuid: String = newUuid(),
     /** Last modification time (millis). Also bumped automatically by a DB trigger on every UPDATE (see [SyncSchema]). */
     @ColumnInfo(defaultValue = "0") val updatedAt: Long = System.currentTimeMillis(),
-)
+    /** Hidden from lists and pickers; still counted in totals when [includeInTotal] is true. */
+    @ColumnInfo(defaultValue = "0") val hidden: Boolean = false,
+    /** Soft-deleted (restorable). Null = active. Past transactions stay attached. */
+    @ColumnInfo(defaultValue = "NULL") val deletedAt: Long? = null,
+) {
+    val isDeleted: Boolean get() = deletedAt != null
+}
 
 @Entity(tableName = "categories", indices = [Index(value = ["uuid"], unique = true), Index("parentId")])
 data class Category(

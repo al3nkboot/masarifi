@@ -123,7 +123,8 @@ class SyncService(
         }
         accs.forEach { a ->
             add(SyncRecord.live(a.uuid, Kind.ACCOUNT, a.updatedAt, "name" to a.name, "groupType" to a.groupType, "initialBalance" to a.initialBalance,
-                "cardLast4" to a.cardLast4, "includeInTotal" to a.includeInTotal, "sortOrder" to a.sortOrder))
+                "cardLast4" to a.cardLast4, "includeInTotal" to a.includeInTotal, "sortOrder" to a.sortOrder,
+                "hidden" to a.hidden, "softDeletedAt" to a.deletedAt))
         }
         recs.forEach { r ->
             add(SyncRecord.live(r.uuid, Kind.RECURRING, r.updatedAt, "type" to r.type, "amount" to r.amount, "account" to acc(r.accountId),
@@ -166,7 +167,7 @@ class SyncService(
         }
         val s = settings.current
         add(SyncRecord.live(SETTINGS_UUID, Kind.SETTINGS, settings.syncedUpdatedAt, "currency" to s.currency, "weekStartsSaturday" to s.weekStartsSaturday,
-            "dupWindowHours" to s.dupWindowHours, "budgetAlerts" to s.budgetAlerts, "spikeAlerts" to s.spikeAlerts))
+            "dupWindowHours" to s.dupWindowHours, "budgetAlerts" to s.budgetAlerts, "spikeAlerts" to s.spikeAlerts, "carryOver" to s.carryOver))
         dao.tombstones().forEach { t -> if (t.uuid !in out) add(SyncRecord(t.uuid, t.entity, t.deletedAt, t.deletedAt)) }
 
         val smsLog = b.smsLog().associate { it.hash to SmsLogEntry(it.sender, it.receivedAt, it.status, it.txnId?.let { id -> txnU[id] }) }
@@ -228,7 +229,13 @@ class SyncService(
             Kind.TXN -> dao.deleteTxn(r.uuid)
             Kind.SMS_LINK -> dao.deleteSmsLink(r.uuid)
             Kind.RECURRING -> dao.recurring(r.uuid)?.let { dao.clearTxnRecurring(it.id); dao.deleteRecurring(r.uuid) }
-            Kind.ACCOUNT -> { dao.account(r.uuid)?.let { db.billDao().clearAccount(it.id) }; dao.deleteAccount(r.uuid) }
+            Kind.ACCOUNT -> dao.account(r.uuid)?.let { a ->
+                db.billDao().clearAccount(a.id)
+                repo.recurringDao.deleteForAccount(a.id)
+                repo.cardMappingDao.deleteForAccount(a.id)
+                repo.smsBalanceDao.deleteForAccount(a.id)
+                dao.deleteAccount(r.uuid)
+            }
             Kind.BILL -> db.billDao().byUuid(r.uuid)?.let { db.billDao().deletePaymentsFor(it.id); db.billDao().delete(it.id) }
             Kind.BILL_PAY -> db.billDao().deletePaymentByUuid(r.uuid)
             Kind.CATEGORY -> dao.category(r.uuid)?.let { c ->
@@ -270,7 +277,8 @@ class SyncService(
             Kind.ACCOUNT -> {
                 val ex = dao.account(r.uuid)
                 val a = Account(ex?.id ?: 0, r.str("name") ?: "", int("groupType"), r.long("initialBalance") ?: 0, r.str("cardLast4"),
-                    r.bool("includeInTotal") ?: true, int("sortOrder"), r.uuid, r.updatedAt)
+                    r.bool("includeInTotal") ?: true, int("sortOrder"), r.uuid, r.updatedAt,
+                    r.bool("hidden") ?: ex?.hidden ?: false, if ("softDeletedAt" in r.fields) r.long("softDeletedAt") else ex?.deletedAt)
                 if (ex != null) dao.updateAccount(a) else dao.insertAccount(a)
             }
             Kind.RECURRING -> {
@@ -335,7 +343,7 @@ class SyncService(
                 s.copy(
                     currency = r.str("currency") ?: s.currency, weekStartsSaturday = r.bool("weekStartsSaturday") ?: s.weekStartsSaturday,
                     dupWindowHours = r.long("dupWindowHours")?.toInt() ?: s.dupWindowHours, budgetAlerts = r.bool("budgetAlerts") ?: s.budgetAlerts,
-                    spikeAlerts = r.bool("spikeAlerts") ?: s.spikeAlerts,
+                    spikeAlerts = r.bool("spikeAlerts") ?: s.spikeAlerts, carryOver = r.bool("carryOver") ?: s.carryOver,
                 )
             }
             else -> return false // unknown kind from a newer app version: kept in the file, ignored locally

@@ -127,7 +127,7 @@ fun AddEditScreen(vm: AppViewModel, route: Route.Edit, onBack: () -> Unit, onEdi
             description = existing.description; loaded = true
         }
     }
-    LaunchedEffect(accounts) { if (accountId == null && route.txnId == null) accountId = accounts.firstOrNull()?.id }
+    LaunchedEffect(accounts) { if (accountId == null && route.txnId == null) accountId = accounts.firstOrNull { !it.hidden }?.id ?: accounts.firstOrNull()?.id }
 
     var picker by remember { mutableStateOf<String?>(null) } // "date","time","account","to","category"
     var confirmDelete by remember { mutableStateOf(false) }
@@ -360,7 +360,7 @@ fun AddEditScreen(vm: AppViewModel, route: Route.Edit, onBack: () -> Unit, onEdi
             val isTo = picker == "to"
             PickerSheet(stringResource(R.string.account), onDismiss = { picker = null }) {
                 LazyVerticalGrid(GridCells.Fixed(3), Modifier.heightIn(max = 420.dp)) {
-                    items(accounts) { a ->
+                    items(accounts.filter { !it.hidden || it.id == accountId || it.id == toAccountId }) { a ->
                         GridCell(a.name, selected = (if (isTo) toAccountId else accountId) == a.id) {
                             if (isTo) toAccountId = a.id else accountId = a.id
                             picker = null

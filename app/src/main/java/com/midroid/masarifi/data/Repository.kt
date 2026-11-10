@@ -348,12 +348,76 @@ class Repository(
 
     suspend fun saveAccount(a: Account) = if (a.id == 0L) accountDao.insert(a) else { accountDao.update(a); a.id }
 
-    suspend fun deleteAccount(a: Account) {
-        txnDao.deleteForAccount(a.id)
-        smsBalanceDao.deleteForAccount(a.id)
-        billDao.clearAccount(a.id)
-        accountDao.delete(a)
+    /** How to remove an account in 2.6.3: move its rows, soft-delete (restorable bin), or wipe rows then hard-delete. */
+    enum class AccountRemoval { MOVE, SOFT, WIPE }
+
+    /** Persists a drag-and-drop order of active accounts (top to bottom within a group, or any provided sibling list). */
+    suspend fun reorderAccounts(orderedIds: List<Long>) = inTransaction {
+        val current = accountDao.all().associateBy { it.id }
+        orderedIds.forEachIndexed { i, id -> if (current[id]?.sortOrder != i) accountDao.setSortOrder(id, i) }
     }
+
+    /** Moves transactions (both sides of a transfer), recurring rules, card mappings, bills and SMS balances from [fromId] to [toId]. */
+    suspend fun reassignAccount(fromId: Long, toId: Long) {
+        require(fromId != toId) { "cannot reassign an account onto itself" }
+        txnDao.reassignAccount(fromId, toId)
+        txnDao.reassignToAccount(fromId, toId)
+        recurringDao.reassignAccount(fromId, toId)
+        recurringDao.reassignToAccount(fromId, toId)
+        cardMappingDao.reassignAccount(fromId, toId)
+        billDao.reassignAccount(fromId, toId)
+        smsBalanceDao.reassignAccount(fromId, toId)
+        dupDao.reassignAccount(fromId, toId)
+    }
+
+    /**
+     * Removes [account]. [MOVE] requires [moveToId] and then hard-deletes the empty source.
+     * [SOFT] sets [Account.deletedAt] and keeps every row attached (restorable).
+     * [WIPE] deletes transactions (and related rows) then hard-deletes the account; call only after a second confirm.
+     */
+    suspend fun removeAccount(account: Account, mode: AccountRemoval, moveToId: Long? = null) = inTransaction {
+        when (mode) {
+            AccountRemoval.MOVE -> {
+                val to = requireNotNull(moveToId) { "moveToId required" }
+                reassignAccount(account.id, to)
+                dropAccountRow(account)
+            }
+            AccountRemoval.SOFT -> accountDao.update(account.copy(deletedAt = account.deletedAt ?: System.currentTimeMillis()))
+            AccountRemoval.WIPE -> {
+                val ids = txnDao.idsForAccount(account.id)
+                if (ids.isNotEmpty()) dupDao.deleteLinksForTxns(ids)
+                txnDao.deleteForAccount(account.id)
+                dropAccountRow(account)
+            }
+        }
+    }
+
+    /** Puts a soft-deleted account back on the accounts list. */
+    suspend fun restoreAccount(account: Account) {
+        if (account.deletedAt != null) accountDao.update(account.copy(deletedAt = null))
+    }
+
+    /**
+     * Moves every reference from [source] onto [target], then hard-deletes [source].
+     * [Account.initialBalance] of [target] is kept as-is (source history is moved, initials are not added).
+     */
+    suspend fun mergeAccounts(source: Account, target: Account) = inTransaction {
+        require(source.id != target.id) { "cannot merge an account into itself" }
+        reassignAccount(source.id, target.id)
+        dropAccountRow(source)
+    }
+
+    /** Drops leftover per-account rows and the account itself (sync trigger writes a tombstone). */
+    private suspend fun dropAccountRow(account: Account) {
+        smsBalanceDao.deleteForAccount(account.id)
+        recurringDao.deleteForAccount(account.id)
+        cardMappingDao.deleteForAccount(account.id)
+        billDao.clearAccount(account.id)
+        accountDao.delete(account)
+    }
+
+    /** @deprecated Use [removeAccount]. Kept name for a short period: hard-delete with wipe. */
+    suspend fun deleteAccount(a: Account) = removeAccount(a, AccountRemoval.WIPE)
 
     /** New categories go to the end of their siblings (same type and parent) so the user's order is kept. */
     suspend fun saveCategory(c: Category): Long = if (c.id == 0L) {

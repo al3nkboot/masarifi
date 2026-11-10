@@ -73,6 +73,7 @@ interface BillDao {
     @Query("DELETE FROM bills WHERE id = :id") suspend fun delete(id: Long)
     @Query("DELETE FROM bills WHERE uuid = :uuid") suspend fun deleteByUuid(uuid: String)
     @Query("UPDATE bills SET accountId = NULL WHERE accountId = :id") suspend fun clearAccount(id: Long)
+    @Query("UPDATE bills SET accountId = :toId WHERE accountId = :fromId") suspend fun reassignAccount(fromId: Long, toId: Long)
     @Query("UPDATE bills SET categoryId = NULL WHERE categoryId = :id") suspend fun clearCategory(id: Long)
 
     @Query("SELECT * FROM bill_payments ORDER BY paidAt DESC, id DESC") fun observePayments(): Flow<List<BillPayment>>

@@ -92,6 +92,7 @@ fun MoreScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier, 
         SettingRow(AppIcons.Language, stringResource(R.string.language), if (s.arabic) "العربية" else "English", onClick = { dialog = "language" })
         SettingRow(AppIcons.Palette, stringResource(R.string.theme), themeLabel(s.theme), onClick = { dialog = "theme" })
         SwitchRow(AppIcons.Calendar, stringResource(R.string.week_starts_saturday), null, s.weekStartsSaturday) { v -> vm.updateSettings { it.copy(weekStartsSaturday = v) } }
+        SwitchRow(AppIcons.Money, stringResource(R.string.carry_over), stringResource(R.string.carry_over_sub), s.carryOver) { v -> vm.updateSettings { it.copy(carryOver = v) } }
 
         SectionTitle(stringResource(R.string.section_data))
         SettingRow(AppIcons.Category, stringResource(R.string.categories), stringResource(R.string.categories_sub), onClick = { navigate(Route.Categories) })

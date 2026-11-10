@@ -23,6 +23,8 @@ data class AppSettings(
     val dupWindowHours: Int = 48,
     /** Own-wallet top-up rules as JSON (blank = the built-in defaults, see [DefaultSmsConfig.walletTopups]). */
     val walletTopups: String = "",
+    /** When on, the previous month's signed remainder is shown on the Transactions tab (not stored as a transaction). */
+    val carryOver: Boolean = false,
 ) {
     val walletTopupList: List<com.midroid.masarifi.sms.WalletTopup>
         get() = if (walletTopups.isBlank()) com.midroid.masarifi.sms.DefaultSmsConfig.walletTopups
@@ -51,6 +53,7 @@ class SettingsStore(context: Context, prefsName: String = "masarifi_settings") {
         weekStartsSaturday = prefs.getBoolean("weekStartsSaturday", false),
         dupWindowHours = prefs.getInt("dupWindowHours", 48),
         walletTopups = prefs.getString("walletTopups", "") ?: "",
+        carryOver = prefs.getBoolean("carryOver", false),
     )
 
     /** When the settings that are shared between synced devices last changed (0 = never changed on this device). */
@@ -80,6 +83,7 @@ class SettingsStore(context: Context, prefsName: String = "masarifi_settings") {
             .putBoolean("weekStartsSaturday", n.weekStartsSaturday)
             .putInt("dupWindowHours", n.dupWindowHours)
             .putString("walletTopups", n.walletTopups)
+            .putBoolean("carryOver", n.carryOver)
             .apply()
         _state.value = n
     }
@@ -94,7 +98,7 @@ class SettingsStore(context: Context, prefsName: String = "masarifi_settings") {
 
     companion object {
         /** The subset of settings that is shared between synced devices (language/theme/SMS options stay per device). */
-        fun synced(s: AppSettings) = listOf(s.currency, s.weekStartsSaturday, s.dupWindowHours, s.budgetAlerts, s.spikeAlerts)
+        fun synced(s: AppSettings) = listOf(s.currency, s.weekStartsSaturday, s.dupWindowHours, s.budgetAlerts, s.spikeAlerts, s.carryOver)
 
         /** Read language synchronously (used in attachBaseContext before the app container exists). */
         fun language(context: Context): String =

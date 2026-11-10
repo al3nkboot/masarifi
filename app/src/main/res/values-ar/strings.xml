@@ -546,4 +546,35 @@
     <string name="edit_category_cd">تعديل %1$s</string>
     <string name="move_up">تحريك للأعلى</string>
     <string name="move_down">تحريك للأسفل</string>
+
+    <string name="carry_over">ترحيل الرصيد</string>
+    <string name="carry_over_sub">إظهار المتبقي أو العجز من الشهر السابق في إجمالي تبويب المعاملات</string>
+    <string name="carry_over_line">ترحيل من الشهر السابق</string>
+    <string name="edit_mode">تعديل</string>
+    <string name="hide_account">إخفاء الحساب</string>
+    <string name="show_hidden_accounts">إظهار الحسابات المخفية</string>
+    <string name="account_hidden">مخفي</string>
+    <string name="deleted_accounts">الحسابات المحذوفة</string>
+    <string name="empty_deleted_accounts">لا توجد حسابات في السلة</string>
+    <string name="restore_account">استعادة</string>
+    <string name="permanently_delete">حذف نهائي</string>
+    <string name="delete_account_title">حذف الحساب</string>
+    <string name="delete_account_options">ماذا تريد أن تفعل بمعاملات «%1$s»؟</string>
+    <string name="txn_count">%1$d معاملة</string>
+    <string name="move_txns_to">نقل المعاملات إلى حساب آخر</string>
+    <string name="move_to_deleted_bin">نقل إلى سلة الحسابات المحذوفة</string>
+    <string name="delete_txns_too">حذف المعاملات أيضاً</string>
+    <string name="confirm_wipe_account">سيتم حذف الحساب وجميع معاملاته نهائياً ولا يمكن التراجع. هل أنت متأكد؟</string>
+    <string name="confirm_move_account">نقل %1$d معاملة إلى «%2$s» وحذف «%3$s»؟</string>
+    <string name="confirm_soft_delete">نقل «%1$s» إلى سلة الحسابات المحذوفة؟ المعاملات تبقى، ويمكن استعادة الحساب لاحقاً.</string>
+    <string name="no_other_accounts">لا يوجد حساب آخر لنقل المعاملات إليه</string>
+    <string name="merge_accounts">دمج الحسابات</string>
+    <string name="merge_with">دمج مع…</string>
+    <string name="confirm_merge">نقل كل معاملات «%1$s» إلى «%2$s» وحذف «%1$s». الرصيد الافتتاحي لـ«%2$s» يبقى كما هو.</string>
+    <string name="current_balance">الرصيد الحالي</string>
+    <string name="running_balance">الرصيد</string>
+    <string name="delete_account_cd">حذف %1$s</string>
+    <string name="edit_account_cd">تعديل %1$s</string>
+    <string name="hide_account_cd">إظهار أو إخفاء %1$s</string>
+    <string name="pick_account">اختر حساباً</string>
 </resources>
