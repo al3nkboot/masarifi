@@ -24,6 +24,8 @@ import java.io.File
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [35])
 class MigrationTest {
+    /** Current schema version: every chain must end on it (was hard-coded 8 and went stale with 2.6.1's v9). */
+    private val LATEST = 9
     private val schemaDir = File("schemas/com.midroid.masarifi.data.AppDatabase")
 
     private fun createV1(file: File) = createFrom(file, 1)
@@ -98,7 +100,7 @@ class MigrationTest {
             assertTrue(linkId > 0)
             db.dupDao().dismiss(listOf(DupDismissed(DupDismissed.key(1, 3))))
             assertEquals(listOf("1-3"), db.dupDao().dismissed())
-            assertEquals(8, db.openHelper.readableDatabase.version)
+            assertEquals(LATEST, db.openHelper.readableDatabase.version)
         } finally {
             db.close()
         }
@@ -152,7 +154,7 @@ class MigrationTest {
             // new rows get uuids from the entity defaults
             val id = db.txnDao().insert(Txn(type = 1, amount = 1, accountId = 1, dateTime = 1))
             assertTrue(uuidRe.matches(db.txnDao().get(id)!!.uuid))
-            assertEquals(8, sql.version)
+            assertEquals(LATEST, sql.version)
         } finally {
             db.close()
         }
@@ -182,7 +184,7 @@ class MigrationTest {
             db.smsBalanceDao().insert(SmsBalance(accountId = 1, dateTime = 20, balance = 205_000, smsHash = "h2"))
             assertEquals(5_000L, db.smsBalanceDao().latestBefore(1, 15)!!.balance)
             assertEquals(205_000L, db.smsBalanceDao().latest(1)!!.balance)
-            assertEquals(8, db.openHelper.readableDatabase.version)
+            assertEquals(LATEST, db.openHelper.readableDatabase.version)
         } finally {
             db.close()
         }
@@ -211,7 +213,7 @@ class MigrationTest {
         }
         val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).addMigrations(*Migrations.ALL).allowMainThreadQueries().build()
         try {
-            assertEquals(8, db.openHelper.readableDatabase.version)
+            assertEquals(LATEST, db.openHelper.readableDatabase.version)
             // existing data untouched
             assertEquals(listOf(4300L, 1500L, 7000L, 2000L), db.txnDao().all().sortedBy { it.id }.map { it.amount })
             assertEquals(48_250L, db.smsBalanceDao().latest(2)!!.balance)
@@ -247,7 +249,7 @@ class MigrationTest {
         }
         val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).addMigrations(*Migrations.ALL).allowMainThreadQueries().build()
         try {
-            assertEquals(8, db.openHelper.readableDatabase.version)
+            assertEquals(LATEST, db.openHelper.readableDatabase.version)
             assertEquals(listOf(4300L, 1500L, 7000L), db.txnDao().all().map { it.amount })
             assertEquals("5501", db.cardMappingDao().all().single().last4)
             val id = db.repairDao().insert(RepairBatch(changes = 2, snapshot = "{}"))
@@ -268,7 +270,7 @@ class MigrationTest {
         val v6Tables = JSONObject(File(schemaDir, "6.json").readText()).getJSONObject("database").getJSONArray("entities").let { a -> (0 until a.length()).map { a.getJSONObject(it).getString("tableName") } }
         fun dump(d: android.database.sqlite.SQLiteDatabase): Map<String, List<String>> = v6Tables.associateWith { t ->
             d.rawQuery("SELECT * FROM `$t` ORDER BY rowid", null).use { c ->
-                buildList { while (c.moveToNext()) add((0 until c.columnCount).joinToString("|") { c.getColumnName(it) + "=" + c.getString(it) }) }
+                buildList { while (c.moveToNext()) add((0 until c.columnCount).filter { c.getColumnName(it) != "parentId" /* added later by v9 */ }.joinToString("|") { c.getColumnName(it) + "=" + c.getString(it) }) }
             }
         }
         val before = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { d ->
@@ -281,7 +283,7 @@ class MigrationTest {
         assertTrue(before.values.sumOf { it.size } >= 12)
         val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).configure().allowMainThreadQueries().build()
         try {
-            assertEquals(8, db.openHelper.readableDatabase.version)
+            assertEquals(LATEST, db.openHelper.readableDatabase.version)
             // nothing touched: compare raw rows of all 2.0.0 tables (updatedAt included → no trigger fired)
             db.close()
             val after = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY).use { dump(it) }
@@ -321,7 +323,7 @@ class MigrationTest {
         val v7Tables = JSONObject(File(schemaDir, "7.json").readText()).getJSONObject("database").getJSONArray("entities").let { a -> (0 until a.length()).map { a.getJSONObject(it).getString("tableName") } }
         fun dump(d: SQLiteDatabase): Map<String, List<String>> = v7Tables.associateWith { t ->
             d.rawQuery("SELECT * FROM `$t` ORDER BY rowid", null).use { c ->
-                buildList { while (c.moveToNext()) add((0 until c.columnCount).joinToString("|") { c.getColumnName(it) + "=" + c.getString(it) }) }
+                buildList { while (c.moveToNext()) add((0 until c.columnCount).filter { c.getColumnName(it) != "parentId" /* added later by v9 */ }.joinToString("|") { c.getColumnName(it) + "=" + c.getString(it) }) }
             }
         }
         val before = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { d ->
@@ -333,7 +335,7 @@ class MigrationTest {
         assertTrue(before.values.sumOf { it.size } >= 8)
         val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).configure().allowMainThreadQueries().build()
         try {
-            assertEquals(8, db.openHelper.readableDatabase.version)
+            assertEquals(LATEST, db.openHelper.readableDatabase.version)
             assertTrue(db.warrantyDao().all().isEmpty())
             db.close()
             val after = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY).use { dump(it) }

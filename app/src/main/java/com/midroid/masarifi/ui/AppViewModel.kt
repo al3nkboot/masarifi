@@ -30,6 +30,7 @@ import com.midroid.masarifi.data.dup.DupGroup
 import com.midroid.masarifi.data.dup.DuplicateDetector
 import com.midroid.masarifi.sms.SmsImporter
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import com.midroid.masarifi.work.BackupWorker
 import kotlinx.coroutines.Dispatchers
@@ -182,6 +183,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     init {
         viewModelScope.launch(Dispatchers.IO) {
             repo.ensureDefaults()
+            // 2.6.2: one-time move of pre-2.6.1 Money Manager rows onto their subcategories (undoable from Repair).
+            val moved = runCatching { repo.repairImportedSubcategoriesOnce() }.getOrDefault(0)
+            if (moved > 0) {
+                val res = com.midroid.masarifi.work.LocalizedRes.of(getApplication(), settings.value.arabic)
+                val text = res.getString(com.midroid.masarifi.R.string.subcat_repair_done, moved)
+                // messages has no replay: wait (briefly) for the UI to subscribe so the notice is not dropped.
+                viewModelScope.launch {
+                    kotlinx.coroutines.withTimeoutOrNull(15_000) { _messages.subscriptionCount.first { it > 0 } }
+                    message(text)
+                }
+            }
             repo.processRecurring()
         }
     }
@@ -198,6 +210,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteAccount(a: Account) = viewModelScope.launch(Dispatchers.IO) { repo.deleteAccount(a) }
     fun saveCategory(c: Category) = viewModelScope.launch(Dispatchers.IO) { repo.saveCategory(c) }
     fun deleteCategory(c: Category) = viewModelScope.launch(Dispatchers.IO) { repo.deleteCategory(c) }
+    fun reorderCategories(orderedIds: List<Long>) = viewModelScope.launch(Dispatchers.IO) { repo.reorderCategories(orderedIds) }
     fun setBudget(categoryId: Long, amount: Long) = viewModelScope.launch(Dispatchers.IO) { repo.setBudget(categoryId, amount) }
     fun setRecurringActive(r: Recurring, active: Boolean) = viewModelScope.launch(Dispatchers.IO) { repo.recurringDao.update(r.copy(active = active)) }
     fun deleteRecurring(r: Recurring) = viewModelScope.launch(Dispatchers.IO) { repo.recurringDao.delete(r.id) }

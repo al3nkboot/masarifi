@@ -7,6 +7,7 @@ import com.midroid.masarifi.data.CategoryName
 import com.midroid.masarifi.data.Repository
 import com.midroid.masarifi.data.Txn
 import com.midroid.masarifi.data.TxnType
+import com.midroid.masarifi.data.catfix.SubcategoryRepair
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Locale
@@ -31,6 +32,8 @@ data class MmPlan(
 data class MmImportResult(
     val income: Int, val expense: Int, val transfer: Int, val duplicates: Int,
     val accountsCreated: Int, val categoriesCreated: Int, val skipped: List<MmSkipped>,
+    /** Already-imported rows (pre-2.6.1) moved from the parent onto their subcategory, proven by this file (2.6.2). */
+    val subcategoriesFixed: Int = 0,
 ) {
     val imported get() = income + expense + transfer
 }
@@ -168,8 +171,28 @@ class MoneyManagerImporter(private val repo: Repository, private val zone: ZoneI
             }
             var inc = 0; var exp = 0; var tr = 0; var dup = 0
             val batch = ArrayList<Txn>()
+            val fixedOriginals = ArrayList<Txn>()
+            /**
+             * 2.6.2 exact repair on re-import: a duplicate row whose stored copy still sits on the parent with the file's
+             * subcategory text as the first description segment (the pre-2.6.1 format) is moved onto that subcategory.
+             */
+            suspend fun fixOldSubcategory(t: MmTxn) {
+                if (t.kind == MmKind.TRANSFER || t.subcategory.isBlank() || t.category.isBlank()) return
+                val old = repo.txnDao.byHash(t.hash) ?: return
+                val type = txnType(t.kind)
+                if (old.type != type) return
+                val parentName = CategoryName.split(t.category).name.ifBlank { t.category.trim() }
+                val parent = findCategory(cats, type, parentName, null) ?: return
+                if (old.categoryId != parent.id) return
+                val (head, rest) = SubcategoryRepair.splitHead(old.description) ?: return
+                if (head != t.subcategory.trim()) return
+                val subId = ensureCategory(type, t.subcategory, parent.id) ?: return
+                if (subId == parent.id) return
+                fixedOriginals += old
+                repo.txnDao.update(old.copy(categoryId = subId, description = rest.trim()))
+            }
             for (t in parse.txns) {
-                if (!existing.add(t.hash)) { dup++; continue }
+                if (!existing.add(t.hash)) { dup++; fixOldSubcategory(t); continue }
                 val type = txnType(t.kind)
                 batch += toTxn(
                     t, accountId(t.account), t.toAccount?.let { accountId(it) },
@@ -178,9 +201,10 @@ class MoneyManagerImporter(private val repo: Repository, private val zone: ZoneI
                 when (t.kind) { MmKind.INCOME -> inc++; MmKind.EXPENSE -> exp++; MmKind.TRANSFER -> tr++ }
             }
             batch.chunked(500).forEach { repo.txnDao.insertAll(it) }
-            MmImportResult(inc, exp, tr, dup, accCreated, catCreated, parse.skipped)
+            repo.recordRepair(fixedOriginals)
+            MmImportResult(inc, exp, tr, dup, accCreated, catCreated, parse.skipped, fixedOriginals.size)
         }
-        if (r.imported > 0) repo.notifyBulkChange()
+        if (r.imported > 0 || r.subcategoriesFixed > 0) repo.notifyBulkChange()
         return r
     }
 }

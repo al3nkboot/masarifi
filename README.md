@@ -14,9 +14,9 @@
 
 ### [⬇️ تحميل التطبيق (APK)](https://github.com/al3nkboot/masarifi/releases)
 
-الإصدار الحالي **2.6.0** — بنسختين:
+الإصدار الحالي **2.6.2** — بنسختين:
 
-| | النسخة الكاملة `masarifi-v2.6.0.apk` | بدون الرسائل `masarifi-v2.6.0-nosms.apk` |
+| | النسخة الكاملة `masarifi-v2.6.2.apk` | بدون الرسائل `masarifi-v2.6.2-nosms.apk` |
 |---|---|---|
 | قراءة رسائل البنك وتسجيل المصاريف تلقائياً | ✅ | ❌ (إدخال يدوي) |
 | صلاحية الرسائل SMS | تطلبها | لا تطلبها أبداً |
@@ -25,6 +25,17 @@
 **Two editions / نسختان:** *Full* reads bank SMS to log expenses automatically; *No-SMS* has no SMS permission at all (manual entry). Both share the same package and data, so installing one replaces the other and keeps your data. / النسختان بنفس الحزمة والبيانات: تثبيت واحدة يستبدل الأخرى وتبقى بياناتك.
 
 <img src="docs/images/v250/01_warranty_list_ar_dark.png" width="24%" alt="الضمانات"> <img src="docs/images/v250/03_warranty_detail_ar_light.png" width="24%" alt="تفاصيل الضمان"> <img src="docs/images/v250/02_warranty_edit_ar_dark.png" width="24%" alt="إضافة ضمان">
+
+### الجديد في 2.6.2 / What's new
+- صفحة «الفئات» بأسلوب Money Manager: زر حذف أحمر، الإيموجي والاسم مع عدد الفئات الفرعية وأسمائها، قلم للتعديل، ومقبض ≡ للسحب وتغيير الترتيب — Money Manager-style categories: red delete, emoji + name + subcategory count, pencil, drag handle to reorder
+- الضغط على فئة يعرض فئاتها الفرعية مع «إضافة فئة فرعية»، ويمكن ترتيبها بالسحب أيضاً — Tap a category to open its subcategories (add / edit / delete / drag)
+- حذف فئة فرعية ينقل معاملاتها إلى الفئة الرئيسية بدلاً من تركها بلا فئة — Deleting a subcategory keeps its transactions on the parent
+- إصلاح لمرة واحدة: المعاملات المستوردة من Money Manager قبل 2.6.1 تُنقل إلى فئتها الفرعية عند تطابق مؤكد، مع إمكانية التراجع — One-time, undoable repair moves pre-2.6.1 Money Manager imports onto their subcategory when the match is unambiguous; re-importing the same file fixes the rest exactly
+
+<img src="docs/images/v262/01_customize_ar_dark.png" width="24%" alt="الفئات"> <img src="docs/images/v262/02_expanded_ar_dark.png" width="24%" alt="الفئات الفرعية"> <img src="docs/images/v262/02_expanded_ar_light.png" width="24%" alt="الفئات الفرعية - فاتح">
+
+### الجديد في 2.6.1 / What's new
+- فئات Money Manager الفرعية تُستورد كفئات فرعية حقيقية، ونقل الإيموجي من بداية الاسم — Money Manager subcategories imported as real subcategories; leading emoji moved out of names
 
 ### الجديد في 2.6.0 / What's new
 - عملات كل دول الجامعة العربية + قائمة عملة قابلة للتمرير — Currencies for all Arab League countries; scrollable currency list

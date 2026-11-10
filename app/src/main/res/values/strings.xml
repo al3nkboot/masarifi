@@ -537,4 +537,13 @@
     <string name="update_err_other">Couldn\'t check for updates (%1$s).</string>
     <string name="currency_search">Search currency</string>
     <string name="currency_none">No matching currency</string>
+    <string name="mm_done_subfixed">Moved %1$d previously imported transactions onto their subcategory (undo from Repair).</string>
+    <string name="subcat_repair_done">Moved %1$d imported Money Manager transactions onto their subcategories. You can undo it from «Repair auto transactions».</string>
+    <string name="confirm_delete_subcategory">Delete this subcategory? Its transactions move to the parent category.</string>
+    <string name="confirm_delete_parent_category">Delete «%1$s» and its %2$d subcategories? Their transactions will become uncategorized.</string>
+    <string name="drag_to_reorder">Drag to reorder</string>
+    <string name="delete_category_cd">Delete %1$s</string>
+    <string name="edit_category_cd">Edit %1$s</string>
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
 </resources>

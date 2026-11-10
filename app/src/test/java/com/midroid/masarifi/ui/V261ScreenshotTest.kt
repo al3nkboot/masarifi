@@ -70,7 +70,7 @@ class V261ScreenshotTest {
         rule.onNodeWithText(s(R.string.tab_more)).performClick()
         rule.waitForIdle(); Thread.sleep(200)
         rule.onNodeWithText(s(R.string.categories)).performScrollTo().performClick()
-        rule.waitUntil(8_000) { rule.onAllNodesWithText("وجبات سريعة").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(8_000) { rule.onAllNodesWithText("وجبات سريعة", substring = true).fetchSemanticsNodes().isNotEmpty() }
         rule.waitForIdle(); Thread.sleep(300); shot("01_categories_subcats")
         sc.close()
     }

@@ -130,6 +130,7 @@ fun MmImportDialogs(vm: AppViewModel) {
                 text = {
                     Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(stringResource(R.string.mm_done_body, r.imported, r.income, r.expense, r.transfer, r.duplicates, r.accountsCreated, r.categoriesCreated))
+                        if (r.subcategoriesFixed > 0) Text(stringResource(R.string.mm_done_subfixed, r.subcategoriesFixed))
                         SkippedList(r.skipped)
                     }
                 },

@@ -38,6 +38,16 @@ interface TxnDao {
     @Query("UPDATE transactions SET categoryId = NULL WHERE categoryId = :categoryId")
     suspend fun clearCategory(categoryId: Long)
 
+    /** Moves every transaction of [from] to [to] (deleting a subcategory keeps its rows on the parent). */
+    @Query("UPDATE transactions SET categoryId = :to WHERE categoryId = :from")
+    suspend fun moveCategory(from: Long, to: Long)
+
+    @Query("SELECT * FROM transactions WHERE smsHash = :hash LIMIT 1")
+    suspend fun byHash(hash: String): Txn?
+
+    @Query("SELECT * FROM transactions WHERE smsHash LIKE 'mm:%'")
+    suspend fun moneyManagerRows(): List<Txn>
+
     @Query("UPDATE transactions SET recurringId = NULL WHERE recurringId = :recurringId")
     suspend fun unlinkRecurring(recurringId: Long)
 
@@ -98,6 +108,9 @@ interface CategoryDao {
 
     @Query("SELECT * FROM categories ORDER BY type, sortOrder, id")
     suspend fun all(): List<Category>
+
+    @Query("UPDATE categories SET sortOrder = :sortOrder WHERE id = :id")
+    suspend fun setSortOrder(id: Long, sortOrder: Int)
 
     @Query("SELECT COUNT(*) FROM categories")
     suspend fun count(): Int

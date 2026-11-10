@@ -355,11 +355,53 @@ class Repository(
         accountDao.delete(a)
     }
 
-    suspend fun saveCategory(c: Category) = if (c.id == 0L) categoryDao.insert(c) else { categoryDao.update(c); c.id }
+    /** New categories go to the end of their siblings (same type and parent) so the user's order is kept. */
+    suspend fun saveCategory(c: Category): Long = if (c.id == 0L) {
+        val last = categoryDao.all().filter { it.type == c.type && it.parentId == c.parentId }.maxOfOrNull { it.sortOrder }
+        categoryDao.insert(if (last == null) c else c.copy(sortOrder = last + 1))
+    } else { categoryDao.update(c); c.id }
+
+    /** Persists a drag-and-drop order: [orderedIds] are siblings (same type and parent) top to bottom. */
+    suspend fun reorderCategories(orderedIds: List<Long>) = inTransaction {
+        val current = categoryDao.all().associateBy { it.id }
+        orderedIds.forEachIndexed { i, id -> if (current[id]?.sortOrder != i) categoryDao.setSortOrder(id, i) }
+    }
+
+    /**
+     * 2.6.2 one-time repair (see [com.midroid.masarifi.data.catfix.SubcategoryRepair]): moves Money Manager rows imported
+     * before 2.6.1 onto their subcategory. Recorded as a [RepairBatch] so «تراجع عن آخر إصلاح» can undo it.
+     * Returns the number of rows moved (0 when already done).
+     */
+    suspend fun repairImportedSubcategoriesOnce(): Int {
+        if (settings.flag(SUBCAT_REPAIR_FLAG)) return 0
+        val n = repairImportedSubcategories()
+        settings.setFlag(SUBCAT_REPAIR_FLAG)
+        return n
+    }
+
+    suspend fun repairImportedSubcategories(): Int {
+        val n = inTransaction {
+            val changes = com.midroid.masarifi.data.catfix.SubcategoryRepair.plan(txnDao.moneyManagerRows(), categoryDao.all())
+            if (changes.isEmpty()) return@inTransaction 0
+            recordRepair(changes.map { it.before })
+            changes.forEach { txnDao.update(it.after) }
+            changes.size
+        }
+        if (n > 0) onExpensesChanged()
+        return n
+    }
+
+    /** Stores the original rows so the existing repair «undo» can restore them. */
+    suspend fun recordRepair(originals: List<Txn>) {
+        if (originals.isEmpty()) return
+        repairDao.insert(RepairBatch(changes = originals.size, snapshot = RepairSnapshot(originals, emptyList(), emptyMap(), emptyMap()).encode()))
+    }
 
     suspend fun deleteCategory(c: Category) {
         // Subcategories go with the parent (same as Money Manager).
         for (child in categoryDao.all().filter { it.parentId == c.id }) deleteCategory(child)
+        // A deleted subcategory's transactions stay on its parent instead of becoming uncategorized.
+        c.parentId?.let { pid -> if (categoryDao.all().any { it.id == pid }) txnDao.moveCategory(c.id, pid) }
         txnDao.clearCategory(c.id)
         billDao.clearCategory(c.id)
         budgetDao.delete(c.id)
@@ -812,6 +854,7 @@ class Repository(
 
     companion object {
         const val SEEDED_FLAG = "card_mappings_seeded_v5"
+        const val SUBCAT_REPAIR_FLAG = "mm_subcategory_repair_v262"
         const val P2P_KEY = "p2p"
     }
 

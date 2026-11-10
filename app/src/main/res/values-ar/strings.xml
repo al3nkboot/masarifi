@@ -537,4 +537,13 @@
     <string name="update_err_other">تعذّر التحقق من التحديثات (%1$s).</string>
     <string name="currency_search">بحث عن عملة</string>
     <string name="currency_none">لا توجد عملة مطابقة</string>
+    <string name="mm_done_subfixed">نُقلت %1$d معاملة مستوردة سابقاً إلى فئتها الفرعية (يمكن التراجع من «إصلاح العمليات التلقائية»).</string>
+    <string name="subcat_repair_done">نُقلت %1$d معاملة مستوردة من Money Manager إلى فئاتها الفرعية. يمكنك التراجع من «إصلاح العمليات التلقائية».</string>
+    <string name="confirm_delete_subcategory">حذف هذه الفئة الفرعية؟ ستنتقل معاملاتها إلى الفئة الرئيسية.</string>
+    <string name="confirm_delete_parent_category">حذف «%1$s» و%2$d فئات فرعية؟ ستصبح معاملاتها بدون فئة.</string>
+    <string name="drag_to_reorder">اسحب لتغيير الترتيب</string>
+    <string name="delete_category_cd">حذف %1$s</string>
+    <string name="edit_category_cd">تعديل %1$s</string>
+    <string name="move_up">تحريك للأعلى</string>
+    <string name="move_down">تحريك للأسفل</string>
 </resources>
