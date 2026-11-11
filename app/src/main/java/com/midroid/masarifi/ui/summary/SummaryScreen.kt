@@ -60,6 +60,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.midroid.masarifi.R
 import com.midroid.masarifi.analysis.FinancialSummary
+import com.midroid.masarifi.analysis.ReportExtras
 import com.midroid.masarifi.analysis.SummaryCalc
 import com.midroid.masarifi.analysis.SummaryPeriod
 import com.midroid.masarifi.data.Category
@@ -80,14 +81,26 @@ import java.time.ZoneOffset
 
 /** UI period choice. */
 sealed interface PeriodChoice {
+    data object ThisWeek : PeriodChoice
     data object ThisMonth : PeriodChoice
     data object LastMonth : PeriodChoice
+    data object Last3Months : PeriodChoice
+    data object ThisYear : PeriodChoice
     data class Quarter(val year: Int, val q: Int) : PeriodChoice
     data class Custom(val from: LocalDate, val to: LocalDate) : PeriodChoice
 
     fun period(today: LocalDate): SummaryPeriod = when (this) {
+        ThisWeek -> {
+            val start = today.minusDays(((today.dayOfWeek.value - java.time.DayOfWeek.SATURDAY.value + 7) % 7).toLong())
+            SummaryPeriod(start, start.plusDays(7))
+        }
         ThisMonth -> SummaryPeriod.month(YearMonth.from(today))
         LastMonth -> SummaryPeriod.month(YearMonth.from(today).minusMonths(1))
+        Last3Months -> SummaryPeriod(
+            YearMonth.from(today).minusMonths(2).atDay(1),
+            YearMonth.from(today).plusMonths(1).atDay(1),
+        )
+        ThisYear -> SummaryPeriod(LocalDate.of(today.year, 1, 1), LocalDate.of(today.year + 1, 1, 1))
         is Quarter -> SummaryPeriod.quarter(year, q)
         is Custom -> SummaryPeriod.custom(from, to)
     }
@@ -115,6 +128,7 @@ fun SummaryScreen(vm: AppViewModel, navigate: (Route) -> Unit, onBack: () -> Uni
     val texts = remember(cats, s) { summaryTexts(cats, money, s.arabic, noCat) }
     val period = choice.period(today)
     val sum = remember(all, cats, period, s) { SummaryCalc.compute(all, cats, period, Fmt.zone, today, texts) }
+    val merchants = remember(all, period) { ReportExtras.topMerchants(all, period, Fmt.zone) }
     val labels = reportLabels()
     var showQuarter by remember { mutableStateOf(false) }
     var showCustom by remember { mutableStateOf(false) }
@@ -155,9 +169,12 @@ fun SummaryScreen(vm: AppViewModel, navigate: (Route) -> Unit, onBack: () -> Uni
     ) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize().testTag("summaryList")) {
             item("period") {
-                Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp).testTag("period_chips"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(choice == PeriodChoice.ThisWeek, { vm.summaryPeriod.value = PeriodChoice.ThisWeek }, { Text(stringResource(R.string.sum_this_week)) })
                     FilterChip(choice == PeriodChoice.ThisMonth, { vm.summaryPeriod.value = PeriodChoice.ThisMonth }, { Text(stringResource(R.string.sum_this_month)) })
                     FilterChip(choice == PeriodChoice.LastMonth, { vm.summaryPeriod.value = PeriodChoice.LastMonth }, { Text(stringResource(R.string.sum_last_month)) })
+                    FilterChip(choice == PeriodChoice.Last3Months, { vm.summaryPeriod.value = PeriodChoice.Last3Months }, { Text(stringResource(R.string.sum_last_3_months)) })
+                    FilterChip(choice == PeriodChoice.ThisYear, { vm.summaryPeriod.value = PeriodChoice.ThisYear }, { Text(stringResource(R.string.sum_this_year)) })
                     Column {
                         FilterChip(choice is PeriodChoice.Quarter, { showQuarter = true }, {
                             Text((choice as? PeriodChoice.Quarter)?.let { "Q${it.q} ${it.year}" } ?: stringResource(R.string.sum_quarter))
@@ -187,6 +204,14 @@ fun SummaryScreen(vm: AppViewModel, navigate: (Route) -> Unit, onBack: () -> Uni
                     StatCard(
                         stringResource(if (sum.net >= 0) R.string.sum_surplus else R.string.sum_deficit), money(kotlin.math.abs(sum.net)),
                         if (sum.net >= 0) c.positive else c.negative,
+                    )
+                }
+                Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val rate = ReportExtras.savingsRate(sum.totalIncome, sum.totalExpense)
+                    StatCard(
+                        stringResource(R.string.sum_savings_rate),
+                        rate?.let { SummaryCalc.pctText(it) } ?: stringResource(R.string.sum_savings_rate_na),
+                        if (rate != null && rate >= 0) c.positive else c.negative,
                     )
                 }
                 Text(stringResource(R.string.sum_excluded), fontSize = 11.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
@@ -222,6 +247,17 @@ fun SummaryScreen(vm: AppViewModel, navigate: (Route) -> Unit, onBack: () -> Uni
                         Text(money(x.amount), color = c.expense, fontWeight = FontWeight.SemiBold)
                     }
                     HorizontalDivider(color = c.divider)
+                }
+            }
+            if (merchants.isNotEmpty()) item("merchants") {
+                SectionTitle(stringResource(R.string.sum_top_merchants))
+                merchants.forEachIndexed { index, merchant ->
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(merchant.name, Modifier.weight(1f), maxLines = 1)
+                        Text("×${merchant.count}", color = c.muted)
+                        Text(money(merchant.amount), color = c.expense, fontWeight = FontWeight.SemiBold)
+                    }
+                    if (index < merchants.lastIndex) HorizontalDivider(color = c.divider)
                 }
             }
             if (sum.insights.isNotEmpty()) item("insights") {

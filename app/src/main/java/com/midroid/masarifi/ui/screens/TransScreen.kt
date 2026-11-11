@@ -5,6 +5,7 @@ import com.midroid.masarifi.ui.icon
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,11 +19,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +35,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -106,11 +110,15 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
     val all by vm.txns.collectAsStateWithLifecycle()
     val ym by vm.month.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var typeFilter by rememberSaveable { mutableStateOf<Int?>(null) }
     val labels = rememberLabels(vm)
 
     val isYearTab = tab == 2
     val range = Fmt.monthRange(ym)
     val monthTxns = remember(all, ym) { all.filter { it.dateTime in range } }
+    val monthShown = remember(monthTxns, typeFilter) {
+        if (typeFilter == null) monthTxns else monthTxns.filter { it.type == typeFilter }
+    }
     val yearTxns = remember(all, ym.year) {
         val r = Fmt.startOf(LocalDate.of(ym.year, 1, 1)) until Fmt.startOf(LocalDate.of(ym.year + 1, 1, 1))
         all.filter { it.dateTime in r }
@@ -118,6 +126,17 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
     val shown = if (isYearTab) yearTxns else monthTxns
     val sel = rememberTxnSelection()
     val dupGroups by vm.dupGroups.collectAsStateWithLifecycle()
+    val accounts by vm.accounts.collectAsStateWithLifecycle()
+    val goals by vm.goals.collectAsStateWithLifecycle()
+    val contributions by vm.goalContributions.collectAsStateWithLifecycle()
+    val netWorth = remember(accounts, all) {
+        com.midroid.masarifi.data.NetWorthCalc.compute(
+            vm.balances(accounts, all).map { it.account to it.balance },
+        )
+    }
+    val topGoal = remember(goals, contributions) {
+        com.midroid.masarifi.data.GoalLogic.topGoal(goals, contributions)
+    }
     androidx.compose.runtime.LaunchedEffect(all) { sel.retain(all.mapTo(HashSet()) { it.id }) }
     androidx.compose.runtime.LaunchedEffect(tab, ym) { sel.clear() }
     SelectionEffects(sel, vm)
@@ -129,8 +148,8 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
         if (sel.active) {
             SelectionTopBar(sel, visibleIds = {
                 when (tab) {
-                    0 -> monthTxns.map { it.id }
-                    1 -> vm.selectedDay?.let { d -> monthTxns.filter { Fmt.toDate(it.dateTime) == d }.map { it.id } }.orEmpty()
+                    0 -> monthShown.map { it.id }
+                    1 -> vm.selectedDay?.let { d -> monthShown.filter { Fmt.toDate(it.dateTime) == d }.map { it.id } }.orEmpty()
                     else -> emptyList()
                 }
             })
@@ -144,6 +163,17 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
                 text = stringResource(R.string.dup_banner, dupGroups.size.toString()), icon = com.midroid.masarifi.ui.components.AppIcons.Copy,
                 tint = AppTheme.colors.warning, container = AppTheme.colors.warning.copy(alpha = 0.14f),
                 onClick = { navigate(Route.Duplicates) },
+            )
+        }
+        if (!sel.active) {
+            HomeOverview(
+                netWorth = netWorth,
+                topGoal = topGoal,
+                saved = topGoal?.let {
+                    com.midroid.masarifi.data.GoalLogic.saved(it.id, contributions)
+                } ?: 0L,
+                s = s,
+                onGoals = { navigate(Route.Goals) },
             )
         }
         MonthSwitcher(
@@ -173,13 +203,37 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
             CarryOver.PeriodTotals(inc, exp, CarryOver.carryIn(YearMonth.of(ym.year, 1), all, s.carryOver))
         } else CarryOver.totals(ym, all, s.carryOver)
         SummaryRow(period.displayIncome, period.displayExpense, s)
+        if (tab == 0 || tab == 1) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = Spacing.md, vertical = Spacing.xs)
+                    .testTag("type_filter_chips"),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                val filters = listOf<Pair<Int, Int?>>(
+                    R.string.filter_all to null,
+                    R.string.expense to TxnType.EXPENSE,
+                    R.string.income to TxnType.INCOME,
+                    R.string.transfer to TxnType.TRANSFER,
+                )
+                filters.forEach { (labelRes, value) ->
+                    FilterChip(
+                        selected = typeFilter == value,
+                        onClick = { typeFilter = value },
+                        label = { Text(stringResource(labelRes)) },
+                    )
+                }
+            }
+        }
 
         when (tab) {
-            0 -> DailyList(monthTxns, labels, s, navigate, sel, carry = period.carry, month = ym)
-            1 -> CalendarView(vm, ym, monthTxns, labels, s, navigate, sel, carry = period.carry)
+            0 -> DailyList(monthShown, labels, s, navigate, sel, carry = period.carry, month = ym)
+            1 -> CalendarView(vm, ym, monthShown, labels, s, navigate, sel, carry = period.carry)
             2 -> MonthlyList(yearTxns, all, ym.year, s, s.carryOver) { m -> vm.month.value = m; tab = 0 }
             3 -> TotalView(vm, ym, all, monthTxns, s, carry = period.carry)
-            else -> NoteView(monthTxns, labels, s, navigate, ym)
+            else -> NoteView(monthShown, labels, s, navigate, ym)
         }
     }
 }
@@ -471,4 +525,73 @@ fun CarryOverRow(amount: Long, s: AppSettings) {
             )
         },
     )
+}
+
+@Composable
+fun HomeOverview(
+    netWorth: com.midroid.masarifi.data.NetWorth,
+    topGoal: com.midroid.masarifi.data.SavingsGoal?,
+    saved: Long,
+    s: AppSettings,
+    onGoals: () -> Unit,
+) {
+    Card(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.md, vertical = Spacing.xs)
+            .testTag("home_overview"),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+    ) {
+        Row(Modifier.padding(Spacing.md)) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.net_worth),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = AppTheme.colors.muted,
+                )
+                Text(
+                    "\u200E" + Fmt.money(netWorth.net, s),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (netWorth.net >= 0) AppTheme.colors.income else AppTheme.colors.expense,
+                )
+            }
+            if (topGoal != null) {
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .clickable(onClick = onGoals),
+                ) {
+                    Text(
+                        topGoal.name,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = AppTheme.colors.muted,
+                        maxLines = 1,
+                    )
+                    ProgressBar(
+                        com.midroid.masarifi.data.GoalLogic.progress(saved, topGoal.target),
+                    )
+                    Text(
+                        stringResource(
+                            R.string.goal_percent,
+                            com.midroid.masarifi.data.GoalLogic.percent(saved, topGoal.target),
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            } else {
+                Column(
+                    Modifier.weight(1f),
+                    horizontalAlignment = Alignment.End,
+                ) {
+                    TextButton(onClick = onGoals) {
+                        Text(stringResource(R.string.goal_add))
+                    }
+                }
+            }
+        }
+    }
 }
