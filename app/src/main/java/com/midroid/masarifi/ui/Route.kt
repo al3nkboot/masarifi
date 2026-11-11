@@ -20,4 +20,6 @@ sealed interface Route {
     data object Warranties : Route
     data class WarrantyEdit(val id: Long? = null) : Route
     data class WarrantyDetail(val id: Long) : Route
+    data object Goals : Route
+    data object Debts : Route
 }

@@ -100,6 +100,8 @@ private fun RouteContent(
         Route.Warranties -> com.midroid.masarifi.ui.warranty.WarrantyListScreen(vm, navigate, back)
         is Route.WarrantyEdit -> com.midroid.masarifi.ui.warranty.WarrantyEditScreen(vm, r.id, back)
         is Route.WarrantyDetail -> com.midroid.masarifi.ui.warranty.WarrantyDetailScreen(vm, r.id, navigate, back)
+        Route.Goals -> com.midroid.masarifi.ui.goals.GoalsScreen(vm, back)
+        Route.Debts -> com.midroid.masarifi.ui.debts.DebtsScreen(vm, back)
     }
 }
 

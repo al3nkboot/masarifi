@@ -153,6 +153,42 @@ object Migrations {
         }
     }
 
-    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+    /**
+     * 2.6.3 (v10) → 2.7.0 (v11): additive only, savings goals + debts tables. No existing table or row is touched.
+     */
+    val MIGRATION_10_11 = object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `savings_goals` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, " +
+                    "`target` INTEGER NOT NULL, `targetDate` INTEGER, `accountId` INTEGER, `note` TEXT NOT NULL, " +
+                    "`createdAt` INTEGER NOT NULL, `uuid` TEXT NOT NULL DEFAULT '', `updatedAt` INTEGER NOT NULL DEFAULT 0)",
+            )
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_savings_goals_uuid` ON `savings_goals` (`uuid`)")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `goal_contributions` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `goalId` INTEGER NOT NULL, " +
+                    "`amount` INTEGER NOT NULL, `date` INTEGER NOT NULL, `note` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, " +
+                    "`uuid` TEXT NOT NULL DEFAULT '', `updatedAt` INTEGER NOT NULL DEFAULT 0)",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_goal_contributions_goalId` ON `goal_contributions` (`goalId`)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_goal_contributions_uuid` ON `goal_contributions` (`uuid`)")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `debts` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `person` TEXT NOT NULL, " +
+                    "`direction` INTEGER NOT NULL, `amount` INTEGER NOT NULL, `dateTime` INTEGER NOT NULL, `note` TEXT NOT NULL, " +
+                    "`splitTxnId` INTEGER, `createdAt` INTEGER NOT NULL, `uuid` TEXT NOT NULL DEFAULT '', " +
+                    "`updatedAt` INTEGER NOT NULL DEFAULT 0)",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_debts_person` ON `debts` (`person`)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_debts_uuid` ON `debts` (`uuid`)")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `debt_settlements` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `debtId` INTEGER NOT NULL, " +
+                    "`amount` INTEGER NOT NULL, `dateTime` INTEGER NOT NULL, `txnId` INTEGER, `createdAt` INTEGER NOT NULL, " +
+                    "`uuid` TEXT NOT NULL DEFAULT '', `updatedAt` INTEGER NOT NULL DEFAULT 0)",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_debt_settlements_debtId` ON `debt_settlements` (`debtId`)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_debt_settlements_uuid` ON `debt_settlements` (`uuid`)")
+        }
+    }
+
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
 }
 

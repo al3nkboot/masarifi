@@ -96,6 +96,8 @@ fun groupEmoji(g: Int): String = when (g) {
     AccountGroup.BANK -> "🏦"
     AccountGroup.CARD -> "💳"
     AccountGroup.SAVINGS -> "🐖"
+    AccountGroup.INVESTMENT -> "📈"
+    AccountGroup.LOAN -> "🧾"
     else -> "👛"
 }
 
@@ -106,6 +108,8 @@ fun groupLabel(g: Int): String = stringResource(
         AccountGroup.BANK -> R.string.group_bank
         AccountGroup.CARD -> R.string.group_card
         AccountGroup.SAVINGS -> R.string.group_savings
+        AccountGroup.INVESTMENT -> R.string.group_investment
+        AccountGroup.LOAN -> R.string.group_loan
         else -> R.string.group_other
     },
 )
@@ -139,9 +143,9 @@ fun AccountsScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifi
 
     val visible = balances.filter { showHidden || !it.account.hidden }
     // Hidden accounts stay in the header totals (Money Manager); includeInTotal is the flag that excludes them.
-    val included = balances.filter { it.account.includeInTotal }
-    val assets = included.filter { it.balance > 0 }.sumOf { it.balance }
-    val liabilities = included.filter { it.balance < 0 }.sumOf { it.balance }
+    val nw = remember(balances) { com.midroid.masarifi.data.NetWorthCalc.compute(balances.map { it.account to it.balance }) }
+    val assets = nw.assets
+    val liabilities = -nw.liabilities
 
     fun countFor(id: Long) = txns.count { it.accountId == id || it.toAccountId == id }
     fun others(except: Long) = accounts.filter { it.id != except }
@@ -189,7 +193,7 @@ fun AccountsScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifi
             listOf(
                 Triple(stringResource(R.string.assets), Fmt.money(assets, s, false), c.income),
                 Triple(stringResource(R.string.liabilities), Fmt.money(-liabilities, s, false), c.expense),
-                Triple(stringResource(R.string.total), Fmt.money(assets + liabilities, s, false), MaterialTheme.colorScheme.onSurface),
+                Triple(stringResource(R.string.net_worth), Fmt.money(nw.net, s, false), MaterialTheme.colorScheme.onSurface),
             ),
             footer = if (s.arabic) s.currencyInfo.nameAr else s.currencyInfo.nameEn,
         )
@@ -514,6 +518,7 @@ fun AccountDialog(
     var name by remember { mutableStateOf(a.name) }
     var group by remember { mutableIntStateOf(a.groupType) }
     var balance by remember { mutableStateOf(if (a.initialBalance < 0) "-" + Money.toInput(-a.initialBalance, s.currencyInfo) else Money.toInput(a.initialBalance, s.currencyInfo)) }
+    var neg by remember { mutableStateOf(a.initialBalance < 0) }
     var last4 by remember { mutableStateOf(a.cardLast4 ?: "") }
     var include by remember { mutableStateOf(a.includeInTotal) }
     var hidden by remember { mutableStateOf(a.hidden) }
@@ -525,11 +530,17 @@ fun AccountDialog(
                 OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.name)) }, singleLine = true)
                 Spacer(Modifier.height(8.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    AccountGroup.all.forEach { g -> FilterChip(selected = group == g, onClick = { group = g }, label = { Text(groupLabel(g)) }) }
+                    AccountGroup.all.forEach { g ->
+                        FilterChip(
+                            selected = group == g,
+                            onClick = { group = g; if (g == AccountGroup.LOAN) neg = true },
+                            label = { Text(groupLabel(g)) },
+                        )
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
-                    balance, { balance = it }, label = { Text(stringResource(R.string.initial_balance)) }, singleLine = true,
+                    balance, { balance = it; neg = it.trim().startsWith("-") }, label = { Text(stringResource(R.string.initial_balance)) }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )
                 Spacer(Modifier.height(8.dp))
@@ -549,7 +560,6 @@ fun AccountDialog(
         confirmButton = {
             TextButton(onClick = {
                 if (name.isBlank()) return@TextButton
-                val neg = balance.trim().startsWith("-")
                 val v = Money.parse(balance.trim().removePrefix("-")) ?: 0L
                 onSave(a.copy(name = name.trim(), groupType = group, initialBalance = if (neg) -v else v, cardLast4 = last4.ifBlank { null }, includeInTotal = include, hidden = hidden))
                 onDismiss()

@@ -12,8 +12,14 @@ import com.midroid.masarifi.data.AppSettings
 import com.midroid.masarifi.data.Budget
 import com.midroid.masarifi.data.Category
 import com.midroid.masarifi.data.CsvBackup
+import com.midroid.masarifi.data.Debt
+import com.midroid.masarifi.data.DebtDirection
+import com.midroid.masarifi.data.DebtLogic
+import com.midroid.masarifi.data.DebtSettlement
+import com.midroid.masarifi.data.GoalContribution
 import com.midroid.masarifi.data.MerchantRule
 import com.midroid.masarifi.data.Recurring
+import com.midroid.masarifi.data.SavingsGoal
 import com.midroid.masarifi.data.Txn
 import com.midroid.masarifi.data.TxnType
 import com.midroid.masarifi.data.backup.BackupCodec
@@ -116,6 +122,103 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
     suspend fun importWarrantyImage(uri: Uri): String? = withContext(Dispatchers.IO) { warrantyImages.import(getApplication(), uri) }
     fun discardWarrantyImages(names: List<String>) = viewModelScope.launch(Dispatchers.IO) { warrantyImages.delete(names) }
+
+    // ---------------- savings goals & debts (2.7.0) ----------------
+    private val goalDao = repo.database.goalDao()
+    private val debtDao = repo.database.debtDao()
+
+    val goals: StateFlow<List<SavingsGoal>> = goalDao.observeGoals().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val goalContributions: StateFlow<List<GoalContribution>> = goalDao.observeContributions().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val debts: StateFlow<List<Debt>> = debtDao.observeDebts().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val debtSettlements: StateFlow<List<DebtSettlement>> = debtDao.observeSettlements().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    fun saveGoal(g: SavingsGoal) = viewModelScope.launch(Dispatchers.IO) {
+        val x = g.copy(updatedAt = System.currentTimeMillis())
+        if (x.id == 0L) goalDao.insertGoal(x) else goalDao.updateGoal(x)
+    }
+    fun deleteGoal(g: SavingsGoal) = viewModelScope.launch(Dispatchers.IO) {
+        goalDao.deleteContributionsOf(g.id)
+        goalDao.deleteGoal(g.id)
+    }
+    fun addContribution(goalId: Long, amount: Long, note: String) = viewModelScope.launch(Dispatchers.IO) {
+        goalDao.insertContribution(GoalContribution(goalId = goalId, amount = amount, date = java.time.LocalDate.now().toEpochDay(), note = note))
+    }
+    fun deleteContribution(c: GoalContribution) = viewModelScope.launch(Dispatchers.IO) {
+        goalDao.deleteContribution(c.id)
+    }
+
+    fun saveDebt(d: Debt) = viewModelScope.launch(Dispatchers.IO) {
+        val x = d.copy(updatedAt = System.currentTimeMillis())
+        if (x.id == 0L) debtDao.insertDebt(x) else debtDao.updateDebt(x)
+    }
+    fun deleteDebt(d: Debt) = viewModelScope.launch(Dispatchers.IO) {
+        debtDao.deleteSettlementsOf(d.id)
+        debtDao.deleteDebt(d.id)
+    }
+    fun settleDebt(d: Debt, amount: Long, accountId: Long?) = viewModelScope.launch(Dispatchers.IO) {
+        val paid = amount.coerceAtMost(DebtLogic.remaining(d, debtSettlements.value))
+        if (paid <= 0) return@launch
+        val txnId = if (accountId != null) {
+            repo.saveTxn(Txn(
+                type = if (d.direction == DebtDirection.LENT) TxnType.INCOME else TxnType.EXPENSE,
+                amount = paid,
+                accountId = accountId,
+                note = d.person,
+                description = d.note,
+                dateTime = System.currentTimeMillis(),
+            ), null)
+        } else {
+            null
+        }
+        debtDao.insertSettlement(DebtSettlement(
+            debtId = d.id,
+            amount = paid,
+            dateTime = System.currentTimeMillis(),
+            txnId = txnId,
+        ))
+    }
+    fun splitExpense(total: Long, people: List<String>, note: String, accountId: Long?, categoryId: Long?) = viewModelScope.launch(Dispatchers.IO) {
+        val shares = DebtLogic.split(total, people.size + 1)
+        val txnId = if (accountId != null) {
+            repo.saveTxn(Txn(
+                type = TxnType.EXPENSE,
+                amount = total,
+                accountId = accountId,
+                categoryId = categoryId,
+                note = note,
+                dateTime = System.currentTimeMillis(),
+            ), null)
+        } else {
+            null
+        }
+        people.forEachIndexed { i, name ->
+            debtDao.insertDebt(Debt(
+                person = name.trim(),
+                direction = DebtDirection.LENT,
+                amount = shares[i + 1],
+                dateTime = System.currentTimeMillis(),
+                note = note,
+                splitTxnId = txnId,
+            ))
+        }
+    }
+    fun duplicateTxn(t: Txn, onDone: (Long) -> Unit) = viewModelScope.launch {
+        val id = withContext(Dispatchers.IO) {
+            repo.saveTxn(t.copy(
+                id = 0,
+                dateTime = System.currentTimeMillis(),
+                uuid = com.midroid.masarifi.data.newUuid(),
+                smsHash = null,
+                smsLinked = false,
+                possibleDupOf = null,
+                isAuto = false,
+                recurringId = null,
+                createdAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis(),
+            ), null)
+        }
+        onDone(id)
+    }
 
     // ---------------- bills («الفواتير», 2.1.0) ----------------
 
