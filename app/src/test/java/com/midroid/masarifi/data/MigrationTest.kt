@@ -25,7 +25,7 @@ import java.io.File
 @Config(sdk = [35])
 class MigrationTest {
     /** Current schema version: every chain must end on it (was hard-coded 8 and went stale with 2.6.1's v9). */
-    private val LATEST = 10
+    private val LATEST = 11
     private val schemaDir = File("schemas/com.midroid.masarifi.data.AppDatabase")
 
     private fun createV1(file: File) = createFrom(file, 1)
@@ -398,7 +398,7 @@ class MigrationTest {
         createFrom(file, 9)
         val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).configure().allowMainThreadQueries().build()
         try {
-            assertEquals(10, db.openHelper.readableDatabase.version)
+            assertEquals(LATEST, db.openHelper.readableDatabase.version)
             db.openHelper.readableDatabase.query("SELECT hidden, deletedAt FROM accounts LIMIT 1").use { c ->
                 assertTrue(c.moveToFirst())
                 assertEquals(0, c.getInt(0))
@@ -427,5 +427,36 @@ class MigrationTest {
         assertTrue("v10 must declare hidden", accSql(10).contains("hidden"))
         assertTrue("v10 must declare deletedAt", accSql(10).contains("deletedAt"))
         assertTrue("v9 must stay without hidden", !accSql(9).contains("hidden"))
+    }
+
+    @Test fun migrate10To11AddsGoalsAndDebtsAndKeepsEveryRow() = runBlocking {
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        val name = "migration-test-v10.db"
+        val file = ctx.getDatabasePath(name).apply { parentFile?.mkdirs(); delete() }
+        createFrom(file, 10)
+        val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).configure().allowMainThreadQueries().build()
+        try {
+            assertEquals(LATEST, db.openHelper.readableDatabase.version)
+            assertEquals(3, db.txnDao().all().size)
+            assertEquals(1, db.accountDao().all().size)
+            assertEquals(2, db.categoryDao().all().size)
+
+            val goalId = db.goalDao().insertGoal(SavingsGoal(name = "سفر", target = 500_000))
+            db.goalDao().insertContribution(GoalContribution(goalId = goalId, amount = 120_000, date = 20000))
+            assertEquals(1, db.goalDao().allGoals().size)
+            assertEquals(120_000L, GoalLogic.saved(goalId, db.goalDao().allContributions()))
+
+            val debtId = db.debtDao().insertDebt(Debt(person = "أحمد", direction = DebtDirection.LENT, amount = 10_000, dateTime = 1L))
+            db.debtDao().insertSettlement(DebtSettlement(debtId = debtId, amount = 4_000, dateTime = 2L))
+            assertEquals(6_000L, DebtLogic.remaining(Debt(person = "أحمد", direction = DebtDirection.LENT, amount = 10_000, dateTime = 1L, id = debtId), db.debtDao().allSettlements()))
+        } finally { db.close() }
+    }
+
+    @Test fun exportedV11SchemaIsV10PlusGoalsAndDebts() {
+        fun tables(v: Int) = JSONObject(File(schemaDir, "$v.json").readText()).getJSONObject("database").getJSONArray("entities").let { a ->
+            (0 until a.length()).associate { a.getJSONObject(it).getString("tableName") to a.getJSONObject(it).getString("createSql") }
+        }
+        val v10 = tables(10); val v11 = tables(11)
+        assertEquals(v10.keys + setOf("savings_goals", "goal_contributions", "debts", "debt_settlements"), v11.keys)
     }
 }
