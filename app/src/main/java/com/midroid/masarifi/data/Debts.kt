@@ -5,6 +5,7 @@ import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Update
@@ -50,6 +51,12 @@ data class DebtSettlement(
 
 @Dao
 interface DebtDao {
+    @Query("SELECT * FROM debts WHERE uuid = :uuid")
+    suspend fun debtByUuid(uuid: String): Debt?
+
+    @Query("SELECT * FROM debt_settlements WHERE uuid = :uuid")
+    suspend fun settlementByUuid(uuid: String): DebtSettlement?
+
     @Query("SELECT * FROM debts ORDER BY dateTime DESC, id DESC")
     fun observeDebts(): Flow<List<Debt>>
 
@@ -61,6 +68,9 @@ interface DebtDao {
 
     @Update
     suspend fun updateDebt(d: Debt)
+
+    @Update
+    suspend fun updateSettlement(s: DebtSettlement)
 
     @Query("DELETE FROM debts WHERE id = :id")
     suspend fun deleteDebt(id: Long)
@@ -74,11 +84,26 @@ interface DebtDao {
     @Query("DELETE FROM debt_settlements WHERE id = :id")
     suspend fun deleteSettlement(id: Long)
 
+    @Query("DELETE FROM debt_settlements WHERE uuid = :uuid")
+    suspend fun deleteSettlementByUuid(uuid: String)
+
     @Query("SELECT * FROM debts")
     suspend fun allDebts(): List<Debt>
 
     @Query("SELECT * FROM debt_settlements")
     suspend fun allSettlements(): List<DebtSettlement>
+
+    @Query("DELETE FROM debt_settlements")
+    suspend fun clearSettlements()
+
+    @Query("DELETE FROM debts")
+    suspend fun clearDebts()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDebts(l: List<Debt>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSettlements(l: List<DebtSettlement>)
 }
 
 data class DebtTotals(val owedToMe: Long, val iOwe: Long) {

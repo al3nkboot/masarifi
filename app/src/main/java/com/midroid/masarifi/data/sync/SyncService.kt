@@ -7,9 +7,13 @@ import com.midroid.masarifi.data.Account
 import com.midroid.masarifi.data.Budget
 import com.midroid.masarifi.data.Category
 import com.midroid.masarifi.data.DupDismissed
+import com.midroid.masarifi.data.Debt
+import com.midroid.masarifi.data.DebtSettlement
+import com.midroid.masarifi.data.GoalContribution
 import com.midroid.masarifi.data.MerchantRule
 import com.midroid.masarifi.data.Recurring
 import com.midroid.masarifi.data.Repository
+import com.midroid.masarifi.data.SavingsGoal
 import com.midroid.masarifi.data.SettingsStore
 import com.midroid.masarifi.data.SmsLink
 import com.midroid.masarifi.data.SmsLog
@@ -165,6 +169,30 @@ class SyncService(
             add(SyncRecord.live(p.uuid, Kind.BILL_PAY, p.updatedAt, "bill" to bu, "amount" to p.amount, "dueDate" to p.dueDate, "paidAt" to p.paidAt,
                 "txn" to p.txnUuid, "ownTxn" to p.ownTxn))
         }
+        val goalDao = db.goalDao()
+        val goals = goalDao.allGoals()
+        val goalU = goals.associate { it.id to it.uuid }
+        goals.forEach { g ->
+            add(SyncRecord.live(g.uuid, Kind.GOAL, g.updatedAt, "name" to g.name, "target" to g.target, "targetDate" to g.targetDate,
+                "account" to g.accountId?.let { accU[it] }, "note" to g.note, "createdAt" to g.createdAt))
+        }
+        goalDao.allContributions().forEach { c ->
+            val gu = goalU[c.goalId] ?: return@forEach
+            add(SyncRecord.live(c.uuid, Kind.GOAL_CONTRIB, c.updatedAt, "goal" to gu, "amount" to c.amount, "date" to c.date,
+                "note" to c.note, "createdAt" to c.createdAt))
+        }
+        val debtDao = db.debtDao()
+        val debts = debtDao.allDebts()
+        val debtU = debts.associate { it.id to it.uuid }
+        debts.forEach { d ->
+            add(SyncRecord.live(d.uuid, Kind.DEBT, d.updatedAt, "person" to d.person, "direction" to d.direction, "amount" to d.amount,
+                "dateTime" to d.dateTime, "note" to d.note, "splitTxn" to d.splitTxnId?.let { txnU[it] }, "createdAt" to d.createdAt))
+        }
+        debtDao.allSettlements().forEach { s ->
+            val du = debtU[s.debtId] ?: return@forEach
+            add(SyncRecord.live(s.uuid, Kind.DEBT_SETTLE, s.updatedAt, "debt" to du, "amount" to s.amount, "dateTime" to s.dateTime,
+                "txn" to s.txnId?.let { txnU[it] }, "createdAt" to s.createdAt))
+        }
         val s = settings.current
         add(SyncRecord.live(SETTINGS_UUID, Kind.SETTINGS, settings.syncedUpdatedAt, "currency" to s.currency, "weekStartsSaturday" to s.weekStartsSaturday,
             "dupWindowHours" to s.dupWindowHours, "budgetAlerts" to s.budgetAlerts, "spikeAlerts" to s.spikeAlerts, "carryOver" to s.carryOver))
@@ -231,6 +259,7 @@ class SyncService(
             Kind.RECURRING -> dao.recurring(r.uuid)?.let { dao.clearTxnRecurring(it.id); dao.deleteRecurring(r.uuid) }
             Kind.ACCOUNT -> dao.account(r.uuid)?.let { a ->
                 db.billDao().clearAccount(a.id)
+                db.goalDao().clearAccount(a.id)
                 repo.recurringDao.deleteForAccount(a.id)
                 repo.cardMappingDao.deleteForAccount(a.id)
                 repo.smsBalanceDao.deleteForAccount(a.id)
@@ -238,6 +267,10 @@ class SyncService(
             }
             Kind.BILL -> db.billDao().byUuid(r.uuid)?.let { db.billDao().deletePaymentsFor(it.id); db.billDao().delete(it.id) }
             Kind.BILL_PAY -> db.billDao().deletePaymentByUuid(r.uuid)
+            Kind.GOAL -> db.goalDao().goalByUuid(r.uuid)?.let { db.goalDao().deleteContributionsOf(it.id); db.goalDao().deleteGoal(it.id) }
+            Kind.GOAL_CONTRIB -> db.goalDao().deleteContributionByUuid(r.uuid)
+            Kind.DEBT -> db.debtDao().debtByUuid(r.uuid)?.let { db.debtDao().deleteSettlementsOf(it.id); db.debtDao().deleteDebt(it.id) }
+            Kind.DEBT_SETTLE -> db.debtDao().deleteSettlementByUuid(r.uuid)
             Kind.CATEGORY -> dao.category(r.uuid)?.let { c ->
                 // Drop subcategories with the parent (local ids under this parent).
                 repo.categoryDao.all().filter { it.parentId == c.id }.forEach { ch ->
@@ -330,6 +363,48 @@ class SyncService(
                 val p = com.midroid.masarifi.bills.BillPayment(ex?.id ?: 0, billId, r.long("amount") ?: 0, r.long("dueDate") ?: 0, r.long("paidAt") ?: 0,
                     r.str("txn"), r.bool("ownTxn") ?: false, r.uuid, r.updatedAt)
                 if (ex != null) bd.updatePayment(p) else bd.insertPayment(p)
+            }
+            Kind.GOAL -> {
+                val gd = db.goalDao()
+                val ex = gd.goalByUuid(r.uuid)
+                val g = SavingsGoal(
+                    id = ex?.id ?: 0, name = r.str("name") ?: "", target = r.long("target") ?: 0, targetDate = r.long("targetDate"),
+                    accountId = accId("account"), note = r.str("note") ?: "", createdAt = r.long("createdAt") ?: r.updatedAt,
+                    uuid = r.uuid, updatedAt = r.updatedAt,
+                )
+                if (ex != null) gd.updateGoal(g) else gd.insertGoal(g)
+            }
+            Kind.GOAL_CONTRIB -> {
+                val gd = db.goalDao()
+                val goalId = r.str("goal")?.let { gd.goalByUuid(it)?.id } ?: return false
+                val ex = gd.contributionByUuid(r.uuid)
+                val c = GoalContribution(
+                    id = ex?.id ?: 0, goalId = goalId, amount = r.long("amount") ?: 0, date = r.long("date") ?: 0,
+                    note = r.str("note") ?: "", createdAt = r.long("createdAt") ?: r.updatedAt, uuid = r.uuid, updatedAt = r.updatedAt,
+                )
+                if (ex != null) gd.updateContribution(c) else gd.insertContribution(c)
+            }
+            Kind.DEBT -> {
+                val dd = db.debtDao()
+                val ex = dd.debtByUuid(r.uuid)
+                val d = Debt(
+                    id = ex?.id ?: 0, person = r.str("person") ?: "", direction = int("direction"), amount = r.long("amount") ?: 0,
+                    dateTime = r.long("dateTime") ?: r.updatedAt, note = r.str("note") ?: "",
+                    splitTxnId = r.str("splitTxn")?.let { dao.txn(it)?.id }, createdAt = r.long("createdAt") ?: r.updatedAt,
+                    uuid = r.uuid, updatedAt = r.updatedAt,
+                )
+                if (ex != null) dd.updateDebt(d) else dd.insertDebt(d)
+            }
+            Kind.DEBT_SETTLE -> {
+                val dd = db.debtDao()
+                val debtId = r.str("debt")?.let { dd.debtByUuid(it)?.id } ?: return false
+                val ex = dd.settlementByUuid(r.uuid)
+                val s = DebtSettlement(
+                    id = ex?.id ?: 0, debtId = debtId, amount = r.long("amount") ?: 0,
+                    dateTime = r.long("dateTime") ?: r.updatedAt, txnId = r.str("txn")?.let { dao.txn(it)?.id },
+                    createdAt = r.long("createdAt") ?: r.updatedAt, uuid = r.uuid, updatedAt = r.updatedAt,
+                )
+                if (ex != null) dd.updateSettlement(s) else dd.insertSettlement(s)
             }
             Kind.BUDGET -> {
                 val cid = categoryIdFor(r.uuid, "b:") ?: return false

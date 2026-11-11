@@ -5,6 +5,7 @@ import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Update
@@ -45,6 +46,12 @@ data class GoalContribution(
 
 @Dao
 interface GoalDao {
+    @Query("SELECT * FROM savings_goals WHERE uuid = :uuid")
+    suspend fun goalByUuid(uuid: String): SavingsGoal?
+
+    @Query("SELECT * FROM goal_contributions WHERE uuid = :uuid")
+    suspend fun contributionByUuid(uuid: String): GoalContribution?
+
     @Query("SELECT * FROM savings_goals ORDER BY id")
     fun observeGoals(): Flow<List<SavingsGoal>>
 
@@ -56,6 +63,9 @@ interface GoalDao {
 
     @Update
     suspend fun updateGoal(g: SavingsGoal)
+
+    @Update
+    suspend fun updateContribution(c: GoalContribution)
 
     @Query("DELETE FROM savings_goals WHERE id = :id")
     suspend fun deleteGoal(id: Long)
@@ -69,11 +79,29 @@ interface GoalDao {
     @Query("DELETE FROM goal_contributions WHERE id = :id")
     suspend fun deleteContribution(id: Long)
 
+    @Query("DELETE FROM goal_contributions WHERE uuid = :uuid")
+    suspend fun deleteContributionByUuid(uuid: String)
+
+    @Query("UPDATE savings_goals SET accountId = NULL WHERE accountId = :id")
+    suspend fun clearAccount(id: Long)
+
     @Query("SELECT * FROM savings_goals ORDER BY id")
     suspend fun allGoals(): List<SavingsGoal>
 
     @Query("SELECT * FROM goal_contributions ORDER BY date DESC, id DESC")
     suspend fun allContributions(): List<GoalContribution>
+
+    @Query("DELETE FROM goal_contributions")
+    suspend fun clearContributions()
+
+    @Query("DELETE FROM savings_goals")
+    suspend fun clearGoals()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGoals(l: List<SavingsGoal>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertContributions(l: List<GoalContribution>)
 }
 
 object GoalLogic {

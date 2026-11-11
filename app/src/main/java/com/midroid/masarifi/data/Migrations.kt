@@ -186,6 +186,7 @@ object Migrations {
             )
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_debt_settlements_debtId` ON `debt_settlements` (`debtId`)")
             db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_debt_settlements_uuid` ON `debt_settlements` (`uuid`)")
+            SyncSchema.createGoalTriggers(db)
         }
     }
 

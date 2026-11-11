@@ -5,8 +5,13 @@ import com.midroid.masarifi.data.AppSettings
 import com.midroid.masarifi.data.Budget
 import com.midroid.masarifi.data.CardMapping
 import com.midroid.masarifi.data.Category
+import com.midroid.masarifi.data.Debt
+import com.midroid.masarifi.data.DebtSettlement
+import com.midroid.masarifi.data.GoalContribution
+import com.midroid.masarifi.data.GoalsJson
 import com.midroid.masarifi.data.MerchantRule
 import com.midroid.masarifi.data.Recurring
+import com.midroid.masarifi.data.SavingsGoal
 import com.midroid.masarifi.data.SmsLog
 import com.midroid.masarifi.data.SmsLink
 import com.midroid.masarifi.data.DupDismissed
@@ -39,6 +44,11 @@ data class BackupData(
     val warranties: List<com.midroid.masarifi.warranty.Warranty>? = null,
     /** Invoice photos of [warranties]: file name → JPEG bytes (base64 in the file). */
     val warrantyImages: Map<String, ByteArray>? = null,
+    /** Savings goals + contributions, debts + settlements (optional arrays, app 2.7.0, still schema 4). Older files have none: restored as empty. */
+    val goals: List<SavingsGoal> = emptyList(),
+    val goalContributions: List<GoalContribution> = emptyList(),
+    val debts: List<Debt> = emptyList(),
+    val debtSettlements: List<DebtSettlement> = emptyList(),
 )
 
 class BackupFormatException(val code: String, msg: String) : Exception(msg)
@@ -55,6 +65,7 @@ class BackupFormatException(val code: String, msg: String) : Exception(msg)
  * App 2.1.0 adds the optional arrays "bills" and "billPayments" (still schema 4: purely additive, so 2.0.0 can still read
  * the file and ignores them; files without them restore as before and keep the device's bills).
  * App 2.5.0 adds the optional "warranties" array and "warrantyImages" (invoice photos, base64 JPEG), same additive rule.
+ * App 2.7.0 adds the optional arrays "goals", "goalContributions", "debts" and "debtSettlements" (additive, schema stays 4; written only when non-empty, missing = empty).
  * Readers ignore unknown fields; older schema versions are upgraded in [decode] (missing fields get defaults).
  */
 object BackupCodec {
@@ -134,6 +145,10 @@ object BackupCodec {
         d.billPayments?.let { l -> o.put("billPayments", JSONArray().apply { l.forEach { put(com.midroid.masarifi.bills.BillsJson.payment(it)) } }) }
         d.warranties?.let { l -> o.put("warranties", JSONArray().apply { l.forEach { put(com.midroid.masarifi.warranty.WarrantyJson.encode(it)) } }) }
         d.warrantyImages?.let { m -> o.put("warrantyImages", JSONObject().apply { m.forEach { (k, v) -> put(k, android.util.Base64.encodeToString(v, android.util.Base64.NO_WRAP)) } }) }
+        if (d.goals.isNotEmpty()) o.put("goals", JSONArray().apply { d.goals.forEach { put(GoalsJson.goal(it)) } })
+        if (d.goalContributions.isNotEmpty()) o.put("goalContributions", JSONArray().apply { d.goalContributions.forEach { put(GoalsJson.contribution(it)) } })
+        if (d.debts.isNotEmpty()) o.put("debts", JSONArray().apply { d.debts.forEach { put(GoalsJson.debt(it)) } })
+        if (d.debtSettlements.isNotEmpty()) o.put("debtSettlements", JSONArray().apply { d.debtSettlements.forEach { put(GoalsJson.settlement(it)) } })
         return o.toString()
     }
 
@@ -224,6 +239,10 @@ object BackupCodec {
             billPayments = com.midroid.masarifi.bills.BillsJson.payments(o.optJSONArray("billPayments")) ?: if (o.has("bills")) emptyList() else null,
             warranties = o.optJSONArray("warranties")?.let { a -> (0 until a.length()).map { com.midroid.masarifi.warranty.WarrantyJson.decode(a.getJSONObject(it)) } },
             warrantyImages = o.optJSONObject("warrantyImages")?.let { m -> m.keys().asSequence().associateWith { k -> android.util.Base64.decode(m.getString(k), android.util.Base64.DEFAULT) } },
+            goals = GoalsJson.goals(o.optJSONArray("goals")),
+            goalContributions = GoalsJson.contributions(o.optJSONArray("goalContributions")),
+            debts = GoalsJson.debts(o.optJSONArray("debts")),
+            debtSettlements = GoalsJson.settlements(o.optJSONArray("debtSettlements")),
         ).let { d ->
             // stable ids derived from names can collide (two rows with one name): later rows get a fresh id
             fun <T> uniq(l: List<T>, u: (T) -> String, set: (T, String) -> T): List<T> { val seen = HashSet<String>(); return l.map { if (seen.add(u(it))) it else set(it, newUuid()) } }

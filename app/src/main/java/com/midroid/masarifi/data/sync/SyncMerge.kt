@@ -82,6 +82,8 @@ object SyncMerge {
                     Kind.TXN, Kind.RECURRING -> rec.str("account")
                     Kind.SMS_LINK -> rec.str("txn")
                     Kind.BILL_PAY -> rec.str("bill")
+                    Kind.GOAL_CONTRIB -> rec.str("goal")
+                    Kind.DEBT_SETTLE -> rec.str("debt")
                     else -> continue
                 }
                 if (gone(ref)) out[rec.uuid] = rec.tombstone(maxOf(rec.updatedAt, refTs(ref)))
