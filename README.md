@@ -14,9 +14,9 @@
 
 ### [⬇️ تحميل التطبيق (APK)](https://github.com/al3nkboot/masarifi/releases)
 
-الإصدار الحالي **2.6.3** — بنسختين:
+الإصدار الحالي **2.7.0** — بنسختين:
 
-| | النسخة الكاملة `masarifi-v2.6.3.apk` | بدون الرسائل `masarifi-v2.6.3-nosms.apk` |
+| | النسخة الكاملة `masarifi-v2.7.0.apk` | بدون الرسائل `masarifi-v2.7.0-nosms.apk` |
 |---|---|---|
 | قراءة رسائل البنك وتسجيل المصاريف تلقائياً | ✅ | ❌ (إدخال يدوي) |
 | صلاحية الرسائل SMS | تطلبها | لا تطلبها أبداً |
@@ -25,6 +25,20 @@
 **Two editions / نسختان:** *Full* reads bank SMS to log expenses automatically; *No-SMS* has no SMS permission at all (manual entry). Both share the same package and data, so installing one replaces the other and keeps your data. / النسختان بنفس الحزمة والبيانات: تثبيت واحدة يستبدل الأخرى وتبقى بياناتك.
 
 <img src="docs/images/v250/01_warranty_list_ar_dark.png" width="24%" alt="الضمانات"> <img src="docs/images/v250/03_warranty_detail_ar_light.png" width="24%" alt="تفاصيل الضمان"> <img src="docs/images/v250/02_warranty_edit_ar_dark.png" width="24%" alt="إضافة ضمان">
+
+### الجديد في 2.7.0
+
+<div dir="rtl">
+
+- أهداف الادخار: هدف بمبلغ وموعد، ونسبة تقدم، وكم تحتاج تدخر كل شهر، وأقرب هدف في الصفحة الرئيسية.
+- الديون وتقسيم المصاريف: اللي أقرضته واللي عليك، وتسديد جزئي أو كامل، وتقسيم فاتورة مشتركة على أصحابك.
+- صافي الثروة: حسابات للاستثمارات وللقروض والائتمان، والقروض تنخصم من مجموعك.
+- تقارير أسرع: هذا الأسبوع وهذا الشهر وآخر ثلاثة أشهر وهذه السنة، مع أكثر المتاجر صرفاً ونسبة الادخار.
+- فلاتر سريعة في قائمة العمليات، وزر لتكرار أي عملية سابقة.
+
+</div>
+
+**What's new:** savings goals with progress and a home card · debts/IOUs with partial settlement and bill splitting · net worth with Investment and Loan/credit account types · quick report periods (this week / this month / last 3 months / this year), top merchants and savings rate · quick type filters on the transaction list and a duplicate-transaction action.
 
 ### الجديد في 2.6.3 / What's new
 - ترحيل الرصيد (اختياري، متوقف افتراضياً): المتبقي أو العجز من الشهر السابق يظهر في تبويب المعاملات دون إنشاء عملية — Optional balance carry-over (off by default) shows last month's signed remainder on the Transactions tab; it is not stored as a transaction and is left out of Stats
@@ -97,6 +111,11 @@
 ### ☁️ نسخ احتياطي ومزامنة عبر Google Drive
 - نسخ احتياطي يومي تلقائي إلى مجلد تختاره في Drive، ويحتفظ بآخر 10 نسخ.
 - مزامنة جهازين عن طريق ملف واحد مشترك في Drive.
+
+### 🎯 الأهداف والديون وصافي الثروة
+- أهداف ادخار بنسبة تقدم وموعد، وأقرب هدف يظهر في الرئيسية.
+- سجل للديون: اللي لك واللي عليك، مع التسديد وتقسيم المصاريف المشتركة.
+- صافي الثروة: الأصول ناقص القروض والبطاقات المدينة.
 
 ### 🧾 الفواتير (تجريبي في 2.1)
 - فواتير متكررة (شهرية، سنوية، أو كل عدة أشهر) مع تذكير قبل موعدها.
