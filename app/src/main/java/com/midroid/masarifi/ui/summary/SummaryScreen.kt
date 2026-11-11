@@ -254,7 +254,7 @@ fun SummaryScreen(vm: AppViewModel, navigate: (Route) -> Unit, onBack: () -> Uni
                 merchants.forEachIndexed { index, merchant ->
                     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(merchant.name, Modifier.weight(1f), maxLines = 1)
-                        Text("×${merchant.count}", color = c.muted)
+                        Text("×${merchant.count}", color = c.muted, modifier = Modifier.padding(horizontal = 12.dp))
                         Text(money(merchant.amount), color = c.expense, fontWeight = FontWeight.SemiBold)
                     }
                     if (index < merchants.lastIndex) HorizontalDivider(color = c.divider)

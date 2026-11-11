@@ -165,7 +165,7 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
                 onClick = { navigate(Route.Duplicates) },
             )
         }
-        if (!sel.active) {
+        run { // kept while selecting so the list does not jump under the finger
             HomeOverview(
                 netWorth = netWorth,
                 topGoal = topGoal,
@@ -208,7 +208,7 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
                 Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = Spacing.md, vertical = Spacing.xs)
+                    .padding(horizontal = Spacing.md)
                     .testTag("type_filter_chips"),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             ) {
@@ -527,6 +527,7 @@ fun CarryOverRow(amount: Long, s: AppSettings) {
     )
 }
 
+/** Compact one-line home card: net worth (assets - liabilities) and the closest savings goal (2.7.0). */
 @Composable
 fun HomeOverview(
     netWorth: com.midroid.masarifi.data.NetWorth,
@@ -535,61 +536,33 @@ fun HomeOverview(
     s: AppSettings,
     onGoals: () -> Unit,
 ) {
+    val c = AppTheme.colors
     Card(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Spacing.md, vertical = Spacing.xs)
-            .testTag("home_overview"),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
+        Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.xxs).testTag("home_overview"),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
-        Row(Modifier.padding(Spacing.md)) {
+        Row(Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.net_worth), style = MaterialTheme.typography.labelSmall, color = c.muted, maxLines = 1)
                 Text(
-                    stringResource(R.string.net_worth),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = AppTheme.colors.muted,
-                )
-                Text(
-                    "\u200E" + Fmt.money(netWorth.net, s),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (netWorth.net >= 0) AppTheme.colors.income else AppTheme.colors.expense,
+                    "\u200E" + Fmt.money(netWorth.net, s), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+                    color = if (netWorth.net >= 0) c.income else c.expense, maxLines = 1,
                 )
             }
-            if (topGoal != null) {
-                Column(
-                    Modifier
-                        .weight(1f)
-                        .clickable(onClick = onGoals),
-                ) {
-                    Text(
-                        topGoal.name,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = AppTheme.colors.muted,
-                        maxLines = 1,
-                    )
-                    ProgressBar(
-                        com.midroid.masarifi.data.GoalLogic.progress(saved, topGoal.target),
-                    )
-                    Text(
-                        stringResource(
-                            R.string.goal_percent,
-                            com.midroid.masarifi.data.GoalLogic.percent(saved, topGoal.target),
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                }
-            } else {
-                Column(
-                    Modifier.weight(1f),
-                    horizontalAlignment = Alignment.End,
-                ) {
-                    TextButton(onClick = onGoals) {
-                        Text(stringResource(R.string.goal_add))
+            Spacer(Modifier.width(Spacing.md))
+            Column(Modifier.weight(1f).clickable(onClick = onGoals).testTag("home_goal")) {
+                if (topGoal != null) {
+                    val pct = com.midroid.masarifi.data.GoalLogic.percent(saved, topGoal.target)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(topGoal.name, style = MaterialTheme.typography.labelSmall, color = c.muted, maxLines = 1, modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.goal_percent, pct), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
+                    Spacer(Modifier.height(Spacing.xs))
+                    ProgressBar(com.midroid.masarifi.data.GoalLogic.progress(saved, topGoal.target))
+                } else {
+                    Text(stringResource(R.string.goals), style = MaterialTheme.typography.labelSmall, color = c.muted, maxLines = 1)
+                    Text("+ " + stringResource(R.string.goal_add), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, maxLines = 1)
                 }
             }
         }
