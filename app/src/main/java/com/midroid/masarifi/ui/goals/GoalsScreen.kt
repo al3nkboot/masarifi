@@ -117,7 +117,7 @@ private fun GoalCard(
                     style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             }
             Spacer(Modifier.size(8.dp))
-            ProgressBar(progress)
+            ProgressBar(progress, goal = true)
             Spacer(Modifier.size(6.dp))
             Text(stringResource(R.string.goal_saved_of, Fmt.money(saved, s), Fmt.money(goal.target, s)),
                 style = MaterialTheme.typography.bodyMedium)

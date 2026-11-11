@@ -559,7 +559,7 @@ fun HomeOverview(
                         Text(stringResource(R.string.goal_percent, pct), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
                     Spacer(Modifier.height(Spacing.xs))
-                    ProgressBar(com.midroid.masarifi.data.GoalLogic.progress(saved, topGoal.target))
+                    ProgressBar(com.midroid.masarifi.data.GoalLogic.progress(saved, topGoal.target), goal = true)
                 } else {
                     Text(stringResource(R.string.goals), style = MaterialTheme.typography.labelSmall, color = c.muted, maxLines = 1)
                     Text("+ " + stringResource(R.string.goal_add), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, maxLines = 1)
