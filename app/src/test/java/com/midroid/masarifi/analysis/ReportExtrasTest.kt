@@ -3,7 +3,6 @@ package com.midroid.masarifi.analysis
 import com.midroid.masarifi.data.Txn
 import com.midroid.masarifi.data.TxnType
 import com.midroid.masarifi.ui.summary.PeriodChoice
-import com.midroid.masarifi.ui.summary.SummaryPeriod
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
