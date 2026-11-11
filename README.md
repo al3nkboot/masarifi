@@ -35,10 +35,11 @@
 - صافي الثروة: حسابات للاستثمارات وللقروض والائتمان، والقروض تنخصم من مجموعك.
 - تقارير أسرع: هذا الأسبوع وهذا الشهر وآخر ثلاثة أشهر وهذه السنة، مع أكثر المتاجر صرفاً ونسبة الادخار.
 - فلاتر سريعة في قائمة العمليات، وزر لتكرار أي عملية سابقة.
+- الأهداف والديون محفوظة في النسخة الاحتياطية اليومية وملفات التصدير، وتتزامن بين جهازيك.
 
 </div>
 
-**What's new:** savings goals with progress and a home card · debts/IOUs with partial settlement and bill splitting · net worth with Investment and Loan/credit account types · quick report periods (this week / this month / last 3 months / this year), top merchants and savings rate · quick type filters on the transaction list and a duplicate-transaction action.
+**What's new:** savings goals with progress and a home card · debts/IOUs with partial settlement and bill splitting · net worth with Investment and Loan/credit account types · quick report periods (this week / this month / last 3 months / this year), top merchants and savings rate · quick type filters on the transaction list and a duplicate-transaction action · goals, contributions, debts and settlements are included in JSON/CSV export-import, the daily Drive backup and two-device sync (2.6.x backups still restore).
 
 ### الجديد في 2.6.3 / What's new
 - ترحيل الرصيد (اختياري، متوقف افتراضياً): المتبقي أو العجز من الشهر السابق يظهر في تبويب المعاملات دون إنشاء عملية — Optional balance carry-over (off by default) shows last month's signed remainder on the Transactions tab; it is not stored as a transaction and is left out of Stats
