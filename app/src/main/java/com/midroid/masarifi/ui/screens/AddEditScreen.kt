@@ -68,6 +68,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -186,6 +187,12 @@ fun AddEditScreen(vm: AppViewModel, route: Route.Edit, onBack: () -> Unit, onEdi
                 },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
                 actions = {
+                    if (existing != null) {
+                        val dupMsg = stringResource(R.string.txn_duplicated)
+                        IconButton(onClick = { vm.duplicateTxn(existing) { newId -> vm.message(dupMsg); onOpenTxn(newId) } }, modifier = Modifier.testTag("txn_duplicate")) {
+                            Icon(com.midroid.masarifi.ui.components.AppIcons.Copy, stringResource(R.string.txn_duplicate))
+                        }
+                    }
                     if (existing != null) IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Filled.Delete, stringResource(R.string.delete)) }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),

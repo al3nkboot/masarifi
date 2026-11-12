@@ -50,7 +50,9 @@ interface SyncDao {
             "UNION ALL SELECT MAX(updatedAt) FROM categories UNION ALL SELECT MAX(updatedAt) FROM recurring " +
             "UNION ALL SELECT MAX(updatedAt) FROM sms_links UNION ALL SELECT MAX(updatedAt) FROM budgets " +
             "UNION ALL SELECT MAX(updatedAt) FROM merchant_rules UNION ALL SELECT MAX(updatedAt) FROM bills " +
-            "UNION ALL SELECT MAX(updatedAt) FROM bill_payments UNION ALL SELECT MAX(deletedAt) FROM sync_tombstones)",
+            "UNION ALL SELECT MAX(updatedAt) FROM bill_payments UNION ALL SELECT MAX(updatedAt) FROM savings_goals " +
+            "UNION ALL SELECT MAX(updatedAt) FROM goal_contributions UNION ALL SELECT MAX(updatedAt) FROM debts " +
+            "UNION ALL SELECT MAX(updatedAt) FROM debt_settlements UNION ALL SELECT MAX(deletedAt) FROM sync_tombstones)",
     )
     suspend fun localMark(): Long?
 

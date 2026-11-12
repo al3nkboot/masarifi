@@ -307,8 +307,8 @@ fun EmptyState(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ProgressBar(ratio: Double, modifier: Modifier = Modifier) {
-    val color = when {
+fun ProgressBar(ratio: Double, modifier: Modifier = Modifier, goal: Boolean = false) {
+    val color = if (goal) { if (ratio >= 1.0) AppTheme.colors.positive else com.midroid.masarifi.ui.theme.Brand.Blue } else when {
         ratio >= 1.0 -> com.midroid.masarifi.ui.theme.Brand.Coral
         ratio >= 0.8 -> com.midroid.masarifi.ui.theme.Brand.Orange
         else -> com.midroid.masarifi.ui.theme.Brand.Blue

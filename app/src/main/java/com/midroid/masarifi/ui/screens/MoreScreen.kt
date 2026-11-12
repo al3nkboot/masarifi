@@ -97,6 +97,8 @@ fun MoreScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier, 
         SectionTitle(stringResource(R.string.section_data))
         SettingRow(AppIcons.Category, stringResource(R.string.categories), stringResource(R.string.categories_sub), onClick = { navigate(Route.Categories) })
         SettingRow(AppIcons.Shield, stringResource(R.string.warranties), stringResource(R.string.warranties_sub), onClick = { navigate(Route.Warranties) })
+        SettingRow(AppIcons.PieChart, stringResource(R.string.goals), stringResource(R.string.goals_sub), onClick = { navigate(Route.Goals) })
+        SettingRow(AppIcons.Wallet, stringResource(R.string.debts), stringResource(R.string.debts_sub), onClick = { navigate(Route.Debts) })
         SettingRow(AppIcons.Repeat, stringResource(R.string.repeating), stringResource(R.string.repeating_sub), onClick = { navigate(Route.Recurring) })
         val dupCount = vm.dupGroups.collectAsStateWithLifecycle().value.size
         SettingRow(AppIcons.Copy, stringResource(R.string.dup_review), stringResource(R.string.dup_review_sub) + if (dupCount > 0) " ($dupCount)" else "", onClick = { navigate(Route.Duplicates) })

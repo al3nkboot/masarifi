@@ -59,12 +59,16 @@ class BackupService(
     private val dao get() = repo.database.backupDao()
 
     suspend fun snapshot(now: Long = System.currentTimeMillis()): BackupData = repo.inTransaction {
+        val goalDao = repo.database.goalDao()
+        val debtDao = repo.database.debtDao()
         BackupData(
             createdAt = now, appVersion = appVersion(), settings = settings.current,
             accounts = dao.accounts(), categories = dao.categories(), transactions = dao.transactions(),
             recurring = dao.recurring(), budgets = dao.budgets(), merchantRules = dao.merchantRules(), smsLog = dao.smsLog(),
             smsLinks = dao.smsLinks(), dupDismissed = dao.dupDismissed(), cardMappings = dao.cardMappings(),
             bills = repo.billDao.all(), billPayments = repo.billDao.payments(),
+            goals = goalDao.allGoals(), goalContributions = goalDao.allContributions(),
+            debts = debtDao.allDebts(), debtSettlements = debtDao.allSettlements(),
         ).let { d ->
             val w = repo.warrantyDao.all()
             d.copy(warranties = w, warrantyImages = images?.let { st -> w.flatMap { it.imageList }.distinct().mapNotNull { n -> st.read(n)?.let { n to it } }.toMap() })
@@ -111,6 +115,20 @@ class BackupService(
                     billDao.update(b.copy(accountId = acc?.id, categoryId = cat?.id))
                 }
             }
+            val goalDao = repo.database.goalDao()
+            val debtDao = repo.database.debtDao()
+            goalDao.clearContributions(); goalDao.clearGoals(); debtDao.clearSettlements(); debtDao.clearDebts()
+            val txnIds = d.transactions.map { it.id }.toSet()
+            goalDao.insertGoals(d.goals.map { it.copy(accountId = it.accountId?.takeIf { a -> a in valid }) })
+            val goalIds = d.goals.map { it.id }.toSet()
+            goalDao.insertContributions(d.goalContributions.filter { it.goalId in goalIds })
+            debtDao.insertDebts(d.debts.map { it.copy(splitTxnId = it.splitTxnId?.takeIf { t -> t in txnIds }) })
+            val debtIds = d.debts.map { it.id }.toSet()
+            debtDao.insertSettlements(
+                d.debtSettlements
+                    .filter { it.debtId in debtIds }
+                    .map { it.copy(txnId = it.txnId?.takeIf { t -> t in txnIds }) }
+            )
         }
         if (d.warranties != null) {
             // images first (files), then rows; files no row references are pruned

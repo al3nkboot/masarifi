@@ -17,7 +17,9 @@ object AccountGroup {
     const val CARD = 2
     const val SAVINGS = 3
     const val OTHER = 4
-    val all = listOf(CASH, BANK, CARD, SAVINGS, OTHER)
+    const val INVESTMENT = 5
+    const val LOAN = 6 /* loan or credit line: always a liability */
+    val all = listOf(CASH, BANK, CARD, SAVINGS, INVESTMENT, LOAN, OTHER)
 }
 
 object Repeat {

@@ -75,9 +75,26 @@ object SyncSchema {
 
     fun createBillTriggers(db: SupportSQLiteDatabase) = billTriggers().forEach { db.execSQL(it) }
 
+    /** Savings-goal and debt tables (schema v11, app 2.7.0) and their sync kinds. */
+    val GOAL_TABLES = linkedMapOf("savings_goals" to "goal", "goal_contributions" to "goalcontrib", "debts" to "debt", "debt_settlements" to "debtsettle")
+
+    /** Same three triggers as [triggers] for the savings-goal and debt tables (named `goalsync_*`). */
+    fun goalTriggers(): List<String> = buildList {
+        for ((t, kind) in GOAL_TABLES) {
+            add("CREATE TRIGGER IF NOT EXISTS `goalsync_upd_$t` AFTER UPDATE ON `$t` WHEN NEW.updatedAt = OLD.updatedAt BEGIN " +
+                "UPDATE `$t` SET updatedAt = MAX($NOW, OLD.updatedAt + 1) WHERE id = NEW.id; END")
+            add("CREATE TRIGGER IF NOT EXISTS `goalsync_del_$t` AFTER DELETE ON `$t` BEGIN " +
+                "INSERT OR REPLACE INTO sync_tombstones(uuid, entity, deletedAt) VALUES (OLD.uuid, '$kind', $NOW); END")
+            add("CREATE TRIGGER IF NOT EXISTS `goalsync_ins_$t` AFTER INSERT ON `$t` WHEN EXISTS (SELECT 1 FROM sync_tombstones WHERE uuid = NEW.uuid) BEGIN " +
+                "UPDATE `$t` SET updatedAt = MAX($NOW, NEW.updatedAt) WHERE id = NEW.id; DELETE FROM sync_tombstones WHERE uuid = NEW.uuid; END")
+        }
+    }
+
+    fun createGoalTriggers(db: SupportSQLiteDatabase) = goalTriggers().forEach { db.execSQL(it) }
+
     /** Installs the triggers on fresh databases (migrations install them for upgraded ones). */
     val callback = object : RoomDatabase.Callback() {
-        override fun onCreate(db: SupportSQLiteDatabase) { createTriggers(db); createBillTriggers(db) }
-        override fun onOpen(db: SupportSQLiteDatabase) { createTriggers(db); createBillTriggers(db) } // IF NOT EXISTS: no-op normally
+        override fun onCreate(db: SupportSQLiteDatabase) { createTriggers(db); createBillTriggers(db); createGoalTriggers(db) }
+        override fun onOpen(db: SupportSQLiteDatabase) { createTriggers(db); createBillTriggers(db); createGoalTriggers(db) } // IF NOT EXISTS: no-op normally
     }
 }
