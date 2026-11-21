@@ -155,11 +155,13 @@
 
 ## التثبيت
 
-1. حمّل ملف `masarifi-<الإصدار>-release.apk` من [صفحة الإصدارات](https://github.com/al3nkboot/masarifi/releases). المتطلب: أندرويد 8.0 أو أحدث.
-2. افتح الملف واسمح بـ«تثبيت التطبيقات من مصادر غير معروفة» للمتصفح أو مدير الملفات.
-3. **تحذير Play Protect:** لأن التطبيق يطلب صلاحية الرسائل ولم يُنشر في Google Play، قد يظهر تحذير أو يُحظر التثبيت. اضغط «مزيد من التفاصيل» ← «التثبيت على أي حال». قد تختلف الأسماء حسب الجهاز.
-4. افتح التطبيق واسمح بصلاحية الرسائل والإشعارات. إذا رفض أندرويد منح صلاحية الرسائل («إعداد محظور»): الإعدادات ← التطبيقات ← مصاريفي ← ⋮ ← «السماح بالإعدادات المحظورة»، ثم فعّلها.
-5. من الإعدادات اربط بطاقاتك بحساباتك، ويمكنك استيراد الرسائل القديمة.
+1. **التحميل المباشر لآخر نسخة كاملة:** [اضغط هنا](https://github.com/al3nkboot/masarifi/releases/latest/download/Masarifi.apk)
+2. **من تطبيق Downloader:** اكتب الرمز **XXXXXXX**
+3. إذا تبي النسخة بدون الرسائل، أو ملف بإصدار معيّن، روح [صفحة الإصدارات](https://github.com/al3nkboot/masarifi/releases). المتطلب: أندرويد ٨ أو أحدث.
+4. افتح الملف واسمح بـ«تثبيت التطبيقات من مصادر غير معروفة» للمتصفح أو مدير الملفات.
+5. **تحذير بلاي بروتكت:** لأن التطبيق يطلب صلاحية الرسائل وما نُشر في المتجر، قد يظهر تحذير أو يُحظر التثبيت. اضغط «مزيد من التفاصيل» ثم «التثبيت على أي حال». قد تختلف الأسماء حسب الجهاز.
+6. افتح التطبيق واسمح بصلاحية الرسائل والإشعارات. إذا رفض أندرويد منح صلاحية الرسائل («إعداد محظور»): الإعدادات ← التطبيقات ← مصاريفي ← ⋮ ← «السماح بالإعدادات المحظورة»، ثم فعّلها.
+7. من الإعدادات اربط بطاقاتك بحساباتك، ويمكنك استيراد الرسائل القديمة.
 
 ## ساهم
 
@@ -213,7 +215,11 @@
 - **2.1 beta:** recurring bills with reminders, a "Paid" button that records the expense, a bills calendar and a home-screen widget.
 - **Privacy:** there's no server and no ads. `INTERNET` is used only for the optional manual update check against GitHub. Your data stays on your phone and in your own Drive. See the [privacy policy](docs/privacy-policy.md).
 
-**[Download the APK from Releases](https://github.com/al3nkboot/masarifi/releases)** (Android 8.0+). Play Protect may warn you because the app reads SMS. Tap *More details → Install anyway*.
+### Install
+
+1. **Direct download (latest full edition):** [Masarifi.apk](https://github.com/al3nkboot/masarifi/releases/latest/download/Masarifi.apk)
+2. **Downloader app** (Android TV / head units): enter code **XXXXXXX**
+3. Both editions, including the No-SMS build, are on [Releases](https://github.com/al3nkboot/masarifi/releases) (Android 8.0+). Play Protect may warn you because the app reads SMS. Tap *More details → Install anyway*.
 If your bank (from any country) isn't supported, [open an issue](https://github.com/al3nkboot/masarifi/issues/new?template=bank-sms.md) with a **masked** sample SMS.
 To add a bank in code: add one `BankProfile` entry (sender IDs, `SmsRule` regexes using `{AMT}` `{CUR}` `{MERCHANT}` `{CARD}` `{DATE}`, optional debit/credit keywords) to `banks` in [`DefaultSmsConfig.kt`](app/src/main/java/com/midroid/masarifi/sms/DefaultSmsConfig.kt), based only on a real masked sample ([template](.github/ISSUE_TEMPLATE/bank-sms.md)), plus a test in `BankTableTest.kt`.
 - **Support development:** [**PayPal (@Midroid5G)**](https://paypal.me/Midroid5G) · [**@midroid5G on X**](https://x.com/midroid5G)
