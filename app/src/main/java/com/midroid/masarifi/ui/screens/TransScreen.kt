@@ -48,6 +48,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.runtime.mutableFloatStateOf
+import kotlin.math.roundToInt
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -143,100 +153,230 @@ fun TransScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier)
     androidx.compose.runtime.LaunchedEffect(sel.active) { vm.selectionActive = sel.active }
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { vm.selectionActive = false } }
 
-    Column(modifier.fillMaxSize()) {
-        // Top bar (selection mode replaces it)
-        if (sel.active) {
-            SelectionTopBar(sel, visibleIds = {
-                when (tab) {
-                    0 -> monthShown.map { it.id }
-                    1 -> vm.selectedDay?.let { d -> monthShown.filter { Fmt.toDate(it.dateTime) == d }.map { it.id } }.orEmpty()
-                    else -> emptyList()
-                }
-            })
-        } else Row(Modifier.fillMaxWidth().padding(horizontal = Spacing.xs, vertical = Spacing.xs), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.tab_trans), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = Spacing.md))
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = { navigate(Route.Search) }) { Icon(Icons.Filled.Search, stringResource(R.string.search)) }
-        }
-        if (dupGroups.isNotEmpty() && !sel.active) {
-            com.midroid.masarifi.ui.components.InfoStrip(
-                text = stringResource(R.string.dup_banner, dupGroups.size.toString()), icon = com.midroid.masarifi.ui.components.AppIcons.Copy,
-                tint = AppTheme.colors.warning, container = AppTheme.colors.warning.copy(alpha = 0.14f),
-                onClick = { navigate(Route.Duplicates) },
-            )
-        }
-        run { // kept while selecting so the list does not jump under the finger
-            HomeOverview(
-                netWorth = netWorth,
-                topGoal = topGoal,
-                saved = topGoal?.let {
-                    com.midroid.masarifi.data.GoalLogic.saved(it.id, contributions)
-                } ?: 0L,
-                s = s,
-                onGoals = { navigate(Route.Goals) },
-            )
-        }
-        MonthSwitcher(
-            label = if (isYearTab) ym.year.toString() else Fmt.monthTitle(ym, s.arabic),
-            onPrev = { vm.month.value = if (isYearTab) ym.minusYears(1) else ym.minusMonths(1) },
-            onNext = { vm.month.value = if (isYearTab) ym.plusYears(1) else ym.plusMonths(1) },
-            onLabelClick = { vm.month.value = YearMonth.now() },
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-        )
-        val tabs = listOf(R.string.daily, R.string.tab_calendar_short, R.string.monthly, R.string.tab_total_short, R.string.tab_note_short)
-        androidx.compose.material3.PrimaryTabRow(
-            selectedTabIndex = tab,
-            containerColor = Color.Transparent,
-            divider = { HorizontalDivider(color = AppTheme.colors.divider) },
-        ) {
-            tabs.forEachIndexed { i, res ->
-                Tab(
-                    selected = tab == i, onClick = { tab = i },
-                    text = { Text(stringResource(res), style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Clip) },
-                    selectedContentColor = MaterialTheme.colorScheme.primary,
-                    unselectedContentColor = AppTheme.colors.muted,
-                )
-            }
-        }
         val period = if (isYearTab) {
             val (inc, exp) = CarryOver.incomeExpense(yearTxns)
             CarryOver.PeriodTotals(inc, exp, CarryOver.carryIn(YearMonth.of(ym.year, 1), all, s.carryOver))
         } else CarryOver.totals(ym, all, s.carryOver)
-        SummaryRow(period.displayIncome, period.displayExpense, s)
-        if (tab == 0 || tab == 1) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = Spacing.md)
-                    .testTag("type_filter_chips"),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-            ) {
-                val filters = listOf<Pair<Int, Int?>>(
-                    R.string.filter_all to null,
-                    R.string.expense to TxnType.EXPENSE,
-                    R.string.income to TxnType.INCOME,
-                    R.string.transfer to TxnType.TRANSFER,
-                )
-                filters.forEach { (labelRes, value) ->
-                    FilterChip(
-                        selected = typeFilter == value,
-                        onClick = { typeFilter = value },
-                        label = { Text(stringResource(labelRes)) },
-                    )
+
+        // 2.8: Collapsible header offset and measured height state
+        var headerOffset by remember { mutableFloatStateOf(0f) }
+        var collapsibleHeightPx by remember { mutableFloatStateOf(0f) }
+        var titleHeightPx by remember { mutableFloatStateOf(0f) }
+
+        val canScroll = when (tab) {
+            0 -> monthShown.isNotEmpty() || period.carry != 0L
+            1 -> monthShown.isNotEmpty() || period.carry != 0L
+            2 -> yearTxns.isNotEmpty()
+            3 -> all.isNotEmpty()
+            4 -> monthShown.isNotEmpty()
+            else -> true
+        }
+
+        // 2.8: Reset or snap header state on tab/month change:
+        // expand if the new tab cannot scroll, snap to expanded if half-collapsed,
+        // or keep fully collapsed if it was already fully collapsed and can scroll.
+        androidx.compose.runtime.LaunchedEffect(tab, ym) {
+            if (!canScroll) {
+                headerOffset = 0f
+            } else if (headerOffset > -collapsibleHeightPx && headerOffset < 0f) {
+                headerOffset = 0f
+            } else if (collapsibleHeightPx > 0f && headerOffset < -collapsibleHeightPx) {
+                headerOffset = -collapsibleHeightPx
+            }
+        }
+
+        val nestedScrollConnection = remember(canScroll) {
+            object : NestedScrollConnection {
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    if (!canScroll) return Offset.Zero
+                    val delta = available.y
+                    val maxCollapse = collapsibleHeightPx
+                    if (maxCollapse <= 0f) return Offset.Zero
+
+                    if (delta < 0f && headerOffset > -maxCollapse) {
+                        // Scrolling down: collapse the header first
+                        val old = headerOffset
+                        val newOffset = (old + delta).coerceIn(-maxCollapse, 0f)
+                        headerOffset = newOffset
+                        return Offset(0f, newOffset - old)
+                    } else if (delta > 0f && headerOffset < 0f) {
+                        // Scrolling up: expand the header
+                        val old = headerOffset
+                        val newOffset = (old + delta).coerceIn(-maxCollapse, 0f)
+                        headerOffset = newOffset
+                        return Offset(0f, newOffset - old)
+                    }
+                    return Offset.Zero
                 }
             }
         }
 
-        when (tab) {
-            0 -> DailyList(monthShown, labels, s, navigate, sel, carry = period.carry, month = ym)
-            1 -> CalendarView(vm, ym, monthShown, labels, s, navigate, sel, carry = period.carry)
-            2 -> MonthlyList(yearTxns, all, ym.year, s, s.carryOver) { m -> vm.month.value = m; tab = 0 }
-            3 -> TotalView(vm, ym, all, monthTxns, s, carry = period.carry)
-            else -> NoteView(monthShown, labels, s, navigate, ym)
+        val isTitleScrolledAway = !sel.active && titleHeightPx > 0f && headerOffset < -titleHeightPx + 10f
+
+        Column(
+            modifier
+                .fillMaxSize()
+                .nestedScroll(nestedScrollConnection)
+        ) {
+            // Top bar (selection mode replaces it and stays pinned at top)
+            if (sel.active) {
+                SelectionTopBar(sel, visibleIds = {
+                    when (tab) {
+                        0 -> monthShown.map { it.id }
+                        1 -> vm.selectedDay?.let { d -> monthShown.filter { Fmt.toDate(it.dateTime) == d }.map { it.id } }.orEmpty()
+                        else -> emptyList()
+                    }
+                })
+            }
+
+            // 2.8: Collapsible block: title + search, duplicates banner, HomeOverview, SummaryRow, filter chips
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clipToBounds()
+                    .layout { measurable, constraints ->
+                        // 2.8: Always measure the full header, then report a shorter
+                        // height so the list gains space. Measuring the clipped size
+                        // would shrink collapsibleHeightPx as the user scrolls.
+                        val placeable = measurable.measure(constraints.copy(maxHeight = Constraints.Infinity))
+                        val currentOffset = headerOffset.coerceIn(-placeable.height.toFloat(), 0f)
+                        val currentHeight = (placeable.height + currentOffset.roundToInt()).coerceAtLeast(0)
+                        layout(placeable.width, currentHeight) {
+                            placeable.placeRelative(0, currentOffset.roundToInt())
+                        }
+                    }
+            ) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .onSizeChanged { size ->
+                            val h = size.height.toFloat()
+                            if (collapsibleHeightPx != h) collapsibleHeightPx = h
+                        },
+                ) {
+                    if (!sel.active) {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = Spacing.xs, vertical = Spacing.xs)
+                                .onSizeChanged { titleHeightPx = it.height.toFloat() },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(stringResource(R.string.tab_trans), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = Spacing.md))
+                            Spacer(Modifier.weight(1f))
+                            IconButton(onClick = { navigate(Route.Search) }) { Icon(Icons.Filled.Search, stringResource(R.string.search)) }
+                        }
+                    }
+                    if (dupGroups.isNotEmpty() && !sel.active) {
+                        com.midroid.masarifi.ui.components.InfoStrip(
+                            text = stringResource(R.string.dup_banner, dupGroups.size.toString()), icon = com.midroid.masarifi.ui.components.AppIcons.Copy,
+                            tint = AppTheme.colors.warning, container = AppTheme.colors.warning.copy(alpha = 0.14f),
+                            onClick = { navigate(Route.Duplicates) },
+                        )
+                    }
+                    run { // kept while selecting so the list does not jump under the finger
+                        HomeOverview(
+                            netWorth = netWorth,
+                            topGoal = topGoal,
+                            saved = topGoal?.let {
+                                com.midroid.masarifi.data.GoalLogic.saved(it.id, contributions)
+                            } ?: 0L,
+                            s = s,
+                            onGoals = { navigate(Route.Goals) },
+                        )
+                    }
+                    SummaryRow(period.displayIncome, period.displayExpense, s)
+                    if (tab == 0 || tab == 1) {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = Spacing.md)
+                                .testTag("type_filter_chips"),
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        ) {
+                            val filters = listOf<Pair<Int, Int?>>(
+                                R.string.filter_all to null,
+                                R.string.expense to TxnType.EXPENSE,
+                                R.string.income to TxnType.INCOME,
+                                R.string.transfer to TxnType.TRANSFER,
+                            )
+                            filters.forEach { (labelRes, value) ->
+                                FilterChip(
+                                    selected = typeFilter == value,
+                                    onClick = { typeFilter = value },
+                                    label = { Text(stringResource(labelRes)) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2.8: Pinned slim bar: MonthSwitcher (with compact search icon when title scrolled away) + five tabs
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
+                Box(
+                    Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    MonthSwitcher(
+                        label = if (isYearTab) ym.year.toString() else Fmt.monthTitle(ym, s.arabic),
+                        onPrev = { vm.month.value = if (isYearTab) ym.minusYears(1) else ym.minusMonths(1) },
+                        onNext = { vm.month.value = if (isYearTab) ym.plusYears(1) else ym.plusMonths(1) },
+                        onLabelClick = { vm.month.value = YearMonth.now() },
+                    )
+                    if (isTitleScrolledAway) {
+                        IconButton(
+                            onClick = { navigate(Route.Search) },
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(horizontal = Spacing.xs),
+                        ) {
+                            Icon(
+                                Icons.Filled.Search,
+                                contentDescription = stringResource(R.string.search),
+                                tint = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                    }
+                }
+                val tabs = listOf(R.string.daily, R.string.tab_calendar_short, R.string.monthly, R.string.tab_total_short, R.string.tab_note_short)
+                androidx.compose.material3.PrimaryTabRow(
+                    selectedTabIndex = tab,
+                    containerColor = Color.Transparent,
+                    divider = { HorizontalDivider(color = AppTheme.colors.divider) },
+                ) {
+                    tabs.forEachIndexed { i, res ->
+                        Tab(
+                            selected = tab == i, onClick = { tab = i },
+                            text = { Text(stringResource(res), style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Clip) },
+                            selectedContentColor = MaterialTheme.colorScheme.primary,
+                            unselectedContentColor = AppTheme.colors.muted,
+                        )
+                    }
+                }
+            }
+
+            // 2.8: Tab content fills the remaining height below the pinned bar
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                when (tab) {
+                    0 -> DailyList(monthShown, labels, s, navigate, sel, carry = period.carry, month = ym)
+                    1 -> CalendarView(vm, ym, monthShown, labels, s, navigate, sel, carry = period.carry)
+                    2 -> MonthlyList(yearTxns, all, ym.year, s, s.carryOver) { m -> vm.month.value = m; tab = 0 }
+                    3 -> TotalView(vm, ym, all, monthTxns, s, carry = period.carry)
+                    else -> NoteView(monthShown, labels, s, navigate, ym)
+                }
+            }
         }
     }
-}
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -244,7 +384,7 @@ fun DailyList(txns: List<Txn>, labels: Labels, s: AppSettings, navigate: (Route)
     if (txns.isEmpty() && carry == 0L) { EmptyState(stringResource(R.string.empty_month)); return }
     val groups = remember(txns) { txns.groupBy { Fmt.toDate(it.dateTime) }.toSortedMap(compareByDescending { it }) }
     val first = month.atDay(1)
-    LazyColumn(Modifier.fillMaxSize(), state = com.midroid.masarifi.ui.components.rememberFabAwareListState(), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = Spacing.fabClearance)) {
+    LazyColumn(Modifier.fillMaxSize().testTag("trans_daily_list"), state = com.midroid.masarifi.ui.components.rememberFabAwareListState(), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = Spacing.fabClearance)) {
         val dates = (groups.keys + if (carry != 0L) setOf(first) else emptySet()).sortedDescending()
         dates.forEach { date ->
             val list = groups[date].orEmpty()

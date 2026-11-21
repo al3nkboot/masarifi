@@ -642,4 +642,10 @@
     <string name="sum_top_merchants">Top merchants</string>
     <string name="sum_savings_rate">Savings rate</string>
     <string name="sum_savings_rate_na">No income</string>
+    <!-- 2.8: Budget pace & Collapsing header -->
+    <string name="days_left">%1$d days left</string>
+    <string name="day_left">1 day left</string>
+    <string name="days_left_title">Days left</string>
+    <string name="budget_left_to_spend">Remaining to spend</string>
+    <string name="budget_over">Over budget</string>
 </resources>

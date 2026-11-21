@@ -642,4 +642,10 @@
     <string name="sum_top_merchants">أكثر المتاجر صرفاً</string>
     <string name="sum_savings_rate">نسبة الادخار</string>
     <string name="sum_savings_rate_na">ما في دخل</string>
+    <!-- 2.8: Budget pace & Collapsing header -->
+    <string name="days_left">متبقي %1$d يوم</string>
+    <string name="day_left">متبقي يوم واحد</string>
+    <string name="days_left_title">الأيام المتبقية</string>
+    <string name="budget_left_to_spend">المتبقي للصرف</string>
+    <string name="budget_over">تجاوزت الميزانية</string>
 </resources>

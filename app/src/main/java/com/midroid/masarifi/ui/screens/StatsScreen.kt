@@ -6,6 +6,7 @@ import com.midroid.masarifi.ui.theme.Spacing
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,11 +18,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SecondaryTabRow
@@ -39,7 +43,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.midroid.masarifi.R
+import com.midroid.masarifi.analysis.BudgetPace
 import com.midroid.masarifi.analysis.CategoryComparison
 import com.midroid.masarifi.analysis.Insights
 import com.midroid.masarifi.data.AppSettings
@@ -65,6 +75,7 @@ import com.midroid.masarifi.ui.components.MonthSwitcher
 import com.midroid.masarifi.ui.components.ProgressBar
 import com.midroid.masarifi.ui.components.TrendBars
 import com.midroid.masarifi.ui.theme.AppTheme
+import com.midroid.masarifi.ui.theme.Brand
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -277,17 +288,162 @@ private fun BudgetTab(vm: AppViewModel, all: List<Txn>, cats: List<Category>, ym
     val isCurrent = ym == YearMonth.now()
     val bills by vm.bills.collectAsStateWithLifecycle()
     val upcoming = remember(bills, ym) { com.midroid.masarifi.bills.BillLogic.upcomingInMonth(bills, vm.today(), ym) }
+
+    // 2.8: Compute total budget, total spent, days left and pace ratio
+    val totalSpent = exp.sumOf { it.amount }
+    val totalBudget = remember(bmap) { BudgetPace.totalBudget(bmap) }
+    val daysLeft = remember(ym) { BudgetPace.daysLeft(ym) }
+    val paceRatio = remember(ym) { BudgetPace.paceRatio(ym) }
+
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = Spacing.md)) {
         item {
-            val spent = exp.sumOf { it.amount }
-            val b = bmap[0L] ?: 0L
-            InfoCard(overallLabel) {
-                BudgetLine(spent, b, s, isCurrent, ym) { editing = 0L to overallLabel }
+            if (totalBudget > 0L) {
+                // 2.8: Prominent spending pace overview card with gauge and 3 summary figures
+                Card(
+                    Modifier.fillMaxWidth().padding(horizontal = Spacing.xs, vertical = Spacing.sm - Spacing.xxs),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                ) {
+                    Column(Modifier.padding(Spacing.lg)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                if (bmap[0L]?.let { it > 0 } == true) overallLabel else stringResource(R.string.monthly_budget),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = { editing = 0L to overallLabel }) {
+                                Text(stringResource(if (bmap[0L]?.let { it > 0 } == true) R.string.edit else R.string.set))
+                            }
+                        }
+
+                        // 2.8: Prominent gauge showing how much is left to spend (or over-limit in Coral)
+                        val ratio = BudgetPace.spentRatio(totalBudget, totalSpent)
+                        val gaugeColor = when {
+                            ratio >= 1.0 -> Brand.Coral
+                            ratio >= 0.8 -> Brand.Orange
+                            else -> Brand.Blue
+                        }
+                        val isOver = totalSpent > totalBudget
+                        val remaining = BudgetPace.remaining(totalBudget, totalSpent)
+                        val over = BudgetPace.overAmount(totalBudget, totalSpent)
+
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.sm),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            val trackColor = c.chip
+                            Canvas(Modifier.size(190.dp)) {
+                                val strokeWidth = 14.dp.toPx()
+                                val inset = strokeWidth / 2f
+                                val arcSize = Size(size.width - strokeWidth, size.height - strokeWidth)
+                                // 2.8: Mirror the arc in RTL so fill grows from the start edge.
+                                val sx = if (layoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl) -1f else 1f
+                                scale(scaleX = sx, scaleY = 1f) {
+                                    drawArc(
+                                        color = trackColor,
+                                        startAngle = 150f,
+                                        sweepAngle = 240f,
+                                        useCenter = false,
+                                        topLeft = Offset(inset, inset),
+                                        size = arcSize,
+                                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                                    )
+                                    val progressSweep = (ratio.coerceIn(0.0, 1.0) * 240.0).toFloat()
+                                    if (progressSweep > 0f) {
+                                        drawArc(
+                                            color = gaugeColor,
+                                            startAngle = 150f,
+                                            sweepAngle = progressSweep,
+                                            useCenter = false,
+                                            topLeft = Offset(inset, inset),
+                                            size = arcSize,
+                                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                                        )
+                                    }
+                                }
+                            }
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(horizontal = Spacing.md),
+                            ) {
+                                Text(
+                                    text = if (isOver) stringResource(R.string.budget_over) else stringResource(R.string.budget_left_to_spend),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isOver) AppTheme.colors.expense else AppTheme.colors.muted,
+                                    maxLines = 1,
+                                )
+                                Spacer(Modifier.height(Spacing.xxs))
+                                Text(
+                                    text = if (isOver) Fmt.money(over, s) else Fmt.money(remaining, s),
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isOver) AppTheme.colors.expense else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                )
+                                if (isCurrent && remaining > 0 && daysLeft > 0) {
+                                    Spacer(Modifier.height(Spacing.xxs))
+                                    Text(
+                                        text = stringResource(R.string.per_day_x, Fmt.money(remaining / daysLeft, s)),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = AppTheme.colors.muted,
+                                        maxLines = 1,
+                                    )
+                                }
+                            }
+                        }
+
+                        // 2.8: Three summary figures: total budget, total spent, days left
+                        Spacer(Modifier.height(Spacing.xs))
+                        HorizontalDivider(color = c.divider.copy(alpha = 0.5f))
+                        Spacer(Modifier.height(Spacing.sm))
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                Text(stringResource(R.string.budget), style = MaterialTheme.typography.labelSmall, color = c.muted)
+                                Spacer(Modifier.height(Spacing.xxs))
+                                Text(Fmt.money(totalBudget, s, false), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                Text(stringResource(R.string.expenses), style = MaterialTheme.typography.labelSmall, color = c.muted)
+                                Spacer(Modifier.height(Spacing.xxs))
+                                Text(Fmt.money(totalSpent, s, false), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = if (isOver) c.expense else MaterialTheme.colorScheme.onSurface, maxLines = 1)
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                Text(stringResource(R.string.days_left_title), style = MaterialTheme.typography.labelSmall, color = c.muted)
+                                Spacer(Modifier.height(Spacing.xxs))
+                                val daysText = if (daysLeft == 1) stringResource(R.string.day_left) else stringResource(R.string.days_left, daysLeft)
+                                Text(daysText, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+                            }
+                        }
+                    }
+                }
+            } else {
+                // 2.8: Empty CTA card when no budget is set
+                Card(
+                    Modifier.fillMaxWidth().padding(horizontal = Spacing.xs, vertical = Spacing.sm - Spacing.xxs),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                ) {
+                    Column(Modifier.padding(Spacing.lg)) {
+                        Text(overallLabel, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(Spacing.sm))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(R.string.no_budget_hint), Modifier.weight(1f), color = c.muted, style = MaterialTheme.typography.bodyMedium)
+                            TextButton(onClick = { editing = 0L to overallLabel }) { Text(stringResource(R.string.set)) }
+                        }
+                    }
+                }
             }
+
             if (upcoming.isNotEmpty()) InfoCard("🧾 " + stringResource(R.string.bill_budget_card)) {
                 val due = upcoming.sumOf { it.amount }
                 Text(stringResource(R.string.bill_budget_line, Fmt.money(due, s), upcoming.size), style = MaterialTheme.typography.bodyMedium)
-                val projected = spent + due
+                val projected = totalSpent + due
+                val b = bmap[0L] ?: 0L
                 Text(
                     stringResource(R.string.bill_budget_projected, Fmt.money(projected, s)) + if (b > 0) " / ${Fmt.money(b, s)}" else "",
                     fontSize = 12.sp, color = if (b > 0 && projected > b) c.expense else c.muted,
@@ -314,13 +470,22 @@ private fun BudgetTab(vm: AppViewModel, all: List<Txn>, cats: List<Category>, ym
                 }
                 if (b > 0) {
                     Spacer(Modifier.height(6.dp))
-                    ProgressBar(spent.toDouble() / b)
+                    // 2.8: Paced progress bar with RTL-safe Today pace marker
+                    PacedProgressBar(ratio = spent.toDouble() / b, paceRatio = paceRatio)
                     Spacer(Modifier.height(Spacing.xxs))
                     val left = b - spent
-                    Text(
-                        if (left >= 0) stringResource(R.string.remaining_x, Fmt.money(left, s)) else stringResource(R.string.over_by_x, Fmt.money(-left, s)),
-                        fontSize = 11.sp, color = if (left >= 0) c.muted else c.expense,
-                    )
+                    if (left >= 0) {
+                        Text(
+                            stringResource(R.string.remaining_x, Fmt.money(left, s)),
+                            fontSize = 11.sp, color = c.muted,
+                        )
+                    } else {
+                        // 2.8: More prominent over-limit display in red
+                        Text(
+                            "⚠️ " + stringResource(R.string.over_by_x, Fmt.money(-left, s)),
+                            fontSize = 12.sp, fontWeight = FontWeight.Bold, color = c.expense,
+                        )
+                    }
                 }
             }
             HorizontalDivider(color = c.divider)
@@ -332,30 +497,79 @@ private fun BudgetTab(vm: AppViewModel, all: List<Txn>, cats: List<Category>, ym
     }
 }
 
+/**
+ * 2.8: Progress bar for category budget with spending pace marker.
+ * Uses layout-direction-aware Alignment.CenterStart/CenterEnd and fillMaxWidth
+ * to position the "Today" marker safely in both LTR and Arabic RTL.
+ */
 @Composable
-private fun BudgetLine(spent: Long, budget: Long, s: AppSettings, isCurrent: Boolean, ym: YearMonth, onEdit: () -> Unit) {
-    val c = AppTheme.colors
-    if (budget <= 0) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.no_budget_hint), Modifier.weight(1f), color = c.muted, style = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = onEdit) { Text(stringResource(R.string.set)) }
+fun PacedProgressBar(
+    ratio: Double,
+    paceRatio: Double?,
+    modifier: Modifier = Modifier,
+) {
+    val color = when {
+        ratio >= 1.0 -> Brand.Coral
+        ratio >= 0.8 -> Brand.Orange
+        else -> Brand.Blue
+    }
+    Column(modifier.fillMaxWidth()) {
+        if (paceRatio != null) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 2.dp),
+            ) {
+                Box(
+                    Modifier.fillMaxWidth(paceRatio.coerceIn(0.01, 1.0).toFloat()),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    Text(
+                        stringResource(R.string.today_label),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 9.sp,
+                        color = AppTheme.colors.muted,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
-        return
-    }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("${Fmt.money(spent, s)} / ${Fmt.money(budget, s)}", Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-        TextButton(onClick = onEdit) { Text(stringResource(R.string.edit)) }
-    }
-    ProgressBar(spent.toDouble() / budget)
-    Spacer(Modifier.height(Spacing.xs))
-    val left = budget - spent
-    Text(
-        if (left >= 0) stringResource(R.string.remaining_x, Fmt.money(left, s)) else stringResource(R.string.over_by_x, Fmt.money(-left, s)),
-        fontSize = 12.sp, color = if (left >= 0) c.muted else c.expense,
-    )
-    if (isCurrent && left > 0) {
-        val daysLeft = ym.lengthOfMonth() - LocalDate.now().dayOfMonth + 1
-        Text(stringResource(R.string.per_day_x, Fmt.money(left / daysLeft, s)), style = MaterialTheme.typography.bodySmall, color = c.muted)
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(14.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            // Background track and filled progress
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .background(AppTheme.colors.chip, RoundedCornerShape(4.dp)),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(ratio.coerceIn(0.0, 1.0).toFloat())
+                        .height(8.dp)
+                        .background(color, RoundedCornerShape(4.dp)),
+                )
+            }
+            // Vertical marker at pace ratio
+            if (paceRatio != null) {
+                Box(
+                    Modifier.fillMaxWidth(paceRatio.coerceIn(0.01, 1.0).toFloat()),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    Box(
+                        Modifier
+                            .width(2.dp)
+                            .height(14.dp)
+                            .background(MaterialTheme.colorScheme.onSurface, RoundedCornerShape(1.dp)),
+                    )
+                }
+            }
+        }
     }
 }
 
