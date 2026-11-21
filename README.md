@@ -14,9 +14,9 @@
 
 ### [⬇️ تحميل التطبيق (APK)](https://github.com/al3nkboot/masarifi/releases)
 
-الإصدار الحالي **2.7.0** — بنسختين:
+الإصدار الحالي **2.8.0** — بنسختين:
 
-| | النسخة الكاملة `masarifi-v2.7.0.apk` | بدون الرسائل `masarifi-v2.7.0-nosms.apk` |
+| | النسخة الكاملة `masarifi-v2.8.0.apk` | بدون الرسائل `masarifi-v2.8.0-nosms.apk` |
 |---|---|---|
 | قراءة رسائل البنك وتسجيل المصاريف تلقائياً | ✅ | ❌ (إدخال يدوي) |
 | صلاحية الرسائل SMS | تطلبها | لا تطلبها أبداً |
@@ -25,6 +25,17 @@
 **Two editions / نسختان:** *Full* reads bank SMS to log expenses automatically; *No-SMS* has no SMS permission at all (manual entry). Both share the same package and data, so installing one replaces the other and keeps your data. / النسختان بنفس الحزمة والبيانات: تثبيت واحدة يستبدل الأخرى وتبقى بياناتك.
 
 <img src="docs/images/v250/01_warranty_list_ar_dark.png" width="24%" alt="الضمانات"> <img src="docs/images/v250/03_warranty_detail_ar_light.png" width="24%" alt="تفاصيل الضمان"> <img src="docs/images/v250/02_warranty_edit_ar_dark.png" width="24%" alt="إضافة ضمان">
+
+### الجديد في 2.8.0
+
+<div dir="rtl">
+
+- الميزانية: مؤشر يوضح كم باقي لك تصرف هالشهر، مع مجموع الميزانيات والمصروف والأيام المتبقية، وشريط لكل فئة فيه علامة «اليوم» لوتيرة الصرف، والمبلغ الزائد بالأحمر.
+- قائمة العمليات: الجزء العلوي ينطوي عند التمرير لتحت ويبقى شريط رفيع للشهر والتبويبات، ويرجع يطلع عند التمرير لفوق.
+
+</div>
+
+**What's new:** a budget gauge for remaining-to-spend this month, with total budget, total spent, days left, and a per-category bar with a Today pace marker (over-limit in red) · the Transactions header collapses on scroll-down to a slim month+tabs bar and expands again on scroll-up.
 
 ### الجديد في 2.7.0
 
