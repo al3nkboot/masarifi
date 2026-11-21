@@ -156,7 +156,7 @@
 ## التثبيت
 
 1. **التحميل المباشر لآخر نسخة كاملة:** [اضغط هنا](https://github.com/al3nkboot/masarifi/releases/latest/download/Masarifi.apk)
-2. **من تطبيق Downloader:** اكتب الرمز **XXXXXXX**
+2. **من تطبيق Downloader:** اكتب الرمز **9584465**
 3. إذا تبي النسخة بدون الرسائل، أو ملف بإصدار معيّن، روح [صفحة الإصدارات](https://github.com/al3nkboot/masarifi/releases). المتطلب: أندرويد ٨ أو أحدث.
 4. افتح الملف واسمح بـ«تثبيت التطبيقات من مصادر غير معروفة» للمتصفح أو مدير الملفات.
 5. **تحذير بلاي بروتكت:** لأن التطبيق يطلب صلاحية الرسائل وما نُشر في المتجر، قد يظهر تحذير أو يُحظر التثبيت. اضغط «مزيد من التفاصيل» ثم «التثبيت على أي حال». قد تختلف الأسماء حسب الجهاز.
@@ -218,7 +218,7 @@
 ### Install
 
 1. **Direct download (latest full edition):** [Masarifi.apk](https://github.com/al3nkboot/masarifi/releases/latest/download/Masarifi.apk)
-2. **Downloader app** (Android TV / head units): enter code **XXXXXXX**
+2. **Downloader app** (Android TV / head units): enter code **9584465**
 3. Both editions, including the No-SMS build, are on [Releases](https://github.com/al3nkboot/masarifi/releases) (Android 8.0+). Play Protect may warn you because the app reads SMS. Tap *More details → Install anyway*.
 If your bank (from any country) isn't supported, [open an issue](https://github.com/al3nkboot/masarifi/issues/new?template=bank-sms.md) with a **masked** sample SMS.
 To add a bank in code: add one `BankProfile` entry (sender IDs, `SmsRule` regexes using `{AMT}` `{CUR}` `{MERCHANT}` `{CARD}` `{DATE}`, optional debit/credit keywords) to `banks` in [`DefaultSmsConfig.kt`](app/src/main/java/com/midroid/masarifi/sms/DefaultSmsConfig.kt), based only on a real masked sample ([template](.github/ISSUE_TEMPLATE/bank-sms.md)), plus a test in `BankTableTest.kt`.
