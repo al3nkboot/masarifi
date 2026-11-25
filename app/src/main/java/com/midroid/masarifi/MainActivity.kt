@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -27,9 +26,13 @@ import com.midroid.masarifi.ui.screens.AppRoot
 import com.midroid.masarifi.ui.theme.MasarifiTheme
 import com.midroid.masarifi.work.LocalizedRes
 
-class MainActivity : ComponentActivity() {
+class MainActivity : androidx.fragment.app.FragmentActivity() {
     private val vm: AppViewModel by viewModels()
     private var pendingTxnId by mutableStateOf<Long?>(null)
+    private val lock by lazy { com.midroid.masarifi.data.AppLock(this) }
+    private var locked by mutableStateOf(false)
+    /** When the app last went to the background (0 = not since the last unlock). */
+    private var backgroundedAt = 0L
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(LocalizedRes.wrap(newBase, SettingsStore.language(newBase)))
@@ -38,20 +41,60 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // a recreate (language change, rotation) while unlocked must not lock again
+        backgroundedAt = savedInstanceState?.getLong(STATE_BG_AT) ?: 0L
+        locked = lock.enabled && (savedInstanceState?.getBoolean(STATE_UNLOCKED) != true || (backgroundedAt != 0L && lock.shouldLock(backgroundedAt, System.currentTimeMillis())))
         pendingTxnId = intent?.getLongExtra(EXTRA_TXN_ID, -1L)?.takeIf { it > 0 }
         if (intent?.getBooleanExtra(EXTRA_OPEN_BILLS, false) == true) vm.openBills.value = true
         setContent {
             val settings by vm.settings.collectAsStateWithLifecycle()
             MasarifiTheme(settings.theme) {
                 NotificationPermissionOnce()
-                AppRoot(
-                    vm = vm,
-                    openTxnId = pendingTxnId,
-                    onOpenTxnConsumed = { pendingTxnId = null },
-                    onLanguageChanged = { recreate() },
-                )
+                androidx.compose.foundation.layout.Box {
+                    AppRoot(
+                        vm = vm,
+                        openTxnId = pendingTxnId,
+                        onOpenTxnConsumed = { pendingTxnId = null },
+                        onLanguageChanged = { recreate() },
+                    )
+                    if (locked) {
+                        val bio = biometricAvailable()
+                        LaunchedEffect(Unit) { if (bio) promptBiometric() }
+                        androidx.activity.compose.BackHandler { moveTaskToBack(true) }
+                        com.midroid.masarifi.ui.screens.LockScreen(lock::check, if (bio) ::promptBiometric else null) { locked = false }
+                    }
+                }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (backgroundedAt != 0L && lock.shouldLock(backgroundedAt, System.currentTimeMillis())) locked = true
+        backgroundedAt = 0L
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) backgroundedAt = System.currentTimeMillis()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(STATE_UNLOCKED, !locked)
+        outState.putLong(STATE_BG_AT, backgroundedAt)
+    }
+
+    private fun biometricAvailable() =
+        androidx.biometric.BiometricManager.from(this).canAuthenticate(BIOMETRIC_AUTH) == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
+
+    private fun promptBiometric() {
+        val cb = object : androidx.biometric.BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: androidx.biometric.BiometricPrompt.AuthenticationResult) { locked = false }
+        }
+        val info = androidx.biometric.BiometricPrompt.PromptInfo.Builder()
+            .setTitle(getString(R.string.lock_locked)).setAllowedAuthenticators(BIOMETRIC_AUTH).build()
+        runCatching { androidx.biometric.BiometricPrompt(this, androidx.core.content.ContextCompat.getMainExecutor(this), cb).authenticate(info) }
     }
 
     override fun onResume() {
@@ -81,5 +124,10 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_TXN_ID = "txn_id"
         const val EXTRA_OPEN_BILLS = "open_bills"
+        private const val STATE_UNLOCKED = "lock_unlocked"
+        private const val STATE_BG_AT = "lock_bg_at"
+        /** Fingerprint / face, or the phone's own screen lock (PIN / pattern) as the system fallback. */
+        private const val BIOMETRIC_AUTH = androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK or
+            androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
     }
 }

@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -295,7 +296,7 @@ private fun BudgetTab(vm: AppViewModel, all: List<Txn>, cats: List<Category>, ym
     val daysLeft = remember(ym) { BudgetPace.daysLeft(ym) }
     val paceRatio = remember(ym) { BudgetPace.paceRatio(ym) }
 
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = Spacing.md)) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = Spacing.md).then(Modifier.testTag("budget_list"))) {
         item {
             if (totalBudget > 0L) {
                 // 2.8: Prominent spending pace overview card with gauge and 3 summary figures
@@ -439,6 +440,7 @@ private fun BudgetTab(vm: AppViewModel, all: List<Txn>, cats: List<Category>, ym
                 }
             }
 
+            if (isCurrent) ForecastCard(vm, all, upcoming.sumOf { it.amount }, ym, s)
             if (upcoming.isNotEmpty()) InfoCard("🧾 " + stringResource(R.string.bill_budget_card)) {
                 val due = upcoming.sumOf { it.amount }
                 Text(stringResource(R.string.bill_budget_line, Fmt.money(due, s), upcoming.size), style = MaterialTheme.typography.bodyMedium)
@@ -637,4 +639,36 @@ fun unusualTxns(all: List<Txn>, ym: YearMonth): List<Txn> {
     val histTo = Fmt.startOf(ym.atDay(1))
     val hist = all.filter { it.type == TxnType.EXPENSE && it.dateTime >= histFrom && it.dateTime < histTo }.groupBy { it.categoryId }
     return cur.filter { t -> Insights.isUnusualTransaction(hist[t.categoryId].orEmpty().map { it.amount }, t.amount) }.sortedByDescending { it.amount }.take(5)
+}
+
+/** 2.9.0: projected balance at the end of the current month (see [com.midroid.masarifi.analysis.BalanceForecast]). */
+@Composable
+private fun ForecastCard(vm: AppViewModel, all: List<Txn>, unpaidBills: Long, ym: YearMonth, s: AppSettings) {
+    val c = AppTheme.colors
+    val accounts by vm.accounts.collectAsStateWithLifecycle()
+    val rules by vm.recurring.collectAsStateWithLifecycle()
+    val f = remember(accounts, all, rules, unpaidBills, ym) {
+        val current = com.midroid.masarifi.data.NetWorthCalc.compute(vm.balances(accounts, all).map { it.account to it.balance }).net
+        val end = ym.atEndOfMonth().atTime(java.time.LocalTime.MAX).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        com.midroid.masarifi.analysis.BalanceForecast.compute(current, rules, unpaidBills, System.currentTimeMillis(), end, vm::advance)
+    }
+    InfoCard("📈 " + stringResource(R.string.forecast_title)) {
+        Text(
+            "\u200E" + Fmt.money(f.projected, s), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold,
+            color = if (f.projected >= 0) c.income else c.expense,
+        )
+        Text(stringResource(R.string.forecast_projected), style = MaterialTheme.typography.bodySmall, color = c.muted)
+        Spacer(Modifier.height(Spacing.sm))
+        listOf(
+            Triple(R.string.forecast_current, f.current, MaterialTheme.colorScheme.onSurface),
+            Triple(R.string.forecast_income, f.income, c.income),
+            Triple(R.string.forecast_expense, -f.expense, c.expense),
+        ).forEach { (label, v, col) ->
+            Row(Modifier.fillMaxWidth().padding(vertical = Spacing.xxs)) {
+                Text(stringResource(label), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                Text("\u200E" + Fmt.money(v, s), style = MaterialTheme.typography.bodyMedium, color = col)
+            }
+        }
+        Text(stringResource(R.string.forecast_hint), style = MaterialTheme.typography.bodySmall, color = c.muted, modifier = Modifier.padding(top = Spacing.xs))
+    }
 }

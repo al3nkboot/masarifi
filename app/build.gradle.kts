@@ -28,8 +28,8 @@ android {
         applicationId = "com.midroid.masarifi"
         minSdk = 26
         targetSdk = 35
-        versionCode = 26
-        versionName = "2.8.0"
+        versionCode = 27
+        versionName = "2.9.0"
     }
 
     signingConfigs {
@@ -101,6 +101,9 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.biometric)
+    // biometric 1.1.0 pulls fragment 1.2.x, which breaks Compose activity-result launchers on a FragmentActivity
+    implementation(libs.androidx.fragment)
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

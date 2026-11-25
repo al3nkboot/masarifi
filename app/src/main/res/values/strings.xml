@@ -648,4 +648,30 @@
     <string name="days_left_title">Days left</string>
     <string name="budget_left_to_spend">Remaining to spend</string>
     <string name="budget_over">Over budget</string>
+    <!-- 2.9.0 -->
+    <string name="lock_title">App lock</string>
+    <string name="lock_sub">Ask for fingerprint or PIN when opening the app</string>
+    <string name="lock_locked">Masarifi is locked</string>
+    <string name="lock_unlock">Unlock</string>
+    <string name="lock_use_biometric">Use fingerprint</string>
+    <string name="lock_wrong_pin">Wrong PIN</string>
+    <string name="lock_set_pin">Set a PIN</string>
+    <string name="lock_pin_hint">4 to 8 digits, used when the fingerprint is not available.</string>
+    <string name="lock_pin">PIN</string>
+    <string name="lock_pin_confirm">Confirm PIN</string>
+    <string name="lock_pin_mismatch">The PINs do not match</string>
+    <string name="receipt">Receipt</string>
+    <string name="receipt_delete">Delete photo</string>
+    <string name="receipt_confirm_delete">Delete the receipt photo?</string>
+    <string name="split">Split across categories</string>
+    <string name="split_add_part">Add part</string>
+    <string name="split_remaining">Unassigned: %1$s</string>
+    <string name="split_invalid">Each part needs a category and an amount, and the parts must add up to the total.</string>
+    <string name="split_part_of">Part of a split purchase</string>
+    <string name="forecast_title">End-of-month forecast</string>
+    <string name="forecast_current">Balance now</string>
+    <string name="forecast_income">Expected income</string>
+    <string name="forecast_expense">Expected bills and expenses</string>
+    <string name="forecast_projected">At month end</string>
+    <string name="forecast_hint">From repeating transactions and unpaid bills.</string>
 </resources>

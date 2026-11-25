@@ -123,6 +123,32 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun importWarrantyImage(uri: Uri): String? = withContext(Dispatchers.IO) { warrantyImages.import(getApplication(), uri) }
     fun discardWarrantyImages(names: List<String>) = viewModelScope.launch(Dispatchers.IO) { warrantyImages.delete(names) }
 
+    // ---------------- receipts, split purchases, forecast (2.9.0) ----------------
+    val receipts: com.midroid.masarifi.warranty.WarrantyImages get() = getApplication<android.app.Application>().app.receipts
+    /** Bumped when a receipt file changes so screens re-read it. */
+    val receiptVersion = MutableStateFlow(0)
+    fun receiptFile(txnUuid: String) = receipts.file(com.midroid.masarifi.data.backup.receiptName(txnUuid))
+    suspend fun attachReceipt(txnUuid: String, uri: Uri): Boolean = withContext(Dispatchers.IO) {
+        receipts.import(getApplication(), uri, 1600, com.midroid.masarifi.data.backup.receiptName(txnUuid)) != null
+    }.also { receiptVersion.value++ }
+    fun deleteReceipt(txnUuid: String) = viewModelScope.launch(Dispatchers.IO) {
+        receipts.delete(listOf(com.midroid.masarifi.data.backup.receiptName(txnUuid))); receiptVersion.value++
+    }
+    /** Saves one purchase as one row per part (same date / account / note, shared splitGroup); the first part keeps [base]'s uuid (and receipt). */
+    fun saveSplit(base: Txn, parts: List<Pair<Long, Long>>) = viewModelScope.launch(Dispatchers.IO) {
+        val group = com.midroid.masarifi.data.newUuid()
+        repo.inTransaction {
+            parts.forEachIndexed { i, (cat, amt) ->
+                repo.saveTxn(base.copy(id = 0, amount = amt, categoryId = cat, splitGroup = group, uuid = if (i == 0) base.uuid else com.midroid.masarifi.data.newUuid()))
+            }
+        }
+    }
+    fun advance(time: Long, frequency: Int) = repo.advance(time, frequency)
+    private val appLock = com.midroid.masarifi.data.AppLock(application)
+    val lockEnabled = MutableStateFlow(appLock.enabled)
+    /** null = turn the lock off. */
+    fun setLockPin(pin: String?) { if (pin == null) appLock.disable() else appLock.enable(pin); lockEnabled.value = appLock.enabled }
+
     // ---------------- savings goals & debts (2.7.0) ----------------
     private val goalDao = repo.database.goalDao()
     private val debtDao = repo.database.debtDao()

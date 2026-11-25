@@ -59,6 +59,8 @@ data class Txn(
     @ColumnInfo(defaultValue = "") val uuid: String = newUuid(),
     /** Last modification time (millis). Also bumped automatically by a DB trigger on every UPDATE (see [SyncSchema]). */
     @ColumnInfo(defaultValue = "0") val updatedAt: Long = System.currentTimeMillis(),
+    /** Shared id of the parts of one purchase split across categories (2.9.0); null = not split. Each part is a normal row. */
+    @ColumnInfo(defaultValue = "NULL") val splitGroup: String? = null,
 )
 
 /**

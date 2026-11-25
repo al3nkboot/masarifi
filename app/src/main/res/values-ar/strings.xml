@@ -648,4 +648,30 @@
     <string name="days_left_title">الأيام المتبقية</string>
     <string name="budget_left_to_spend">المتبقي للصرف</string>
     <string name="budget_over">تجاوزت الميزانية</string>
+    <!-- 2.9.0 -->
+    <string name="lock_title">قفل التطبيق</string>
+    <string name="lock_sub">طلب البصمة أو الرمز السري عند فتح التطبيق</string>
+    <string name="lock_locked">مصاريفي مقفل</string>
+    <string name="lock_unlock">فتح</string>
+    <string name="lock_use_biometric">استخدم البصمة</string>
+    <string name="lock_wrong_pin">الرمز السري غير صحيح</string>
+    <string name="lock_set_pin">تعيين رمز سري</string>
+    <string name="lock_pin_hint">من 4 إلى 8 أرقام، يُستخدم إذا لم تتوفر البصمة.</string>
+    <string name="lock_pin">الرمز السري</string>
+    <string name="lock_pin_confirm">تأكيد الرمز السري</string>
+    <string name="lock_pin_mismatch">الرمزان غير متطابقين</string>
+    <string name="receipt">الفاتورة</string>
+    <string name="receipt_delete">حذف الصورة</string>
+    <string name="receipt_confirm_delete">حذف صورة الفاتورة؟</string>
+    <string name="split">تقسيم على عدة فئات</string>
+    <string name="split_add_part">إضافة جزء</string>
+    <string name="split_remaining">غير موزّع: %1$s</string>
+    <string name="split_invalid">كل جزء يحتاج فئة ومبلغاً، ومجموع الأجزاء يجب أن يساوي المبلغ الكلي.</string>
+    <string name="split_part_of">جزء من مشتريات مقسّمة</string>
+    <string name="forecast_title">توقع الرصيد آخر الشهر</string>
+    <string name="forecast_current">الرصيد الآن</string>
+    <string name="forecast_income">دخل متوقع</string>
+    <string name="forecast_expense">فواتير ومصاريف متوقعة</string>
+    <string name="forecast_projected">آخر الشهر</string>
+    <string name="forecast_hint">محسوب من العمليات المتكررة والفواتير غير المدفوعة.</string>
 </resources>

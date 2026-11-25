@@ -49,11 +49,15 @@ class BackupStore(context: Context) {
     }
 }
 
+/** Receipt photo file of a transaction (app-private `files/receipts/`). */
+fun receiptName(txnUuid: String) = "$txnUuid.jpg"
+
 /** Builds/restores full backups and writes them via the Storage Access Framework (works with Google Drive, no OAuth). */
 class BackupService(
     private val repo: Repository,
     private val settings: SettingsStore,
     private val images: com.midroid.masarifi.warranty.WarrantyImages? = null,
+    private val receipts: com.midroid.masarifi.warranty.WarrantyImages? = null,
     private val appVersion: () -> String,
 ) {
     private val dao get() = repo.database.backupDao()
@@ -71,7 +75,8 @@ class BackupService(
             debts = debtDao.allDebts(), debtSettlements = debtDao.allSettlements(),
         ).let { d ->
             val w = repo.warrantyDao.all()
-            d.copy(warranties = w, warrantyImages = images?.let { st -> w.flatMap { it.imageList }.distinct().mapNotNull { n -> st.read(n)?.let { n to it } }.toMap() })
+            d.copy(receipts = receipts?.let { st -> d.transactions.mapNotNull { t -> receiptName(t.uuid).let { n -> st.read(n)?.let { n to it } } }.toMap() })
+                .copy(warranties = w, warrantyImages = images?.let { st -> w.flatMap { it.imageList }.distinct().mapNotNull { n -> st.read(n)?.let { n to it } }.toMap() })
         }
     }
 
@@ -136,6 +141,9 @@ class BackupService(
             repo.inTransaction { repo.warrantyDao.clear(); repo.warrantyDao.insertAll(d.warranties) }
             images?.prune(d.warranties.flatMap { it.imageList }.toSet())
         }
+        // receipts: files from the backup, then drop photos of transactions that are no longer there (older files keep matching ones)
+        d.receipts?.forEach { (n, b) -> receipts?.write(n, b) }
+        receipts?.prune(d.transactions.map { receiptName(it.uuid) }.toSet())
         d.settings?.let { s -> settings.update { s } }
         repo.ensureDefaults()
         repo.notifyBulkChange()

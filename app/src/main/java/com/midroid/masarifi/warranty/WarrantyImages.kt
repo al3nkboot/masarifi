@@ -16,7 +16,7 @@ class WarrantyImages(private val dir: File) {
     fun file(name: String) = File(dir, name)
 
     /** Copies + downscales an image from a picker / camera uri. Returns the stored file name or null. */
-    fun import(context: Context, uri: Uri, maxSide: Int = 2048): String? = runCatching {
+    fun import(context: Context, uri: Uri, maxSide: Int = 2048, name: String = "inv_${UUID.randomUUID()}.jpg"): String? = runCatching {
         dir.mkdirs()
         val cr = context.contentResolver
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -30,7 +30,6 @@ class WarrantyImages(private val dir: File) {
             val m = Matrix().apply { if (scale < 1f) postScale(scale, scale); postRotate(rot.toFloat()) }
             bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, m, true)
         }
-        val name = "inv_${UUID.randomUUID()}.jpg"
         file(name).outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 85, it) }
         name
     }.getOrNull()

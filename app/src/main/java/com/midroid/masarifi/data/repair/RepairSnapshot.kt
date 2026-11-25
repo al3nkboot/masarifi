@@ -40,7 +40,7 @@ data class RepairSnapshot(
             .put("note", t.note).put("description", t.description).put("dateTime", t.dateTime).put("isAuto", t.isAuto)
             .put("smsHash", t.smsHash ?: JSONObject.NULL).put("merchant", t.merchant ?: JSONObject.NULL)
             .put("recurringId", t.recurringId ?: JSONObject.NULL).put("createdAt", t.createdAt).put("smsLinked", t.smsLinked)
-            .put("possibleDupOf", t.possibleDupOf ?: JSONObject.NULL).put("uuid", t.uuid).put("updatedAt", t.updatedAt)
+            .put("possibleDupOf", t.possibleDupOf ?: JSONObject.NULL).put("uuid", t.uuid).put("updatedAt", t.updatedAt).put("splitGroup", t.splitGroup ?: JSONObject.NULL)
 
         private fun JSONObject.longOrNull(k: String) = if (isNull(k)) null else getLong(k)
         private fun JSONObject.strOrNull(k: String) = if (isNull(k)) null else getString(k)
@@ -51,7 +51,7 @@ data class RepairSnapshot(
             description = o.getString("description"), dateTime = o.getLong("dateTime"), isAuto = o.getBoolean("isAuto"),
             smsHash = o.strOrNull("smsHash"), merchant = o.strOrNull("merchant"), recurringId = o.longOrNull("recurringId"),
             createdAt = o.getLong("createdAt"), smsLinked = o.getBoolean("smsLinked"), possibleDupOf = o.strOrNull("possibleDupOf"),
-            uuid = o.getString("uuid"), updatedAt = o.getLong("updatedAt"),
+            uuid = o.getString("uuid"), updatedAt = o.getLong("updatedAt"), splitGroup = o.strOrNull("splitGroup"),
         )
     }
 }
