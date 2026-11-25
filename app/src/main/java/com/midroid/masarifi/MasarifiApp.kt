@@ -23,6 +23,8 @@ class MasarifiApp : Application() {
     lateinit var backupStore: BackupStore
         private set
     val warrantyImages by lazy { com.midroid.masarifi.warranty.WarrantyImages(this) }
+    /** Receipt photos of transactions, one per transaction named after its uuid (same downscale + storage as invoices). */
+    val receipts by lazy { com.midroid.masarifi.warranty.WarrantyImages(java.io.File(filesDir, "receipts")) }
     lateinit var backupService: BackupService
         private set
     lateinit var syncStore: com.midroid.masarifi.data.sync.SyncStore
@@ -36,7 +38,7 @@ class MasarifiApp : Application() {
         settings = SettingsStore(this)
         repository = Repository(AppDatabase.get(this), settings) { WorkScheduler.checkSoon(this) }
         backupStore = BackupStore(this)
-        backupService = BackupService(repository, settings, warrantyImages) { BuildConfigInfo.versionName(this) }
+        backupService = BackupService(repository, settings, warrantyImages, receipts) { BuildConfigInfo.versionName(this) }
         syncStore = com.midroid.masarifi.data.sync.SyncStore(this)
         syncService = com.midroid.masarifi.data.sync.SyncService(repository, settings, syncStore) { BuildConfigInfo.versionName(this) }
         Notifier.createChannels(this)

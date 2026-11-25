@@ -140,7 +140,7 @@ class SyncService(
                 "toAccount" to acc(t.toAccountId), "category" to t.categoryId?.let { catU[it] }, "note" to t.note, "description" to t.description,
                 "dateTime" to t.dateTime, "isAuto" to t.isAuto, "smsHash" to t.smsHash, "merchant" to t.merchant,
                 "recurring" to t.recurringId?.let { recU[it] }, "createdAt" to t.createdAt, "smsLinked" to t.smsLinked,
-                "possibleDupOf" to t.possibleDupOf?.split(',')?.mapNotNull { it.trim().toLongOrNull()?.let { id -> txnU[id] } }?.joinToString(",")?.ifEmpty { null }, *catInfo(t.categoryId)))
+                "possibleDupOf" to t.possibleDupOf?.split(',')?.mapNotNull { it.trim().toLongOrNull()?.let { id -> txnU[id] } }?.joinToString(",")?.ifEmpty { null }, "splitGroup" to t.splitGroup, *catInfo(t.categoryId)))
         }
         links.forEach { l ->
             add(SyncRecord.live(l.uuid, Kind.SMS_LINK, l.updatedAt, "txn" to (txnU[l.txnId] ?: "missing-txn-${l.txnId}"), "smsHash" to l.smsHash,
@@ -330,6 +330,7 @@ class SyncService(
                     isAuto = r.bool("isAuto") ?: false, smsHash = r.str("smsHash"), merchant = r.str("merchant"),
                     recurringId = r.str("recurring")?.let { dao.recurring(it)?.id }, createdAt = r.long("createdAt") ?: r.updatedAt,
                     smsLinked = r.bool("smsLinked") ?: false, possibleDupOf = ex?.possibleDupOf, uuid = r.uuid, updatedAt = r.updatedAt,
+                    splitGroup = if ("splitGroup" in r.fields) r.str("splitGroup") else ex?.splitGroup,
                 )
                 val id = if (ex != null) { dao.updateTxn(t); ex.id } else dao.insertTxn(t)
                 val dup = r.str("possibleDupOf")

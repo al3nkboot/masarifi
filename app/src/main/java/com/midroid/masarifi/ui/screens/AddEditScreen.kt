@@ -93,6 +93,7 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneOffset
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -131,6 +132,15 @@ fun AddEditScreen(vm: AppViewModel, route: Route.Edit, onBack: () -> Unit, onEdi
     LaunchedEffect(accounts) { if (accountId == null && route.txnId == null) accountId = accounts.firstOrNull { !it.hidden }?.id ?: accounts.firstOrNull()?.id }
 
     var picker by remember { mutableStateOf<String?>(null) } // "date","time","account","to","category"
+    // 2.9.0: a new row gets its uuid up front so a receipt photo can be attached before saving
+    var draftUuid by rememberSaveable { mutableStateOf(com.midroid.masarifi.data.newUuid()) }
+    val txnUuid = existing?.uuid ?: draftUuid
+    var splitOn by rememberSaveable { mutableStateOf(false) }
+    val parts = remember { androidx.compose.runtime.mutableStateListOf<Pair<Long?, String>>() }
+    var partPick by remember { mutableStateOf<Int?>(null) }
+    val canSplit = existing == null && type != TxnType.TRANSFER
+    val errSplit = stringResource(R.string.split_invalid)
+    fun pickCategory(id: Long) { val i = partPick; if (i != null) { parts[i] = id to parts[i].second; partPick = null } else categoryId = id; picker = null }
     var confirmDelete by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     /** Possible duplicate found when saving a new transaction: (draft, existing matches, "continue" mode). */
@@ -154,7 +164,7 @@ fun AddEditScreen(vm: AppViewModel, route: Route.Edit, onBack: () -> Unit, onEdi
             if (toAccountId == null) { error = errAccount; return null }
             if (toAccountId == acc) { error = errSame; return null }
         }
-        val base = existing ?: Txn(type = type, amount = amount, accountId = acc, dateTime = dateTime)
+        val base = existing ?: Txn(type = type, amount = amount, accountId = acc, dateTime = dateTime, uuid = draftUuid)
         return base.copy(
             type = type, amount = amount, accountId = acc,
             toAccountId = if (type == TxnType.TRANSFER) toAccountId else null,
@@ -163,13 +173,20 @@ fun AddEditScreen(vm: AppViewModel, route: Route.Edit, onBack: () -> Unit, onEdi
         )
     }
 
-    fun resetForNext() { amountText = ""; note = ""; description = ""; error = null; repeat = Repeat.NONE; dupWarning = null }
+    fun resetForNext() { amountText = ""; note = ""; description = ""; error = null; repeat = Repeat.NONE; dupWarning = null; draftUuid = com.midroid.masarifi.data.newUuid(); splitOn = false; parts.clear() }
     fun doSave(t: Txn, continueMode: Boolean) {
         vm.saveTxn(t, if (repeatLoaded) repeat else null)
         if (continueMode) resetForNext() else onBack()
     }
     fun attemptSave(continueMode: Boolean) {
         val t = buildTxn() ?: return
+        if (splitOn && canSplit) {
+            val ps = parts.map { (cat, txt) -> cat?.takeIf { id -> categories.any { it.id == id && it.type == type } } to Money.parse(txt) }
+            if (!com.midroid.masarifi.analysis.SplitLogic.isValid(t.amount, ps)) { error = errSplit; return }
+            vm.saveSplit(t, ps.map { it.first!! to it.second!! })
+            if (continueMode) resetForNext() else onBack()
+            return
+        }
         if (existing == null) {
             val conflicts = vm.conflictsFor(t)
             if (conflicts.isNotEmpty()) { dupWarning = Triple(t, conflicts, continueMode); return }
@@ -234,12 +251,22 @@ fun AddEditScreen(vm: AppViewModel, route: Route.Edit, onBack: () -> Unit, onEdi
                 FieldRow(stringResource(R.string.to)) { ValueText(toAccountName) { picker = "to" } }
             } else {
                 FieldRow(stringResource(R.string.account)) { ValueText(accountName) { picker = "account" } }
-                FieldRow(stringResource(R.string.category)) { ValueText(cat?.let { it.icon + " " + it.name(s.arabic) } ?: "") { picker = "category" } }
+                if (canSplit) com.midroid.masarifi.ui.components.SwitchRow(null, stringResource(R.string.split), null, splitOn) { v ->
+                    splitOn = v
+                    if (v && parts.isEmpty()) { parts += categoryId to amountText; parts += (null as Long?) to "" }
+                }
+                if (splitOn && canSplit) {
+                    SplitEditor(parts, categories, s, total = Money.parse(amountText) ?: 0L, onPick = { i -> partPick = i; picker = "category" })
+                } else {
+                    FieldRow(stringResource(R.string.category)) { ValueText(cat?.let { it.icon + " " + it.name(s.arabic) } ?: "") { picker = "category" } }
+                }
+                if (existing?.splitGroup != null) Text(stringResource(R.string.split_part_of), color = c.muted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
             }
             FieldRow(stringResource(R.string.note)) { PlainField(note, { note = it }, KeyboardType.Text) }
             FieldRow(stringResource(R.string.description)) { PlainField(description, { description = it }, KeyboardType.Text, singleLine = false) }
+            ReceiptField(vm, txnUuid)
             // Always shown — new, edited, SMS-linked and imported rows alike (1.3.0 fix: it was hidden when editing).
-            run {
+            if (!(splitOn && canSplit)) run {
                 FieldRow(stringResource(R.string.repeat)) {
                     var open by remember { mutableStateOf(false) }
                     Box {
@@ -380,7 +407,7 @@ fun AddEditScreen(vm: AppViewModel, route: Route.Edit, onBack: () -> Unit, onEdi
             val list = categories.filter { it.type == type }
             val parents = list.filter { it.parentId == null }
             val childrenOf = list.filter { it.parentId != null }.groupBy { it.parentId }
-            PickerSheet(stringResource(R.string.category), onDismiss = { picker = null }, action = {
+            PickerSheet(stringResource(R.string.category), onDismiss = { picker = null; partPick = null }, action = {
                 TextButton(onClick = { picker = null; onEditCategories() }) {
                     Icon(Icons.Filled.Edit, null); Spacer(Modifier.width(4.dp)); Text(stringResource(R.string.edit))
                 }
@@ -391,17 +418,17 @@ fun AddEditScreen(vm: AppViewModel, route: Route.Edit, onBack: () -> Unit, onEdi
                         item(key = parent.id) {
                             CategoryPickRow(
                                 label = parent.icon + "  " + parent.name(s.arabic),
-                                selected = categoryId == parent.id,
+                                selected = (partPick?.let { parts.getOrNull(it)?.first } ?: categoryId) == parent.id,
                                 indented = false,
-                            ) { categoryId = parent.id; picker = null }
+                            ) { pickCategory(parent.id) }
                         }
                         subs.forEach { sub ->
                             item(key = sub.id) {
                                 CategoryPickRow(
                                     label = sub.icon + "  " + sub.name(s.arabic),
-                                    selected = categoryId == sub.id,
+                                    selected = (partPick?.let { parts.getOrNull(it)?.first } ?: categoryId) == sub.id,
                                     indented = true,
-                                ) { categoryId = sub.id; picker = null }
+                                ) { pickCategory(sub.id) }
                             }
                         }
                     }
@@ -502,4 +529,80 @@ fun GridCell(text: String, selected: Boolean, onClick: () -> Unit) {
             .padding(8.dp),
         contentAlignment = Alignment.Center,
     ) { Text(text, textAlign = TextAlign.Center, fontSize = 14.sp, maxLines = 3) }
+}
+
+/** 2.9.0: parts of a split purchase (category + amount each), with what is still unassigned of the total. */
+@Composable
+private fun SplitEditor(parts: MutableList<Pair<Long?, String>>, categories: List<Category>, s: com.midroid.masarifi.data.AppSettings, total: Long, onPick: (Int) -> Unit) {
+    val c = AppTheme.colors
+    Column(Modifier.padding(horizontal = 16.dp).testTag("split_editor")) {
+        parts.forEachIndexed { i, (catId, txt) ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val cat = categories.firstOrNull { it.id == catId }
+                Text(
+                    cat?.let { it.icon + " " + it.name(s.arabic) } ?: stringResource(R.string.category),
+                    color = if (cat == null) c.muted else Color.Unspecified, maxLines = 1,
+                    modifier = Modifier.weight(1f).clickable { onPick(i) }.padding(vertical = 12.dp),
+                )
+                Box(Modifier.width(130.dp)) { PlainField(txt, { v -> parts[i] = catId to v }, KeyboardType.Decimal, suffix = s.currencyInfo.symbol(s.arabic)) }
+                if (parts.size > 2) IconButton(onClick = { parts.removeAt(i) }) { Icon(Icons.Filled.Delete, stringResource(R.string.delete)) }
+            }
+            HorizontalDivider(color = c.divider)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { parts += (null as Long?) to "" }) { Text(stringResource(R.string.split_add_part)) }
+            Spacer(Modifier.weight(1f))
+            val left = com.midroid.masarifi.analysis.SplitLogic.remaining(total, parts.map { Money.parse(it.second) })
+            Text(stringResource(R.string.split_remaining, Fmt.money(left, s)), fontSize = 13.sp, color = if (left == 0L) c.income else c.expense)
+        }
+    }
+}
+
+/** 2.9.0: one receipt photo per transaction, stored as files/receipts/<uuid>.jpg (camera or gallery, downscaled). */
+@Composable
+private fun ReceiptField(vm: AppViewModel, txnUuid: String) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val version by vm.receiptVersion.collectAsStateWithLifecycle()
+    val file = vm.receiptFile(txnUuid)
+    val has = remember(version, txnUuid) { file.isFile }
+    var viewing by remember { mutableStateOf(false) }
+    var confirm by remember { mutableStateOf(false) }
+    fun attach(uri: android.net.Uri?) { if (uri != null) scope.launch { vm.attachReceipt(txnUuid, uri) } }
+    val gallery = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { attach(it) }
+    var camUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    val camera = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.TakePicture()) { ok ->
+        val u = camUri
+        if (ok && u != null) scope.launch { vm.attachReceipt(txnUuid, u); runCatching { ctx.contentResolver.delete(u, null, null) } }
+    }
+    FieldRow(stringResource(R.string.receipt)) {
+        if (has) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val bmp = androidx.compose.runtime.key(version) { com.midroid.masarifi.ui.warranty.rememberImage(file, 320) }
+                Box(Modifier.width(72.dp).height(72.dp).background(AppTheme.colors.card, RoundedCornerShape(8.dp)).clickable { viewing = true }.testTag("receipt_thumb")) {
+                    bmp?.let { androidx.compose.foundation.Image(it, stringResource(R.string.receipt), Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = { confirm = true }) { Text(stringResource(R.string.receipt_delete)) }
+            }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = {
+                    runCatching {
+                        val f = java.io.File(ctx.cacheDir, "camera").apply { mkdirs() }.let { java.io.File(it, "receipt_${System.currentTimeMillis()}.jpg") }
+                        val u = androidx.core.content.FileProvider.getUriForFile(ctx, ctx.packageName + ".fileprovider", f)
+                        camUri = u; camera.launch(u)
+                    }
+                }) { Text(stringResource(R.string.warranty_take_photo)) }
+                OutlinedButton(onClick = { gallery.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
+                    Text(stringResource(R.string.warranty_from_gallery))
+                }
+            }
+        }
+    }
+    if (viewing) com.midroid.masarifi.ui.warranty.ZoomImageDialog(file) { viewing = false }
+    if (confirm) ConfirmDialog(
+        stringResource(R.string.receipt_delete), stringResource(R.string.receipt_confirm_delete), stringResource(R.string.delete),
+        onConfirm = { vm.deleteReceipt(txnUuid); confirm = false }, onDismiss = { confirm = false },
+    )
 }

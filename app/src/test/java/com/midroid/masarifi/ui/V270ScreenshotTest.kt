@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToKey
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -154,12 +155,12 @@ class V270ScreenshotTest {
         rule.onNode(hasText(s(R.string.filter_all)) and hasClickAction() and hasAnyAncestor(hasTestTag("type_filter_chips"))).performClick()
 
         clickTab(s(R.string.tab_more))
-        rule.onNodeWithText(s(R.string.goals)).performClick()
+        rule.onNodeWithText(s(R.string.goals)).performScrollTo().performClick()
         rule.waitUntil(5_000) { rule.onAllNodesWithTag("goal_card").fetchSemanticsNodes().isNotEmpty() }
         shot("03_goals", lang, theme)
         sc.onActivity { it.onBackPressedDispatcher.onBackPressed() }
 
-        rule.onNodeWithText(s(R.string.debts)).performClick()
+        rule.onNodeWithText(s(R.string.debts)).performScrollTo().performClick() // 2.9.0: the app-lock row pushed it below the fold
         rule.waitUntil(5_000) { rule.onAllNodesWithTag("debt_row").fetchSemanticsNodes().isNotEmpty() }
         shot("04_debts", lang, theme)
         sc.onActivity { it.onBackPressedDispatcher.onBackPressed() }

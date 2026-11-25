@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
@@ -93,6 +94,9 @@ fun MoreScreen(vm: AppViewModel, navigate: (Route) -> Unit, modifier: Modifier, 
         SettingRow(AppIcons.Palette, stringResource(R.string.theme), themeLabel(s.theme), onClick = { dialog = "theme" })
         SwitchRow(AppIcons.Calendar, stringResource(R.string.week_starts_saturday), null, s.weekStartsSaturday) { v -> vm.updateSettings { it.copy(weekStartsSaturday = v) } }
         SwitchRow(AppIcons.Money, stringResource(R.string.carry_over), stringResource(R.string.carry_over_sub), s.carryOver) { v -> vm.updateSettings { it.copy(carryOver = v) } }
+        val lockOn by vm.lockEnabled.collectAsStateWithLifecycle()
+        SwitchRow(androidx.compose.material.icons.Icons.Filled.Lock, stringResource(R.string.lock_title), stringResource(R.string.lock_sub), lockOn) { v -> if (v) dialog = "lock" else vm.setLockPin(null) }
+        if (dialog == "lock") SetPinDialog(onDismiss = { dialog = null }) { pin -> vm.setLockPin(pin); dialog = null }
 
         SectionTitle(stringResource(R.string.section_data))
         SettingRow(AppIcons.Category, stringResource(R.string.categories), stringResource(R.string.categories_sub), onClick = { navigate(Route.Categories) })

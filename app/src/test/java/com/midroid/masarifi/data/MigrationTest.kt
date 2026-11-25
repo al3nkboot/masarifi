@@ -25,7 +25,7 @@ import java.io.File
 @Config(sdk = [35])
 class MigrationTest {
     /** Current schema version: every chain must end on it (was hard-coded 8 and went stale with 2.6.1's v9). */
-    private val LATEST = 11
+    private val LATEST = 12
     private val schemaDir = File("schemas/com.midroid.masarifi.data.AppDatabase")
 
     private fun createV1(file: File) = createFrom(file, 1)
@@ -270,7 +270,7 @@ class MigrationTest {
         val v6Tables = JSONObject(File(schemaDir, "6.json").readText()).getJSONObject("database").getJSONArray("entities").let { a -> (0 until a.length()).map { a.getJSONObject(it).getString("tableName") } }
         fun dump(d: android.database.sqlite.SQLiteDatabase): Map<String, List<String>> = v6Tables.associateWith { t ->
             d.rawQuery("SELECT * FROM `$t` ORDER BY rowid", null).use { c ->
-                buildList { while (c.moveToNext()) add((0 until c.columnCount).filter { c.getColumnName(it) !in setOf("parentId", "hidden", "deletedAt") /* added later by v9 / v10 */ }.joinToString("|") { c.getColumnName(it) + "=" + c.getString(it) }) }
+                buildList { while (c.moveToNext()) add((0 until c.columnCount).filter { c.getColumnName(it) !in setOf("parentId", "hidden", "deletedAt", "splitGroup") /* added later by v9 / v10 / v12 */ }.joinToString("|") { c.getColumnName(it) + "=" + c.getString(it) }) }
             }
         }
         val before = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { d ->
@@ -323,7 +323,7 @@ class MigrationTest {
         val v7Tables = JSONObject(File(schemaDir, "7.json").readText()).getJSONObject("database").getJSONArray("entities").let { a -> (0 until a.length()).map { a.getJSONObject(it).getString("tableName") } }
         fun dump(d: SQLiteDatabase): Map<String, List<String>> = v7Tables.associateWith { t ->
             d.rawQuery("SELECT * FROM `$t` ORDER BY rowid", null).use { c ->
-                buildList { while (c.moveToNext()) add((0 until c.columnCount).filter { c.getColumnName(it) !in setOf("parentId", "hidden", "deletedAt") /* added later by v9 / v10 */ }.joinToString("|") { c.getColumnName(it) + "=" + c.getString(it) }) }
+                buildList { while (c.moveToNext()) add((0 until c.columnCount).filter { c.getColumnName(it) !in setOf("parentId", "hidden", "deletedAt", "splitGroup") /* added later by v9 / v10 / v12 */ }.joinToString("|") { c.getColumnName(it) + "=" + c.getString(it) }) }
             }
         }
         val before = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { d ->
@@ -458,5 +458,21 @@ class MigrationTest {
         }
         val v10 = tables(10); val v11 = tables(11)
         assertEquals(v10.keys + setOf("savings_goals", "goal_contributions", "debts", "debt_settlements"), v11.keys)
+    }
+
+    @Test fun migrate11To12AddsSplitGroupAndKeepsRows() = runBlocking {
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        val name = "migration-test-v11.db"
+        val file = ctx.getDatabasePath(name).apply { parentFile?.mkdirs(); delete() }
+        createFrom(file, 11)
+        val db = Room.databaseBuilder(ctx, AppDatabase::class.java, name).configure().allowMainThreadQueries().build()
+        try {
+            assertEquals(LATEST, db.openHelper.readableDatabase.version)
+            val txns = db.txnDao().all()
+            assertEquals(3, txns.size)
+            assertTrue(txns.all { it.splitGroup == null })
+            db.txnDao().update(txns.first().copy(splitGroup = "g1"))
+            assertEquals("g1", db.txnDao().all().single { it.id == txns.first().id }.splitGroup)
+        } finally { db.close() }
     }
 }

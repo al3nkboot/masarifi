@@ -44,6 +44,8 @@ data class BackupData(
     val warranties: List<com.midroid.masarifi.warranty.Warranty>? = null,
     /** Invoice photos of [warranties]: file name → JPEG bytes (base64 in the file). */
     val warrantyImages: Map<String, ByteArray>? = null,
+    /** Receipt photos (app 2.9.0, optional object): file name "<txn uuid>.jpg" → JPEG bytes (base64 in the file); null for older files. */
+    val receipts: Map<String, ByteArray>? = null,
     /** Savings goals + contributions, debts + settlements (optional arrays, app 2.7.0, still schema 4). Older files have none: restored as empty. */
     val goals: List<SavingsGoal> = emptyList(),
     val goalContributions: List<GoalContribution> = emptyList(),
@@ -65,6 +67,7 @@ class BackupFormatException(val code: String, msg: String) : Exception(msg)
  * App 2.1.0 adds the optional arrays "bills" and "billPayments" (still schema 4: purely additive, so 2.0.0 can still read
  * the file and ignores them; files without them restore as before and keep the device's bills).
  * App 2.5.0 adds the optional "warranties" array and "warrantyImages" (invoice photos, base64 JPEG), same additive rule.
+ * App 2.9.0 adds transactions[].splitGroup and the optional "receipts" object (file name → base64 JPEG), same additive rule.
  * App 2.7.0 adds the optional arrays "goals", "goalContributions", "debts" and "debtSettlements" (additive, schema stays 4; written only when non-empty, missing = empty).
  * Readers ignore unknown fields; older schema versions are upgraded in [decode] (missing fields get defaults).
  */
@@ -107,7 +110,7 @@ object BackupCodec {
                     .putOpt("toAccountId", t.toAccountId).putOpt("categoryId", t.categoryId).put("note", t.note).put("description", t.description)
                     .put("dateTime", t.dateTime).put("isAuto", t.isAuto).putOpt("smsHash", t.smsHash).putOpt("merchant", t.merchant)
                     .putOpt("recurringId", t.recurringId).put("createdAt", t.createdAt)
-                    .put("smsLinked", t.smsLinked).putOpt("possibleDupOf", t.possibleDupOf).sync(t.uuid, t.updatedAt))
+                    .put("smsLinked", t.smsLinked).putOpt("possibleDupOf", t.possibleDupOf).putOpt("splitGroup", t.splitGroup).sync(t.uuid, t.updatedAt))
             }
         })
         o.put("recurring", JSONArray().apply {
@@ -144,6 +147,7 @@ object BackupCodec {
         d.bills?.let { l -> o.put("bills", JSONArray().apply { l.forEach { put(com.midroid.masarifi.bills.BillsJson.bill(it)) } }) }
         d.billPayments?.let { l -> o.put("billPayments", JSONArray().apply { l.forEach { put(com.midroid.masarifi.bills.BillsJson.payment(it)) } }) }
         d.warranties?.let { l -> o.put("warranties", JSONArray().apply { l.forEach { put(com.midroid.masarifi.warranty.WarrantyJson.encode(it)) } }) }
+        d.receipts?.takeIf { it.isNotEmpty() }?.let { m -> o.put("receipts", JSONObject().apply { m.forEach { (k, v) -> put(k, android.util.Base64.encodeToString(v, android.util.Base64.NO_WRAP)) } }) }
         d.warrantyImages?.let { m -> o.put("warrantyImages", JSONObject().apply { m.forEach { (k, v) -> put(k, android.util.Base64.encodeToString(v, android.util.Base64.NO_WRAP)) } }) }
         if (d.goals.isNotEmpty()) o.put("goals", JSONArray().apply { d.goals.forEach { put(GoalsJson.goal(it)) } })
         if (d.goalContributions.isNotEmpty()) o.put("goalContributions", JSONArray().apply { d.goalContributions.forEach { put(GoalsJson.contribution(it)) } })
@@ -216,7 +220,7 @@ object BackupCodec {
                     smsHash = t.optStringOrNull("smsHash"), merchant = t.optStringOrNull("merchant"), recurringId = t.optLongOrNull("recurringId"),
                     createdAt = t.optLong("createdAt", t.getLong("dateTime")),
                     smsLinked = t.optBoolean("smsLinked", false), possibleDupOf = t.optStringOrNull("possibleDupOf"),
-                    uuid = t.uuid(), updatedAt = t.optLong("updatedAt", t.optLong("createdAt", 0)),
+                    uuid = t.uuid(), updatedAt = t.optLong("updatedAt", t.optLong("createdAt", 0)), splitGroup = t.optStringOrNull("splitGroup"),
                 )
             },
             recurring = o.list("recurring") { r ->
@@ -238,6 +242,7 @@ object BackupCodec {
             bills = com.midroid.masarifi.bills.BillsJson.bills(o.optJSONArray("bills")),
             billPayments = com.midroid.masarifi.bills.BillsJson.payments(o.optJSONArray("billPayments")) ?: if (o.has("bills")) emptyList() else null,
             warranties = o.optJSONArray("warranties")?.let { a -> (0 until a.length()).map { com.midroid.masarifi.warranty.WarrantyJson.decode(a.getJSONObject(it)) } },
+            receipts = o.optJSONObject("receipts")?.let { m -> m.keys().asSequence().associateWith { k -> android.util.Base64.decode(m.getString(k), android.util.Base64.DEFAULT) } },
             warrantyImages = o.optJSONObject("warrantyImages")?.let { m -> m.keys().asSequence().associateWith { k -> android.util.Base64.decode(m.getString(k), android.util.Base64.DEFAULT) } },
             goals = GoalsJson.goals(o.optJSONArray("goals")),
             goalContributions = GoalsJson.contributions(o.optJSONArray("goalContributions")),

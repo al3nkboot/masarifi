@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [Txn::class, Account::class, Category::class, Budget::class, MerchantRule::class, Recurring::class, SmsLog::class, SmsLink::class, DupDismissed::class, SyncTombstone::class, SmsBalance::class, CardMapping::class, RepairBatch::class, com.midroid.masarifi.bills.Bill::class, com.midroid.masarifi.bills.BillPayment::class, com.midroid.masarifi.warranty.Warranty::class, SavingsGoal::class, GoalContribution::class, Debt::class, DebtSettlement::class],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
